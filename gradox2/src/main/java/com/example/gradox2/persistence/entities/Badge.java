@@ -1,23 +1,22 @@
 package com.example.gradox2.persistence.entities;
 
-import java.util.Date;
-
 import jakarta.persistence.*;
 import lombok.*;
 
-@Entity
-@Table(name = "users")
 @Getter
 @Setter
 @AllArgsConstructor
 @NoArgsConstructor
-public class FileEntity {
+@Entity
+@Table(name = "badges")
+public class Badge {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-    private String filename;
-    private Date uploadDate;
 
-    @ManyToOne
-    private User owner;
+    @Column(nullable = false)
+    private String name;
+
+    private String description;
+    private String iconUrl;
 }

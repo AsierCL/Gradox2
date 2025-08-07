@@ -1,6 +1,6 @@
 package com.example.gradox2.presentation.dto;
 
-import com.example.gradox2.persistence.entities.TypeUser;
+import com.example.gradox2.persistence.entities.enums.UserRole;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -14,5 +14,5 @@ public class UserDTO {
     private String username;
     private String email;
     private String password;
-    private TypeUser typeUser;
+    private UserRole userRole;
 }
