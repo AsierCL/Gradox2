@@ -40,7 +40,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             return;
         }
 
-        final String token = authHeader.substring(7);
+        final String token = authHeader.substring(7); // Remove "Bearer " prefix
         final String username = jwtUtils.extractUsername(token);
 
         if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
@@ -48,8 +48,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                 User user = userRepository.findByUsername(username).orElse(null);
 
                 if (user != null) {
-                    UsernamePasswordAuthenticationToken authToken =
-                            new UsernamePasswordAuthenticationToken(user, user.getRole());
+                    UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(user, user.getRole());
 
                     authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                     SecurityContextHolder.getContext().setAuthentication(authToken);
