@@ -10,10 +10,7 @@ import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import org.springframework.beans.factory.annotation.Value;
 import java.util.Date;
-import javax.crypto.spec.SecretKeySpec;
-import java.nio.charset.StandardCharsets;
 import java.security.Key;
-import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
 
 // JwtUtils.java
@@ -36,7 +33,7 @@ public class JwtUtils {
                 .claim("role", user.getRole().name())
                 .setIssuedAt(new Date())
                 .setExpiration(new Date(System.currentTimeMillis() + jwtExpirationMs))
-                .signWith(SignatureAlgorithm.HS256, getSigningKey())
+                .signWith(getSigningKey(), SignatureAlgorithm.HS256) // Corregido: Se pasan la clave y el algoritmo por separado.
                 .compact();
     }
 
@@ -54,8 +51,9 @@ public class JwtUtils {
     }
 
     private Claims parseClaims(String token) {
-        return Jwts.parser()
+        return Jwts.parserBuilder() // Corregido: Uso de Jwts.parserBuilder() para construir el parser.
                 .setSigningKey(getSigningKey())
+                .build() // Corregido: Necesario llamar a .build() para crear el parser.
                 .parseClaimsJws(token)
                 .getBody();
     }
