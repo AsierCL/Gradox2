@@ -159,5 +159,4 @@ El siguiente paso es desarrollar un MVP (Producto Mínimo Viable) con el sistema
 
 ---
 
-**Contacto del equipo de desarrollo:** [incluir email de contacto]  
-**Licencia inicial propuesta:** CC BY-NC-SA (uso no comercial, compartición igualitaria)
+**Contacto del equipo de desarrollo:** @AsierCL 

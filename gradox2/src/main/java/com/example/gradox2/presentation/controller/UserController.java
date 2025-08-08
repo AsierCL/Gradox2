@@ -23,9 +23,6 @@ public class UserController {
     @GetMapping("/me")
     public ResponseEntity<ProfileResponse> getCurrentUser() {
         ProfileResponse user = userService.getCurrentUser();
-        System.out.println("getCurrentUser called");
-        //ProfileResponse user = new ProfileResponse();
-        user.setUsername("Asier");
         return ResponseEntity.ok(user);
     }
  
