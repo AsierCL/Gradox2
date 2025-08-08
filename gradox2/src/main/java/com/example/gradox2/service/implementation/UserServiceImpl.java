@@ -1,44 +1,54 @@
 package com.example.gradox2.service.implementation;
 
+import java.security.Security;
 import java.util.List;
 
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
-import com.example.gradox2.presentation.dto.UserDTO;
+import com.example.gradox2.persistence.entities.User;
+import com.example.gradox2.persistence.repository.UserRepository;
+import com.example.gradox2.presentation.dto.ProfileResponse;
 import com.example.gradox2.service.interfaces.IUserService;
+import com.example.gradox2.utils.mapper.DtoUserMapper;
 
 
 @Service
 public class UserServiceImpl implements IUserService {
+    private final UserRepository userRepository;
 
-    @Override
-    public UserDTO createUser(UserDTO userDTO) {
-        // Implementation logic to create a user
-        return null;
+    public UserServiceImpl(UserRepository userRepository) {
+        this.userRepository = userRepository;
     }
 
-    @Override
-    public List<UserDTO> findAllUsers() {
-        // Implementation logic to find all users
-        return null;
-    }
+    public ProfileResponse getCurrentUser() {
+        // 1. Obtener el objeto de autenticación del contexto de seguridad
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 
-    @Override
-    public UserDTO findById(Long id) {
-        // Implementation logic to find a user by ID
-        return null;
-    }
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new IllegalStateException("El usuario no está autenticado.");
+        }
 
-    @Override
-    public UserDTO updateUser(Long id, UserDTO userDTO) {
-        // Implementation logic to update a user
-        return null;
-    }
+        // 2. Extraer el nombre de usuario del objeto de autenticación
+        // El 'principal' puede ser un String o el objeto User que configuraste en JwtAuthFilter
+        Object principal = authentication.getPrincipal();
+        String username;
 
-    @Override
-    public String deleteUser(Long id) {
-        // Implementation logic to delete a user
-        return null;
+        // Aquí se asume que en tu JwtAuthFilter, el principal es un objeto User
+        if (principal instanceof User) {
+            username = ((User) principal).getUsername();
+        } else {
+            username = principal.toString();
+        }
+
+        // 3. Buscar el usuario completo en la base de datos
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("Usuario no encontrado en la base de datos"));
+
+        // 4. Mapear la entidad User a UserDTO
+        // Usa tu DtoMapper para esto
+        return DtoUserMapper.toProfileResponse(user);
     }
     
 }

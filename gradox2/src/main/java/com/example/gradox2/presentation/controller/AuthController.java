@@ -9,15 +9,15 @@ import org.springframework.web.bind.annotation.RestController;
 import com.example.gradox2.presentation.dto.AuthResponse;
 import com.example.gradox2.presentation.dto.LoginRequest;
 import com.example.gradox2.presentation.dto.RegisterRequest;
-import com.example.gradox2.service.implementation.AuthServiceImpl;
+import com.example.gradox2.service.interfaces.IAuthService;
 
 @RestController
 @RequestMapping("/api/auth")
 public class AuthController {
 
-    private final AuthServiceImpl authService;
+    private final IAuthService authService;
 
-    public AuthController(AuthServiceImpl authService) {
+    public AuthController(IAuthService authService) {
         this.authService = authService;
     }
 

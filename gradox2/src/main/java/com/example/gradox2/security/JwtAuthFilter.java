@@ -23,6 +23,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     private final UserRepository userRepository;
 
     public JwtAuthFilter(JwtUtils jwtUtils, UserRepository userRepository) {
+        System.out.println("JwtAuthFilter initialized");
         this.jwtUtils = jwtUtils;
         this.userRepository = userRepository;
     }
@@ -32,6 +33,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                                     HttpServletResponse response,
                                     FilterChain filterChain)
             throws ServletException, IOException {
+        System.out.println("JwtAuthFilter initialized");
 
         final String authHeader = request.getHeader("Authorization");
 
@@ -48,7 +50,8 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                 User user = userRepository.findByUsername(username).orElse(null);
 
                 if (user != null) {
-                    UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(user, user.getRole());
+                    UsernamePasswordAuthenticationToken authToken = 
+                        new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities());
 
                     authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                     SecurityContextHolder.getContext().setAuthentication(authToken);
