@@ -1,4 +1,4 @@
-package com.example.gradox2.presentation.dto;
+package com.example.gradox2.presentation.dto.auth;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;

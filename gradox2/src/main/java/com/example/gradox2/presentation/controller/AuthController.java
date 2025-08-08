@@ -6,9 +6,9 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.example.gradox2.presentation.dto.AuthResponse;
-import com.example.gradox2.presentation.dto.LoginRequest;
-import com.example.gradox2.presentation.dto.RegisterRequest;
+import com.example.gradox2.presentation.dto.auth.AuthResponse;
+import com.example.gradox2.presentation.dto.auth.LoginRequest;
+import com.example.gradox2.presentation.dto.auth.RegisterRequest;
 import com.example.gradox2.service.interfaces.IAuthService;
 
 @RestController

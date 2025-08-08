@@ -1,4 +1,4 @@
-package com.example.gradox2.presentation.dto;
+package com.example.gradox2.presentation.dto.users;
 
 import java.time.Instant;
 import java.util.Set;
@@ -10,7 +10,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 @Data
-public class ProfileResponse {
+public class MyProfileResponse {
     public Long id;
     public String username;
     public String email;

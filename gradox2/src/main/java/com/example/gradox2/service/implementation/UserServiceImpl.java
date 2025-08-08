@@ -9,7 +9,10 @@ import org.springframework.stereotype.Service;
 
 import com.example.gradox2.persistence.entities.User;
 import com.example.gradox2.persistence.repository.UserRepository;
-import com.example.gradox2.presentation.dto.ProfileResponse;
+import com.example.gradox2.presentation.dto.users.MyProfileResponse;
+import com.example.gradox2.presentation.dto.users.PublicProfileResponse;
+import com.example.gradox2.service.exceptions.UnauthenticatedAccessException;
+import com.example.gradox2.service.exceptions.UserNotFoundException;
 import com.example.gradox2.service.interfaces.IUserService;
 import com.example.gradox2.utils.mapper.DtoUserMapper;
 
@@ -22,12 +25,12 @@ public class UserServiceImpl implements IUserService {
         this.userRepository = userRepository;
     }
 
-    public ProfileResponse getCurrentUser() {
+    public MyProfileResponse getCurrentUser() {
         // 1. Obtener el objeto de autenticación del contexto de seguridad
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 
         if (authentication == null || !authentication.isAuthenticated()) {
-            throw new IllegalStateException("El usuario no está autenticado.");
+            throw new UnauthenticatedAccessException("El usuario no está autenticado.");
         }
 
         // 2. Extraer el nombre de usuario del objeto de autenticación
@@ -51,4 +54,12 @@ public class UserServiceImpl implements IUserService {
         return DtoUserMapper.toProfileResponse(user);
     }
     
+    public PublicProfileResponse getUserProfile(Long id) {
+        // 1. Buscar el usuario por ID
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new UserNotFoundException("Usuario no encontrado"));
+
+        // 2. Mapear la entidad User a PublicProfileResponse
+        return DtoUserMapper.toPublicProfileResponse(user);
+    }
 }

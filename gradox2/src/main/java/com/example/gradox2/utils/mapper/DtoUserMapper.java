@@ -4,9 +4,10 @@ import java.util.stream.Collectors;
 
 import com.example.gradox2.persistence.entities.User;
 import com.example.gradox2.persistence.entities.enums.UserRole;
-import com.example.gradox2.presentation.dto.AuthResponse;
-import com.example.gradox2.presentation.dto.ProfileResponse;
-import com.example.gradox2.presentation.dto.RegisterRequest;
+import com.example.gradox2.presentation.dto.auth.AuthResponse;
+import com.example.gradox2.presentation.dto.auth.RegisterRequest;
+import com.example.gradox2.presentation.dto.users.MyProfileResponse;
+import com.example.gradox2.presentation.dto.users.PublicProfileResponse;
 
 public class DtoUserMapper {
 
@@ -27,8 +28,8 @@ public class DtoUserMapper {
         return response;
     }
 
-    public static ProfileResponse toProfileResponse(User user) {
-        ProfileResponse dto = new ProfileResponse();
+    public static MyProfileResponse toProfileResponse(User user) {
+        MyProfileResponse dto = new MyProfileResponse();
         dto.id = user.getId();
         dto.username = user.getUsername();
         dto.email = user.getEmail();
@@ -43,6 +44,18 @@ public class DtoUserMapper {
                         .map(badge -> badge.getName()) // asegúrate de que Badge tiene getName()
                         .collect(Collectors.toSet());
 
+        return dto;
+    }
+
+    public static PublicProfileResponse toPublicProfileResponse(User user) {
+        PublicProfileResponse dto = new PublicProfileResponse();
+        dto.username = user.getUsername();
+        dto.role = user.getRole().name();
+        dto.reputation = user.getReputation();
+        dto.badges = user.getBadges()
+                        .stream()
+                        .map(badge -> badge.getName()) // asegúrate de que Badge tiene getName()
+                        .collect(Collectors.toSet());
         return dto;
     }
 }

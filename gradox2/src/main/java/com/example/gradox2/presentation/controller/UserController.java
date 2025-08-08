@@ -4,10 +4,11 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.example.gradox2.presentation.dto.ProfileResponse;
+import com.example.gradox2.presentation.dto.users.MyProfileResponse;
+import com.example.gradox2.presentation.dto.users.PublicProfileResponse;
 import com.example.gradox2.service.interfaces.IUserService;
-
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 
 
 @RestController
@@ -21,9 +22,15 @@ public class UserController {
     }
 
     @GetMapping("/me")
-    public ResponseEntity<ProfileResponse> getCurrentUser() {
-        ProfileResponse user = userService.getCurrentUser();
+    public ResponseEntity<MyProfileResponse> getCurrentUser() {
+        MyProfileResponse user = userService.getCurrentUser();
         return ResponseEntity.ok(user);
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<PublicProfileResponse> getUserProfile(@PathVariable Long id) {
+        PublicProfileResponse userProfile = userService.getUserProfile(id);
+        return ResponseEntity.ok(userProfile);
     }
  
 }
