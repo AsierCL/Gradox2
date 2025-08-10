@@ -1,14 +1,19 @@
 package com.example.gradox2.presentation.controller;
 
+import java.util.List;
+
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.example.gradox2.presentation.dto.users.MyProfileResponse;
 import com.example.gradox2.presentation.dto.users.PublicProfileResponse;
+import com.example.gradox2.presentation.dto.users.UpdateMyProfileRequest;
 import com.example.gradox2.service.interfaces.IUserService;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 
 
 @RestController
@@ -27,10 +32,22 @@ public class UserController {
         return ResponseEntity.ok(user);
     }
 
+    @PutMapping("/me")
+    public ResponseEntity<MyProfileResponse> updateCurrentUser(@RequestBody UpdateMyProfileRequest updateMyProfileRequest) {
+        MyProfileResponse updatedUser = userService.updateCurrentUser(updateMyProfileRequest);
+        return ResponseEntity.ok(updatedUser);
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<PublicProfileResponse> getUserProfile(@PathVariable Long id) {
         PublicProfileResponse userProfile = userService.getUserProfile(id);
         return ResponseEntity.ok(userProfile);
+    }
+
+    @GetMapping("/all")
+    public ResponseEntity<List<PublicProfileResponse>> getAllUsers() {
+        List<PublicProfileResponse> users = userService.getAllUsers();
+        return ResponseEntity.ok(users);
     }
  
 }

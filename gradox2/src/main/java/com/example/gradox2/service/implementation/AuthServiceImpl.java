@@ -12,8 +12,6 @@ import com.example.gradox2.service.interfaces.IAuthService;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
-import java.sql.Time;
-import java.util.Optional;
 
 @Service
 public class AuthServiceImpl implements IAuthService {
