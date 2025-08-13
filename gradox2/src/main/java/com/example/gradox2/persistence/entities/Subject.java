@@ -29,7 +29,7 @@ public class Subject {
     private Course course;
 
     @OneToMany(mappedBy = "subject")
-    private Set<Resource> resources = new HashSet<>();
+    private Set<File> resources = new HashSet<>();
 
     @OneToMany(mappedBy = "subject")
     private Set<ExamThread> examThreads = new HashSet<>();

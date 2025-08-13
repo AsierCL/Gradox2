@@ -22,7 +22,7 @@ public class Vote {
 
     @ManyToOne
     @JoinColumn(name = "resource_id")
-    private Resource resource;
+    private File resource;
 
     @ManyToOne
     @JoinColumn(name = "response_id")

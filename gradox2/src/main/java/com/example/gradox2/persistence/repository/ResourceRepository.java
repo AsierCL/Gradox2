@@ -5,21 +5,21 @@ import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 
-import com.example.gradox2.persistence.entities.Resource;
-import com.example.gradox2.persistence.entities.enums.ResourceType;
+import com.example.gradox2.persistence.entities.File;
+import com.example.gradox2.persistence.entities.enums.FileType;
 
-public interface ResourceRepository extends JpaRepository<Resource, Long> {
+public interface ResourceRepository extends JpaRepository<File, Long> {
     //Find methods
-    List<Resource> findAll();
-    Optional<Resource> findById(Long id);
-    List<Resource> findByTitle(String title);
-    List<Resource> findByType(ResourceType type);
-    List<Resource> findBySubjectId(Long subjectId);
-    List<Resource> findByUploaderId(Long uploaderId);
-    List<Resource> findByUploaderIdAndSubjectId(Long uploaderId, Long subjectId);
+    List<File> findAll();
+    Optional<File> findById(Long id);
+    List<File> findByTitle(String title);
+    List<File> findByType(FileType type);
+    List<File> findBySubjectId(Long subjectId);
+    List<File> findByUploaderId(Long uploaderId);
+    List<File> findByUploaderIdAndSubjectId(Long uploaderId, Long subjectId);
     
     //save, delete, exists methods
-    Resource save(Resource resource);
+    File save(File resource);
     void deleteById(Long id);
     boolean existsById(Long id);
     long count();

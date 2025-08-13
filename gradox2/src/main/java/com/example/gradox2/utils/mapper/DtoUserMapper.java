@@ -9,53 +9,53 @@ import com.example.gradox2.presentation.dto.auth.RegisterRequest;
 import com.example.gradox2.presentation.dto.users.MyProfileResponse;
 import com.example.gradox2.presentation.dto.users.PublicProfileResponse;
 
-public class DtoUserMapper {
+@Mapper(componentModel = "spring")
+public interface DtoUserMapper {
 
-    public static User toUserEntity(RegisterRequest dto, String passwordHash) {
-        User user = new User();
-        user.setUsername(dto.username);
-        user.setEmail(dto.email);
-        user.setPasswordHash(passwordHash);
-        user.setRole(UserRole.USER);
-        return user;
-    }
+    // ------------------------------
+    // RegisterRequest -> User
+    // ------------------------------
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "passwordHash", source = "passwordHash")
+    @Mapping(target = "username", source = "dto.username")
+    @Mapping(target = "email", source = "dto.email")
+    @Mapping(target = "role", expression = "java(UserRole.USER)")
+    @Mapping(target = "reputation", ignore = true)
+    @Mapping(target = "createdAt", ignore = true)
+    @Mapping(target = "lastLogin", ignore = true)
+    @Mapping(target = "badges", ignore = true)
+    User toUserEntity(RegisterRequest dto, String passwordHash);
 
-    public static AuthResponse toAuthResponse(User user, String token) {
-        AuthResponse response = new AuthResponse();
-        response.token = token;
-        response.username = user.getUsername();
-        response.role = user.getRole().name();
-        return response;
-    }
+    // ------------------------------
+    // User + token -> AuthResponse
+    // ------------------------------
+    @Mapping(target = "token", source = "token")
+    @Mapping(target = "username", source = "user.username")
+    @Mapping(target = "role", expression = "java(user.getRole().name())")
+    AuthResponse toAuthResponse(User user, String token);
 
-    public static MyProfileResponse toProfileResponse(User user) {
-        MyProfileResponse dto = new MyProfileResponse();
-        dto.id = user.getId();
-        dto.username = user.getUsername();
-        dto.email = user.getEmail();
-        dto.role = user.getRole().name();
-        dto.reputation = user.getReputation();
-        dto.createdAt = user.getCreatedAt();
-        dto.lastLogin = user.getLastLogin();
+    // ------------------------------
+    // User -> MyProfileResponse
+    // ------------------------------
+    @Mapping(target = "role", expression = "java(user.getRole().name())")
+    @Mapping(target = "badges", source = "user", qualifiedByName = "mapBadges")
+    MyProfileResponse toProfileResponse(User user);
 
-        // Convertimos las badges a un Set de Strings con los nombres
-        dto.badges = user.getBadges()
-                        .stream()
-                        .map(badge -> badge.getName()) // asegúrate de que Badge tiene getName()
-                        .collect(Collectors.toSet());
+    // ------------------------------
+    // User -> PublicProfileResponse
+    // ------------------------------
+    @Mapping(target = "role", expression = "java(user.getRole().name())")
+    @Mapping(target = "badges", source = "user", qualifiedByName = "mapBadges")
+    PublicProfileResponse toPublicProfileResponse(User user);
 
-        return dto;
-    }
-
-    public static PublicProfileResponse toPublicProfileResponse(User user) {
-        PublicProfileResponse dto = new PublicProfileResponse();
-        dto.username = user.getUsername();
-        dto.role = user.getRole().name();
-        dto.reputation = user.getReputation();
-        dto.badges = user.getBadges()
-                        .stream()
-                        .map(badge -> badge.getName()) // asegúrate de que Badge tiene getName()
-                        .collect(Collectors.toSet());
-        return dto;
+    // ------------------------------
+    // Método auxiliar para mapear badges a nombres
+    // ------------------------------
+    @Named("mapBadges")
+    default Set<String> mapBadges(User user) {
+        return user.getBadges()
+                   .stream()
+                   .map(badge -> badge.getName())
+                   .collect(Collectors.toSet());
     }
 }

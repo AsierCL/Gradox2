@@ -24,7 +24,8 @@ public class ResourceController {
 
     @GetMapping("/files")
     public ResponseEntity<List<FileResponse>> getAllFiles() {
-        return null;
+        List<FileResponse> files = resourceService.getAllFiles();
+        return ResponseEntity.ok(files);
     }
     
 }

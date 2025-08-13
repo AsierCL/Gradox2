@@ -5,7 +5,7 @@ import java.time.Instant;
 import java.util.HashSet;
 import java.util.Set;
 
-import com.example.gradox2.persistence.entities.enums.ResourceType;
+import com.example.gradox2.persistence.entities.enums.FileType;
 
 import jakarta.persistence.*;
 import lombok.*;
@@ -15,8 +15,8 @@ import lombok.*;
 @AllArgsConstructor
 @NoArgsConstructor
 @Entity
-@Table(name = "resources")
-public class Resource {
+@Table(name = "files")
+public class File {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -25,9 +25,11 @@ public class Resource {
     private String description;
 
     @Enumerated(EnumType.STRING)
-    private ResourceType type;
+    private FileType type;
 
-    private String fileUrl;
+    @Lob
+    @Column(name = "file_data", nullable = false)
+    private byte[] fileData;
     private Instant uploadDate = Instant.now();
 
     @ManyToOne
@@ -38,6 +40,6 @@ public class Resource {
     @JoinColumn(name = "subject_id", nullable = false)
     private Subject subject;
 
-    @OneToMany(mappedBy = "resource")
-    private Set<Vote> votes = new HashSet<>();
+    //@OneToMany(mappedBy = "resource")
+    //private Set<Vote> votes = new HashSet<>();
 }

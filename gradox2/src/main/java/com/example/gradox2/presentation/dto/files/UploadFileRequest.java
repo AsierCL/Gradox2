@@ -2,7 +2,7 @@ package com.example.gradox2.presentation.dto.files;
 
 import org.springframework.web.multipart.MultipartFile;
 
-import com.example.gradox2.persistence.entities.enums.ResourceType;
+import com.example.gradox2.persistence.entities.enums.FileType;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -14,7 +14,7 @@ import lombok.NoArgsConstructor;
 public class UploadFileRequest {
     private String title;
     private String description;
-    private ResourceType type;
+    private FileType type;
     private Long subjectId;
     private MultipartFile file;
 }

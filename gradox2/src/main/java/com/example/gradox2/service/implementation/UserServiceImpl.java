@@ -75,7 +75,7 @@ public class UserServiceImpl implements IUserService {
 
         return (User) principal;
     }
-    
+
     public PublicProfileResponse getUserProfile(Long id) {
         // 1. Buscar el usuario por ID
         User user = userRepository.findById(id)
