@@ -25,9 +25,10 @@ public class ResourceServiceImpl implements IResourceService {
 //                .map(file -> new FileResponse(file.getTitle(), file.getType(), file.getSubject(), file.getFileData()))
 //                .toList();
 
-        return files.stream()
+        /* return files.stream()
                 .map(this::toFileResponse)
-                .toList();
+                .toList(); */
+                return null;
     }
 
 

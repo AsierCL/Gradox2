@@ -18,7 +18,7 @@ import com.example.gradox2.security.JwtUtils;
 import com.example.gradox2.service.exceptions.UnauthenticatedAccessException;
 import com.example.gradox2.service.exceptions.UserNotFoundException;
 import com.example.gradox2.service.interfaces.IUserService;
-import com.example.gradox2.utils.mapper.DtoUserMapper;
+import com.example.gradox2.utils.mapper.UserMapper;
 
 
 @Service
@@ -58,8 +58,7 @@ public class UserServiceImpl implements IUserService {
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado en la base de datos"));
 
         // 4. Mapear la entidad User a UserDTO
-        // Usa tu DtoMapper para esto
-        return DtoUserMapper.toProfileResponse(user);
+        return UserMapper.mapper.toMyProfileResponse(user);
     }
 
     private User getAuthenticatedUser() {
@@ -82,7 +81,7 @@ public class UserServiceImpl implements IUserService {
                 .orElseThrow(() -> new UserNotFoundException("Usuario no encontrado"));
 
         // 2. Mapear la entidad User a PublicProfileResponse
-        return DtoUserMapper.toPublicProfileResponse(user);
+        return UserMapper.mapper.toPublicProfileResponse(user);
     }
 
     public List<PublicProfileResponse> getAllUsers() {
@@ -91,7 +90,7 @@ public class UserServiceImpl implements IUserService {
 
         // 2. Mapear cada usuario a PublicProfileResponse
         return users.stream()
-                .map(DtoUserMapper::toPublicProfileResponse)
+                .map(UserMapper.mapper::toPublicProfileResponse)
                 .toList();
     }
 
@@ -109,7 +108,7 @@ public class UserServiceImpl implements IUserService {
         }
 
         userRepository.save(user);
-        MyProfileResponse updatedProfile = DtoUserMapper.toProfileResponse(user);
+        MyProfileResponse updatedProfile = UserMapper.mapper.toMyProfileResponse(user);
         return updatedProfile;
     }
 }

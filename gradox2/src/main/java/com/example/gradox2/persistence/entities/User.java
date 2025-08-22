@@ -63,7 +63,7 @@ public class User implements UserDetails{
     @Column(nullable = false, updatable = false)
     private Instant createdAt = Instant.now();
 
-    private Instant lastLogin;
+    private Instant lastLogin = Instant.now();
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
