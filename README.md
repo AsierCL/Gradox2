@@ -35,8 +35,8 @@ La presente propuesta tiene como objetivo definir los principios funcionales, or
 ### 2.3 Masters
 
 - Usuarios con funciones extendidas: cierre de votaciones, aceptación manual, revisión de contenido.
-- Su voto tiene mayor peso (configurable, e.g. 3x).
-- Se eligen por votación entre usuarios con alta reputación.
+- Su voto tiene mayor peso (configurable).
+- Se eligen por votación.
 
 ---
 
@@ -52,7 +52,7 @@ La presente propuesta tiene como objetivo definir los principios funcionales, or
 ### 3.2 Peso del Voto
 
 - Peso del voto de un usuario = Reputacion.
-- Peso del voto de un master = coeficiente * peso del usuario base (e.g. 3x).
+- Peso del voto de un master = coeficiente (configurable) * peso del usuario base.
 
 ### 3.3 Umbrales y Reglas
 
@@ -80,6 +80,7 @@ El sistema limita la concentración de poder usando la raíz cuadrada del total 
 
 - Insignias por actividad.
 - Rankings semanales.
+- Rankings totales.
 
 ### 5.2 Notificaciones Inteligentes
 
@@ -100,7 +101,7 @@ El sistema limita la concentración de poder usando la raíz cuadrada del total 
 
 ---
 
-## 7. Protección Legal (esto pedinllo x se aka)
+## 7. Protección Legal
 
 ### 7.1 Términos de Uso (TOS)
 
@@ -135,10 +136,11 @@ El sistema limita la concentración de poder usando la raíz cuadrada del total 
 ## 9. Transparencia y Métricas
 
 - Dashboard con:
+    - Novedades.
     - Tiempos promedio de aceptación.
     - Distribución de votos.
     - Actividad por asignatura.
-- Logs visibles para usuarios con reputación alta.
+- Logs visibles para masters.
 
 ---
 
@@ -159,4 +161,4 @@ El siguiente paso es desarrollar un MVP (Producto Mínimo Viable) con el sistema
 
 ---
 
-**Contacto del equipo de desarrollo:** @AsierCL 
+**Contacto del equipo de desarrollo:** @AsierCL

@@ -4,7 +4,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.example.gradox2.presentation.dto.files.FileResponse;
-import com.example.gradox2.service.interfaces.IResourceService;
+import com.example.gradox2.service.interfaces.IFileService;
 
 import java.util.List;
 
@@ -15,10 +15,10 @@ import org.springframework.web.bind.annotation.RequestParam;
 
 @RestController
 @RequestMapping("/files")
-public class ResourceController {
-    private final IResourceService resourceService;
+public class FileController {
+    private final IFileService resourceService;
 
-    public ResourceController(IResourceService resourceService) {
+    public FileController(IFileService resourceService) {
         this.resourceService = resourceService;
     }
 
@@ -27,5 +27,5 @@ public class ResourceController {
         List<FileResponse> files = resourceService.getAllFiles();
         return ResponseEntity.ok(files);
     }
-    
+
 }

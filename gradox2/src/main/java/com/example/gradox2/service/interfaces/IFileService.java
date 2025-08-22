@@ -4,7 +4,7 @@ import java.util.List;
 
 import com.example.gradox2.presentation.dto.files.FileResponse;
 
-public interface IResourceService {
+public interface IFileService {
 
     List<FileResponse> getAllFiles();
 
