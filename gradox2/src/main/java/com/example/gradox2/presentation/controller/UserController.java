@@ -2,8 +2,10 @@ package com.example.gradox2.presentation.controller;
 
 import java.util.List;
 
+import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.example.gradox2.presentation.dto.users.MyProfileResponse;
@@ -19,9 +21,9 @@ import org.springframework.web.bind.annotation.RequestBody;
 @RestController
 @RequestMapping("/users")
 public class UserController {
-    
+
     private final IUserService userService;
-    
+
     public UserController(IUserService userService) {
         this.userService = userService;
     }
@@ -49,5 +51,14 @@ public class UserController {
         List<PublicProfileResponse> users = userService.getAllUsers();
         return ResponseEntity.ok(users);
     }
- 
+
+    @GetMapping("/paged")
+    public ResponseEntity<Page<PublicProfileResponse>> getUsers(
+            @RequestParam(defaultValue = "0") int page,
+            //@RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "id") String sortBy) {
+        Page<PublicProfileResponse> users = userService.getUsersPaged(page, 5, sortBy);
+        return ResponseEntity.ok(users);
+    }
+
 }

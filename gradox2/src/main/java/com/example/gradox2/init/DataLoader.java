@@ -1,0 +1,265 @@
+package com.example.gradox2.init;
+import com.example.gradox2.persistence.entities.User;
+import com.example.gradox2.persistence.entities.enums.UserRole;
+import com.example.gradox2.persistence.repository.UserRepository;
+import lombok.RequiredArgsConstructor;
+
+import java.time.Instant;
+
+import org.springframework.boot.CommandLineRunner;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+@Configuration
+@RequiredArgsConstructor
+public class DataLoader {
+
+    @Bean
+    CommandLineRunner initDatabase(UserRepository userRepository) {
+        return args -> {
+            if (userRepository.count() < 3) { // Solo carga si non hai usuarios (deixo 3 de margen)
+                userRepository.save(User.builder()
+                .username("juan123")
+                .email("juan@example.com")
+                .passwordHash("hash1")
+                .role(UserRole.USER)
+                .reputation(10.0)
+                .createdAt(Instant.now())
+                .lastLogin(Instant.now())
+                .build());
+
+                userRepository.save(User.builder()
+                .username("maria456")
+                .email("maria@example.com")
+                .passwordHash("hash2")
+                .role(UserRole.MASTER)
+                .reputation(50.0)
+                .createdAt(Instant.now())
+                .lastLogin(Instant.now())
+                .build());
+
+                userRepository.save(User.builder()
+                .username("pedro789")
+                .email("pedro@example.com")
+                .passwordHash("hash3")
+                .role(UserRole.USER)
+                .reputation(5.0)
+                .createdAt(Instant.now())
+                .lastLogin(Instant.now())
+                .build());
+
+                userRepository.save(User.builder()
+                .username("laura321")
+                .email("laura@example.com")
+                .passwordHash("hash4")
+                .role(UserRole.USER)
+                .reputation(7.5)
+                .createdAt(Instant.now())
+                .lastLogin(Instant.now())
+                .build());
+
+                userRepository.save(User.builder()
+                .username("carlos654")
+                .email("carlos@example.com")
+                .passwordHash("hash5")
+                .role(UserRole.MASTER)
+                .reputation(20.0)
+                .createdAt(Instant.now())
+                .lastLogin(Instant.now())
+                .build());
+
+                userRepository.save(User.builder()
+                .username("sofia111")
+                .email("sofia@example.com")
+                .passwordHash("hash6")
+                .role(UserRole.USER)
+                .reputation(12.0)
+                .createdAt(Instant.now())
+                .lastLogin(Instant.now())
+                .build());
+
+                userRepository.save(User.builder()
+                .username("diego222")
+                .email("diego@example.com")
+                .passwordHash("hash7")
+                .role(UserRole.MASTER)
+                .reputation(30.5)
+                .createdAt(Instant.now())
+                .lastLogin(Instant.now())
+                .build());
+
+                userRepository.save(User.builder()
+                .username("camila333")
+                .email("camila@example.com")
+                .passwordHash("hash8")
+                .role(UserRole.USER)
+                .reputation(8.5)
+                .createdAt(Instant.now())
+                .lastLogin(Instant.now())
+                .build());
+
+                userRepository.save(User.builder()
+                .username("mateo444")
+                .email("mateo@example.com")
+                .passwordHash("hash9")
+                .role(UserRole.MASTER)
+                .reputation(60.0)
+                .createdAt(Instant.now())
+                .lastLogin(Instant.now())
+                .build());
+
+                userRepository.save(User.builder()
+                .username("valentina555")
+                .email("valentina@example.com")
+                .passwordHash("hash10")
+                .role(UserRole.USER)
+                .reputation(15.0)
+                .createdAt(Instant.now())
+                .lastLogin(Instant.now())
+                .build());
+
+                userRepository.save(User.builder()
+                .username("lucas666")
+                .email("lucas@example.com")
+                .passwordHash("hash11")
+                .role(UserRole.USER)
+                .reputation(5.5)
+                .createdAt(Instant.now())
+                .lastLogin(Instant.now())
+                .build());
+
+                userRepository.save(User.builder()
+                .username("martina777")
+                .email("martina@example.com")
+                .passwordHash("hash12")
+                .role(UserRole.MASTER)
+                .reputation(27.0)
+                .createdAt(Instant.now())
+                .lastLogin(Instant.now())
+                .build());
+
+                userRepository.save(User.builder()
+                .username("alejandro888")
+                .email("alejandro@example.com")
+                .passwordHash("hash13")
+                .role(UserRole.MASTER)
+                .reputation(80.0)
+                .createdAt(Instant.now())
+                .lastLogin(Instant.now())
+                .build());
+
+                userRepository.save(User.builder()
+                .username("isabella999")
+                .email("isabella@example.com")
+                .passwordHash("hash14")
+                .role(UserRole.USER)
+                .reputation(13.0)
+                .createdAt(Instant.now())
+                .lastLogin(Instant.now())
+                .build());
+
+                userRepository.save(User.builder()
+                .username("sebastian101")
+                .email("sebastian@example.com")
+                .passwordHash("hash15")
+                .role(UserRole.MASTER)
+                .reputation(55.0)
+                .createdAt(Instant.now())
+                .lastLogin(Instant.now())
+                .build());
+
+                userRepository.save(User.builder()
+                .username("paula202")
+                .email("paula@example.com")
+                .passwordHash("hash16")
+                .role(UserRole.USER)
+                .reputation(9.5)
+                .createdAt(Instant.now())
+                .lastLogin(Instant.now())
+                .build());
+
+                userRepository.save(User.builder()
+                .username("fernando303")
+                .email("fernando@example.com")
+                .passwordHash("hash17")
+                .role(UserRole.MASTER)
+                .reputation(33.0)
+                .createdAt(Instant.now())
+                .lastLogin(Instant.now())
+                .build());
+
+                userRepository.save(User.builder()
+                .username("natalia404")
+                .email("natalia@example.com")
+                .passwordHash("hash18")
+                .role(UserRole.USER)
+                .reputation(17.0)
+                .createdAt(Instant.now())
+                .lastLogin(Instant.now())
+                .build());
+
+                userRepository.save(User.builder()
+                .username("andres505")
+                .email("andres@example.com")
+                .passwordHash("hash19")
+                .role(UserRole.USER)
+                .reputation(6.0)
+                .createdAt(Instant.now())
+                .lastLogin(Instant.now())
+                .build());
+
+                userRepository.save(User.builder()
+                .username("carolina606")
+                .email("carolina@example.com")
+                .passwordHash("hash20")
+                .role(UserRole.MASTER)
+                .reputation(70.0)
+                .createdAt(Instant.now())
+                .lastLogin(Instant.now())
+                .build());
+
+                userRepository.save(User.builder()
+                .username("gonzalo707")
+                .email("gonzalo@example.com")
+                .passwordHash("hash21")
+                .role(UserRole.USER)
+                .reputation(11.0)
+                .createdAt(Instant.now())
+                .lastLogin(Instant.now())
+                .build());
+
+                userRepository.save(User.builder()
+                .username("florencia808")
+                .email("florencia@example.com")
+                .passwordHash("hash22")
+                .role(UserRole.MASTER)
+                .reputation(65.0)
+                .createdAt(Instant.now())
+                .lastLogin(Instant.now())
+                .build());
+
+                userRepository.save(User.builder()
+                .username("roberto909")
+                .email("roberto@example.com")
+                .passwordHash("hash23")
+                .role(UserRole.USER)
+                .reputation(14.0)
+                .createdAt(Instant.now())
+                .lastLogin(Instant.now())
+                .build());
+
+                userRepository.save(User.builder()
+                .username("mariana010")
+                .email("mariana@example.com")
+                .passwordHash("hash24")
+                .role(UserRole.MASTER)
+                .reputation(29.0)
+                .createdAt(Instant.now())
+                .lastLogin(Instant.now())
+                .build());
+
+                System.out.println("✅ Usuarios de prueba insertados en la base de datos.");
+            }
+        };
+    }
+}

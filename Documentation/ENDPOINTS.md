@@ -13,7 +13,8 @@
 | POST   | `/auth/password/reset-request` | Solicitar reinicio de contraseña         |     |
 | POST   | `/auth/password/reset`         | Confirmar cambio de contraseña con token |     |
 
----
+---import java.util.Set;
+
 ## 👤 2. Usuarios
 
 | Método | Endpoint                | Descripción                        | ✔️  |
