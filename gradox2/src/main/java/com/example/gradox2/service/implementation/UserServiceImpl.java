@@ -1,13 +1,11 @@
 package com.example.gradox2.service.implementation;
 
-import java.security.Security;
 import java.util.List;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
-import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -18,7 +16,6 @@ import com.example.gradox2.persistence.repository.UserRepository;
 import com.example.gradox2.presentation.dto.users.MyProfileResponse;
 import com.example.gradox2.presentation.dto.users.PublicProfileResponse;
 import com.example.gradox2.presentation.dto.users.UpdateMyProfileRequest;
-import com.example.gradox2.security.JwtUtils;
 import com.example.gradox2.service.exceptions.UnauthenticatedAccessException;
 import com.example.gradox2.service.exceptions.NotFoundException;
 import com.example.gradox2.service.interfaces.IUserService;
@@ -29,12 +26,10 @@ import com.example.gradox2.utils.mapper.UserMapper;
 public class UserServiceImpl implements IUserService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
-    private final JwtUtils jwtUtils;
 
-    public UserServiceImpl(UserRepository userRepository, PasswordEncoder passwordEncoder, JwtUtils jwtUtils) {
+    public UserServiceImpl(UserRepository userRepository, PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
-        this.jwtUtils = jwtUtils;
     }
 
     public MyProfileResponse getCurrentUser() {
@@ -46,11 +41,9 @@ public class UserServiceImpl implements IUserService {
         }
 
         // 2. Extraer el nombre de usuario del objeto de autenticación
-        // El 'principal' puede ser un String o el objeto User que configuraste en JwtAuthFilter
         Object principal = authentication.getPrincipal();
         String username;
 
-        // Aquí se asume que en tu JwtAuthFilter, el principal es un objeto User
         if (principal instanceof User) {
             username = ((User) principal).getUsername();
         } else {

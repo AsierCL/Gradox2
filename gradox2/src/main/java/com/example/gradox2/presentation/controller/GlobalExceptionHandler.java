@@ -10,8 +10,6 @@ import com.example.gradox2.service.exceptions.UnauthenticatedAccessException;
 import com.example.gradox2.service.exceptions.AlreadyExistsException;
 import com.example.gradox2.service.exceptions.NotFoundException;
 
-import java.util.HashMap;
-import java.util.Map;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {

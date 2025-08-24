@@ -48,6 +48,7 @@ public class User implements UserDetails{
     private Double reputation = 0.0;
 
     @ManyToMany
+    @Builder.Default
     @JoinTable(
         name = "user_badges",
         joinColumns = @JoinColumn(name = "user_id"),
@@ -56,9 +57,11 @@ public class User implements UserDetails{
     private Set<Badge> badges = new HashSet<>();
 
     @OneToMany(mappedBy = "delegator")
+    @Builder.Default
     private Set<Delegation> delegationsGiven = new HashSet<>();
 
     @OneToMany(mappedBy = "delegatee")
+    @Builder.Default
     private Set<Delegation> delegationsReceived = new HashSet<>();
 
     @Builder.Default

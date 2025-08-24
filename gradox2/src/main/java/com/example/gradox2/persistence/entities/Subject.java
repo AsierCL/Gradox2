@@ -30,8 +30,10 @@ public class Subject {
     private Course course;
 
     @OneToMany(mappedBy = "subject")
+    @Builder.Default
     private Set<File> resources = new HashSet<>();
 
     @OneToMany(mappedBy = "subject")
+    @Builder.Default
     private Set<ExamThread> examThreads = new HashSet<>();
 }

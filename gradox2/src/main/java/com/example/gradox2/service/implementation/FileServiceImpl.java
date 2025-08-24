@@ -1,6 +1,5 @@
 package com.example.gradox2.service.implementation;
 
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -13,14 +12,10 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.stereotype.Service;
-import org.springframework.web.bind.annotation.ModelAttribute;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.ResponseStatus;
 
 import com.example.gradox2.persistence.entities.File;
 import com.example.gradox2.persistence.entities.Subject;
 import com.example.gradox2.persistence.entities.User;
-import com.example.gradox2.persistence.entities.enums.FileType;
 import com.example.gradox2.persistence.repository.FileRepository;
 import com.example.gradox2.persistence.repository.SubjectRepository;
 import com.example.gradox2.presentation.dto.files.FileResponse;
@@ -29,7 +24,6 @@ import com.example.gradox2.service.exceptions.NotFoundException;
 import com.example.gradox2.service.exceptions.UnauthenticatedAccessException;
 import com.example.gradox2.service.interfaces.IFileService;
 
-
 @Service
 public class FileServiceImpl implements IFileService {
 
@@ -37,7 +31,8 @@ public class FileServiceImpl implements IFileService {
     private final SubjectRepository subjectRepository;
     private final PasswordEncoder passwordEncoder;
 
-    public FileServiceImpl(FileRepository fileRepository, SubjectRepository subjectRepository, PasswordEncoder passwordEncoder, SecurityFilterChain filterChain) {
+    public FileServiceImpl(FileRepository fileRepository, SubjectRepository subjectRepository,
+            PasswordEncoder passwordEncoder, SecurityFilterChain filterChain) {
         this.fileRepository = fileRepository;
         this.subjectRepository = subjectRepository;
         this.passwordEncoder = passwordEncoder;
@@ -56,7 +51,7 @@ public class FileServiceImpl implements IFileService {
                 .body(resource);
     }
 
-    public ResponseEntity uploadFile(UploadFileRequest dto) {
+    public ResponseEntity<String> uploadFile(UploadFileRequest dto) {
         Subject subject = subjectRepository.findById(dto.getSubjectId())
                 .orElseThrow(() -> new NotFoundException("Subject not found"));
 
@@ -97,8 +92,8 @@ public class FileServiceImpl implements IFileService {
                         .fileType(file.getType())
                         .subject(file.getSubject().getName())
                         .uploaderUsername(file.getUploader().getUsername())
-                        .build()
-                ).collect(Collectors.toList());
+                        .build())
+                .collect(Collectors.toList());
     }
 
     public FileResponse getFile(Long id) {

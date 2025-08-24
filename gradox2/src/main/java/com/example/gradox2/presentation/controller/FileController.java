@@ -7,8 +7,6 @@ import com.example.gradox2.presentation.dto.files.FileResponse;
 import com.example.gradox2.presentation.dto.files.UploadFileRequest;
 import com.example.gradox2.service.interfaces.IFileService;
 
-import io.jsonwebtoken.io.IOException;
-
 import java.util.List;
 
 import org.springframework.core.io.ByteArrayResource;
@@ -44,7 +42,7 @@ public class FileController {
     }
 
     @PostMapping("/upload")
-    public ResponseEntity uploadFile(@ModelAttribute UploadFileRequest dto){
+    public ResponseEntity<String> uploadFile(@ModelAttribute UploadFileRequest dto){
         return fileService.uploadFile(dto);
     }
 }

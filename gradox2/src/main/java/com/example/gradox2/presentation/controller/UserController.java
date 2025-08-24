@@ -17,7 +17,6 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 
-
 @RestController
 @RequestMapping("/users")
 public class UserController {
@@ -35,7 +34,8 @@ public class UserController {
     }
 
     @PutMapping("/me")
-    public ResponseEntity<MyProfileResponse> updateCurrentUser(@RequestBody UpdateMyProfileRequest updateMyProfileRequest) {
+    public ResponseEntity<MyProfileResponse> updateCurrentUser(
+            @RequestBody UpdateMyProfileRequest updateMyProfileRequest) {
         MyProfileResponse updatedUser = userService.updateCurrentUser(updateMyProfileRequest);
         return ResponseEntity.ok(updatedUser);
     }
@@ -55,7 +55,7 @@ public class UserController {
     @GetMapping("/paged")
     public ResponseEntity<Page<PublicProfileResponse>> getUsers(
             @RequestParam(defaultValue = "0") int page,
-            //@RequestParam(defaultValue = "10") int size,
+            // @RequestParam(defaultValue = "10") int size,
             @RequestParam(defaultValue = "id") String sortBy) {
         Page<PublicProfileResponse> users = userService.getUsersPaged(page, 5, sortBy);
         return ResponseEntity.ok(users);

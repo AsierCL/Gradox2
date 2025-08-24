@@ -10,7 +10,7 @@ import com.example.gradox2.presentation.dto.files.UploadFileRequest;
 
 public interface IFileService {
 
-    ResponseEntity uploadFile(UploadFileRequest dto);
+    ResponseEntity<String> uploadFile(UploadFileRequest dto);
     List<FileResponse> getAllFiles();
     FileResponse getFile(Long id);
     public ResponseEntity<ByteArrayResource> downloadFile(Long id);
