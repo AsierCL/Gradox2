@@ -7,8 +7,8 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import com.example.gradox2.presentation.dto.auth.ErrorDTO;
 import com.example.gradox2.service.exceptions.UnauthenticatedAccessException;
-import com.example.gradox2.service.exceptions.UserAlreadyExistsException;
-import com.example.gradox2.service.exceptions.UserNotFoundException;
+import com.example.gradox2.service.exceptions.AlreadyExistsException;
+import com.example.gradox2.service.exceptions.NotFoundException;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -16,8 +16,8 @@ import java.util.Map;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
-    @ExceptionHandler(UserAlreadyExistsException.class)
-    public ResponseEntity<ErrorDTO> handleUserAlreadyExists(UserAlreadyExistsException ex) {
+    @ExceptionHandler(AlreadyExistsException.class)
+    public ResponseEntity<ErrorDTO> handleUserAlreadyExists(AlreadyExistsException ex) {
         ErrorDTO error = ErrorDTO.builder()
                 .errorMessage(ex.getMessage())
                 .errorCode("USER_ALREADY_EXISTS")
@@ -34,8 +34,8 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(error, HttpStatus.UNAUTHORIZED);
     }
 
-    @ExceptionHandler(UserNotFoundException.class)
-    public ResponseEntity<ErrorDTO> handleUserNotFound(UserNotFoundException ex) {
+    @ExceptionHandler(NotFoundException.class)
+    public ResponseEntity<ErrorDTO> handleUserNotFound(NotFoundException ex) {
         ErrorDTO error = ErrorDTO.builder()
                 .errorMessage(ex.getMessage())
                 .errorCode("USER_NOT_FOUND")

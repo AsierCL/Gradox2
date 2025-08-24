@@ -7,7 +7,7 @@ import com.example.gradox2.presentation.dto.auth.AuthResponse;
 import com.example.gradox2.presentation.dto.auth.LoginRequest;
 import com.example.gradox2.presentation.dto.auth.RegisterRequest;
 import com.example.gradox2.security.JwtUtils;
-import com.example.gradox2.service.exceptions.UserAlreadyExistsException;
+import com.example.gradox2.service.exceptions.AlreadyExistsException;
 import com.example.gradox2.service.interfaces.IAuthService;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -42,7 +42,7 @@ public class AuthServiceImpl implements IAuthService {
     @Override
     public AuthResponse register(RegisterRequest request) {
         if (userRepository.existsByUsername(request.username)) {
-            throw new UserAlreadyExistsException("Usuario ya existe");
+            throw new AlreadyExistsException("Usuario ya existe");
         }
 
         User user = new User();

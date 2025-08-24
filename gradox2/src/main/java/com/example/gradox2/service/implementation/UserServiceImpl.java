@@ -20,7 +20,7 @@ import com.example.gradox2.presentation.dto.users.PublicProfileResponse;
 import com.example.gradox2.presentation.dto.users.UpdateMyProfileRequest;
 import com.example.gradox2.security.JwtUtils;
 import com.example.gradox2.service.exceptions.UnauthenticatedAccessException;
-import com.example.gradox2.service.exceptions.UserNotFoundException;
+import com.example.gradox2.service.exceptions.NotFoundException;
 import com.example.gradox2.service.interfaces.IUserService;
 import com.example.gradox2.utils.mapper.UserMapper;
 
@@ -82,7 +82,7 @@ public class UserServiceImpl implements IUserService {
     public PublicProfileResponse getUserProfile(Long id) {
         // 1. Buscar el usuario por ID
         User user = userRepository.findById(id)
-                .orElseThrow(() -> new UserNotFoundException("Usuario no encontrado"));
+                .orElseThrow(() -> new NotFoundException("Usuario no encontrado"));
 
         // 2. Mapear la entidad User a PublicProfileResponse
         return UserMapper.mapper.toPublicProfileResponse(user);

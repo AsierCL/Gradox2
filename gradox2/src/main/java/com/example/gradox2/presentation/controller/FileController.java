@@ -33,7 +33,7 @@ public class FileController {
     }
 
     @PostMapping("/upload")
-    public ResponseEntity<Void> uploadFile(@ModelAttribute UploadFileRequest dto) throws IOException {
+    public ResponseEntity uploadFile(@ModelAttribute UploadFileRequest dto){
         return fileService.uploadFile(dto);
     }
 }

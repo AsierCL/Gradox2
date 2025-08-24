@@ -4,6 +4,8 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.bind.annotation.ModelAttribute;
@@ -18,9 +20,12 @@ import com.example.gradox2.persistence.repository.FileRepository;
 import com.example.gradox2.persistence.repository.SubjectRepository;
 import com.example.gradox2.presentation.dto.files.FileResponse;
 import com.example.gradox2.presentation.dto.files.UploadFileRequest;
+import com.example.gradox2.service.exceptions.NotFoundException;
+import com.example.gradox2.service.exceptions.UnauthenticatedAccessException;
 import com.example.gradox2.service.interfaces.IFileService;
 
 import io.jsonwebtoken.io.IOException;
+import io.micrometer.observation.Observation.Context;
 
 @Service
 public class FileServiceImpl implements IFileService {
@@ -49,7 +54,17 @@ public class FileServiceImpl implements IFileService {
 
     public ResponseEntity uploadFile(UploadFileRequest dto) {
         Subject subject = subjectRepository.findById(dto.getSubjectId())
-                .orElseThrow(() -> new RuntimeException("Subject not found"));
+                .orElseThrow(() -> new NotFoundException("Subject not found"));
+
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new UnauthenticatedAccessException("El usuario no está autenticado.");
+        }
+
+        Object principal = authentication.getPrincipal();
+        if (!(principal instanceof User)) {
+            throw new UnauthenticatedAccessException("El usuario no es una instancia de User.");
+        }
 
         try {
             File file = File.builder()
@@ -59,6 +74,7 @@ public class FileServiceImpl implements IFileService {
                     .fileData(dto.getFile().getBytes()) // Guardamos como byte[]
                     .fileHash(passwordEncoder.encode(dto.getFile().getBytes().toString()))
                     .subject(subject)
+                    .uploader((User) principal)
                     .build();
             fileRepository.save(file);
 

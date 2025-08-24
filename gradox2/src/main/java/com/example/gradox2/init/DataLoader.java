@@ -1,9 +1,14 @@
 package com.example.gradox2.init;
+import com.example.gradox2.persistence.entities.Course;
 import com.example.gradox2.persistence.entities.User;
 import com.example.gradox2.persistence.entities.enums.UserRole;
+import com.example.gradox2.persistence.repository.CourseRepository;
+import com.example.gradox2.persistence.repository.FileRepository;
+import com.example.gradox2.persistence.repository.SubjectRepository;
 import com.example.gradox2.persistence.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 
+import java.io.File;
 import java.time.Instant;
 
 import org.springframework.boot.CommandLineRunner;
@@ -17,7 +22,7 @@ public class DataLoader {
     private final PasswordEncoder passwordEncoder;
 
     @Bean
-    CommandLineRunner initDatabase(UserRepository userRepository) {
+    CommandLineRunner initDatabase(UserRepository userRepository, FileRepository fileRepository, SubjectRepository subjectRepository, CourseRepository courseRepository) {
         return args -> {
             if (userRepository.count() < 3) { // Solo carga si non hai usuarios (deixo 3 de margen)
                 userRepository.save(User.builder()
@@ -259,6 +264,53 @@ public class DataLoader {
                 .createdAt(Instant.now())
                 .lastLogin(Instant.now())
                 .build());
+
+                Course primero = courseRepository.save(Course.builder()
+                    .name("Primer curso")
+                    .code("1")
+                    .build());
+
+                Course segundo = courseRepository.save(Course.builder()
+                    .name("Segundo curso")
+                    .code("2")
+                    .build());
+
+                subjectRepository.saveAll(java.util.List.of(
+                    // Subjects for "Primer curso"
+                    com.example.gradox2.persistence.entities.Subject.builder()
+                        .name("Matemáticas I")
+                        .code("MAT1")
+                        .course(primero)
+                        .build(),
+                    com.example.gradox2.persistence.entities.Subject.builder()
+                        .name("Lengua Castellana I")
+                        .code("LEN1")
+                        .course(primero)
+                        .build(),
+                    com.example.gradox2.persistence.entities.Subject.builder()
+                        .name("Ciencias Naturales I")
+                        .code("CNA1")
+                        .course(primero)
+                        .build(),
+                    // Subjects for "Segundo curso"
+                    com.example.gradox2.persistence.entities.Subject.builder()
+                        .name("Matemáticas II")
+                        .code("MAT2")
+                        .course(segundo)
+                        .build(),
+                    com.example.gradox2.persistence.entities.Subject.builder()
+                        .name("Lengua Castellana II")
+                        .code("LEN2")
+                        .course(segundo)
+                        .build(),
+                    com.example.gradox2.persistence.entities.Subject.builder()
+                        .name("Ciencias Sociales II")
+                        .code("CSO2")
+                        .course(segundo)
+                        .build()
+                ));
+
+                System.out.println("✅ Cursos de prueba insertados en la base de datos.");
 
                 System.out.println("✅ Usuarios de prueba insertados en la base de datos.");
             }
