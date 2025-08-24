@@ -11,9 +11,11 @@ import io.jsonwebtoken.io.IOException;
 
 import java.util.List;
 
+import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 
 
@@ -26,10 +28,19 @@ public class FileController {
         this.fileService = fileService;
     }
 
-    @GetMapping("/files")
+    @GetMapping("/all")
     public ResponseEntity<List<FileResponse>> getAllFiles() {
-        List<FileResponse> files = fileService.getAllFiles();
-        return ResponseEntity.ok(files);
+        return ResponseEntity.ok(fileService.getAllFiles());
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<FileResponse> getFile(@PathVariable Long id) {
+        return ResponseEntity.ok(fileService.getFile(id));
+    }
+
+    @GetMapping("/{id}/download")
+    public ResponseEntity<ByteArrayResource> downloadFile(@PathVariable Long id) {
+        return fileService.downloadFile(id);
     }
 
     @PostMapping("/upload")

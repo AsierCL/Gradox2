@@ -2,11 +2,16 @@ package com.example.gradox2.service.implementation;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.stream.Collectors;
 
+import org.springframework.core.io.ByteArrayResource;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.stereotype.Service;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -24,32 +29,31 @@ import com.example.gradox2.service.exceptions.NotFoundException;
 import com.example.gradox2.service.exceptions.UnauthenticatedAccessException;
 import com.example.gradox2.service.interfaces.IFileService;
 
-import io.jsonwebtoken.io.IOException;
-import io.micrometer.observation.Observation.Context;
 
 @Service
 public class FileServiceImpl implements IFileService {
+
     private final FileRepository fileRepository;
     private final SubjectRepository subjectRepository;
     private final PasswordEncoder passwordEncoder;
 
-    public FileServiceImpl(FileRepository fileRepository, SubjectRepository subjectRepository, PasswordEncoder passwordEncoder) {
+    public FileServiceImpl(FileRepository fileRepository, SubjectRepository subjectRepository, PasswordEncoder passwordEncoder, SecurityFilterChain filterChain) {
         this.fileRepository = fileRepository;
         this.subjectRepository = subjectRepository;
         this.passwordEncoder = passwordEncoder;
     }
 
-    @Override
-    public List<FileResponse> getAllFiles() {
-    List<File> files = fileRepository.findAll();
-//        return files.stream()
-//                .map(file -> new FileResponse(file.getTitle(), file.getType(), file.getSubject(), file.getFileData()))
-//                .toList();
+    public ResponseEntity<ByteArrayResource> downloadFile(Long id) {
+        File file = fileRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("File not found"));
 
-        /* return files.stream()
-                .map(this::toFileResponse)
-                .toList(); */
-                return null;
+        ByteArrayResource resource = new ByteArrayResource(file.getFileData());
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + file.getTitle() + "\"")
+                .contentType(MediaType.APPLICATION_OCTET_STREAM)
+                .contentLength(file.getFileData().length)
+                .body(resource);
     }
 
     public ResponseEntity uploadFile(UploadFileRequest dto) {
@@ -82,5 +86,32 @@ public class FileServiceImpl implements IFileService {
         } catch (java.io.IOException e) {
             return ResponseEntity.status(500).body("File upload failed: " + e.getMessage());
         }
+    }
+
+    public List<FileResponse> getAllFiles() {
+        return fileRepository.findAll().stream()
+                .map(file -> FileResponse.builder()
+                        .id(file.getId())
+                        .fileName(file.getTitle())
+                        .description(file.getDescription())
+                        .fileType(file.getType())
+                        .subject(file.getSubject().getName())
+                        .uploaderUsername(file.getUploader().getUsername())
+                        .build()
+                ).collect(Collectors.toList());
+    }
+
+    public FileResponse getFile(Long id) {
+        File file = fileRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("File not found"));
+
+        return FileResponse.builder()
+                .id(file.getId())
+                .fileName(file.getTitle())
+                .description(file.getDescription())
+                .fileType(file.getType())
+                .subject(file.getSubject().getName())
+                .uploaderUsername(file.getUploader().getUsername())
+                .build();
     }
 }
