@@ -8,7 +8,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import com.example.gradox2.persistence.entities.File;
 import com.example.gradox2.persistence.entities.enums.FileType;
 
-public interface ResourceRepository extends JpaRepository<File, Long> {
+public interface FileRepository extends JpaRepository<File, Long> {
     //Find methods
     List<File> findAll();
     Optional<File> findById(Long id);
@@ -17,7 +17,7 @@ public interface ResourceRepository extends JpaRepository<File, Long> {
     List<File> findBySubjectId(Long subjectId);
     List<File> findByUploaderId(Long uploaderId);
     List<File> findByUploaderIdAndSubjectId(Long uploaderId, Long subjectId);
-    
+
     //save, delete, exists methods
     File save(File resource);
     void deleteById(Long id);

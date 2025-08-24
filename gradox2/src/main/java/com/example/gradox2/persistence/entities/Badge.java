@@ -18,5 +18,7 @@ public class Badge {
     private String name;
 
     private String description;
-    private String iconUrl;
+
+    @Lob
+    private byte[] icon;
 }

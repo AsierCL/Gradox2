@@ -30,7 +30,7 @@ public class Vote {
 
     @ManyToOne
     @JoinColumn(name = "proposal_id")
-    private PromotionProposal proposal;
+    private Proposal proposal;
 
     private int value;
     private double weight;

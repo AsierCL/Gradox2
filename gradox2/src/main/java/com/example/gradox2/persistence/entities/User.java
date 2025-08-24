@@ -61,9 +61,11 @@ public class User implements UserDetails{
     @OneToMany(mappedBy = "delegatee")
     private Set<Delegation> delegationsReceived = new HashSet<>();
 
+    @Builder.Default
     @Column(nullable = false, updatable = false)
     private Instant createdAt = Instant.now();
 
+    @Builder.Default
     private Instant lastLogin = Instant.now();
 
     @Override

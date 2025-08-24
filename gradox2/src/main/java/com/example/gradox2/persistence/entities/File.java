@@ -10,6 +10,7 @@ import lombok.*;
 
 @Getter
 @Setter
+@Builder
 @AllArgsConstructor
 @NoArgsConstructor
 @Entity
@@ -28,7 +29,10 @@ public class File {
     @Lob
     @Column(name = "file_data", nullable = false)
     private byte[] fileData;
-    private Instant uploadDate = Instant.now();
+    private String fileHash;
+
+    @Builder.Default
+    private Instant uploadAt = Instant.now();
 
     @ManyToOne
     @JoinColumn(name = "uploader_id", nullable = false)

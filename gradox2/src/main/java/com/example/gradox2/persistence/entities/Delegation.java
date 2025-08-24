@@ -24,10 +24,9 @@ public class Delegation {
     @JoinColumn(name = "delegatee_id", nullable = false)
     private User delegatee;
 
-    @ManyToOne
+    /* @ManyToOne
     @JoinColumn(name = "subject_id")
-    private Subject subject;
+    private Subject subject; */
 
     private Instant delegatedAt = Instant.now();
-    private boolean active = true;
 }
