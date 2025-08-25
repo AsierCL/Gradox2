@@ -21,19 +21,11 @@ public class Vote {
     private User voter;
 
     @ManyToOne
-    @JoinColumn(name = "resource_id")
-    private File resource;
-
-    @ManyToOne
-    @JoinColumn(name = "response_id")
-    private ExamResponse response;
-
-    @ManyToOne
-    @JoinColumn(name = "proposal_id")
+    @JoinColumn(name = "proposal_id", nullable = false)
     private Proposal proposal;
 
-    private int value;
-    private double weight;
+    private Double weight;
+    private Boolean inFavor;
     private Instant votedAt = Instant.now();
 
 }

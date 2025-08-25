@@ -1,6 +1,5 @@
 package com.example.gradox2.persistence.entities;
 
-
 import java.time.Instant;
 
 import com.example.gradox2.persistence.entities.enums.FileType;
@@ -15,7 +14,7 @@ import lombok.*;
 @NoArgsConstructor
 @Entity
 @Table(name = "files")
-public class File {
+public class TempFile {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -41,6 +40,4 @@ public class File {
     @ManyToOne
     @JoinColumn(name = "subject_id", nullable = false)
     private Subject subject;
-
-    private Double score;
 }

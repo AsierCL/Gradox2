@@ -1,6 +1,5 @@
 package com.example.gradox2.persistence.entities;
 
-
 import java.util.HashSet;
 import java.util.Set;
 
@@ -33,7 +32,4 @@ public class Subject {
     @Builder.Default
     private Set<File> resources = new HashSet<>();
 
-    @OneToMany(mappedBy = "subject")
-    @Builder.Default
-    private Set<ExamThread> examThreads = new HashSet<>();
 }

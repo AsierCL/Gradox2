@@ -32,7 +32,9 @@ public abstract class Proposal {
     private int quorumRequired;
     private double approvalThreshold;
     private Instant createdAt = Instant.now();
-    private Instant endsAt;
+    private Instant endsAt = createdAt.plusSeconds(7 * 24 * 60 * 60); // Por defecto, 7 días
+
+    private Instant closedAt;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
