@@ -13,5 +13,5 @@ public interface IFileService {
     ResponseEntity<String> uploadFile(UploadFileRequest dto);
     List<FileResponse> getAllFiles();
     FileResponse getFile(Long id);
-    public ResponseEntity<ByteArrayResource> downloadFile(Long id);
+    ResponseEntity<ByteArrayResource> downloadFile(Long id);
 }

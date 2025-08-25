@@ -42,7 +42,7 @@ public class FileController {
     }
 
     @PostMapping("/upload")
-    public ResponseEntity<String> uploadFile(@ModelAttribute UploadFileRequest dto){
-        return fileService.uploadFile(dto);
+    public ResponseEntity<String> uploadFile(@ModelAttribute UploadFileRequest uploadFileRequest){
+        return fileService.uploadFile(uploadFileRequest);
     }
 }

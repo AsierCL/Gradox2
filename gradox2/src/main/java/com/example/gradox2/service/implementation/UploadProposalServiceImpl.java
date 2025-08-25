@@ -31,49 +31,32 @@ import com.example.gradox2.presentation.dto.files.FileResponse;
 import com.example.gradox2.presentation.dto.files.UploadFileRequest;
 import com.example.gradox2.service.exceptions.NotFoundException;
 import com.example.gradox2.service.exceptions.UnauthenticatedAccessException;
-import com.example.gradox2.service.interfaces.IFileService;
+import com.example.gradox2.service.interfaces.IUploadProposalService;
 import com.example.gradox2.utils.GetAuthUser;
 
-
 @Service
-public class FileServiceImpl implements IFileService {
+public class UploadProposalServiceImpl implements IUploadProposalService {
 
     private final FileRepository fileRepository;
     private final TempFileRepository tempFileRepository;
     private final UploadProposalRepository uploadProposalRepository;
     private final SubjectRepository subjectRepository;
-    private final PasswordEncoder passwordEncoder;
 
-    public FileServiceImpl(FileRepository fileRepository, TempFileRepository tempFileRepository,
+    public UploadProposalServiceImpl(FileRepository fileRepository, TempFileRepository tempFileRepository,
             UploadProposalRepository uploadProposalRepository, SubjectRepository subjectRepository,
-            PasswordEncoder passwordEncoder, SecurityFilterChain filterChain) {
+            SecurityFilterChain filterChain) {
         this.fileRepository = fileRepository;
         this.tempFileRepository = tempFileRepository;
         this.uploadProposalRepository = uploadProposalRepository;
         this.subjectRepository = subjectRepository;
-        this.passwordEncoder = passwordEncoder;
-    }
-
-    public ResponseEntity<ByteArrayResource> downloadFile(Long id) {
-        File file = fileRepository.findById(id)
-                .orElseThrow(() -> new NotFoundException("File not found"));
-
-        ByteArrayResource resource = new ByteArrayResource(file.getFileData());
-
-        return ResponseEntity.ok()
-                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + file.getTitle() + "\"")
-                .contentType(MediaType.APPLICATION_OCTET_STREAM)
-                .contentLength(file.getFileData().length)
-                .body(resource);
     }
 
     @Transactional
-    public ResponseEntity<String> uploadFile(UploadFileRequest dto) {
+    public ResponseEntity<String> uploadProposal(UploadFileRequest dto) {
         // 1. Buscar la materia
         Subject subject = subjectRepository.findById(dto.getSubjectId())
                 .orElseThrow(() -> new NotFoundException("Subject not found"));
 
-        // 2. Obtener usuario autenticado
         User uploader = GetAuthUser.getAuthUser();
 
         try {
@@ -106,44 +89,69 @@ public class FileServiceImpl implements IFileService {
         }
     }
 
-    public List<FileResponse> getAllFiles() {
-        return fileRepository.findAll().stream()
-                .map(file -> FileResponse.builder()
-                        .id(file.getId())
-                        .fileName(file.getTitle())
-                        .description(file.getDescription())
-                        .fileType(file.getType())
-                        .subject(file.getSubject().getName())
-                        .uploaderUsername(file.getUploader().getUsername())
-                        .build())
-                .collect(Collectors.toList());
+    public ResponseEntity<String> deleteProposal(Long id) {
+        User authUser = GetAuthUser.getAuthUser();
+
+        UploadProposal proposal = uploadProposalRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Proposal not found"));
+
+        if(proposal.getStatus() != ProposalStatus.PENDING) {
+            return ResponseEntity.status(400).body("Only pending proposals can be deleted");
+        }
+
+        if(proposal.getProposer().equals(authUser) == false) {
+            return ResponseEntity.status(403).body("You can only delete your own proposals");
+        }
+
+        // Eliminar el TempFile asociado
+        TempFile tempFile = proposal.getTempFile();
+        if (tempFile != null) {
+            tempFileRepository.delete(tempFile);
+        }
+
+        // Eliminar la propuesta
+        uploadProposalRepository.delete(proposal);
+
+        return ResponseEntity.ok("Proposal and associated TempFile deleted successfully");
     }
 
-    public FileResponse getFile(Long id) {
-        File file = fileRepository.findById(id)
-                .orElseThrow(() -> new NotFoundException("File not found"));
-
-        return FileResponse.builder()
-                .id(file.getId())
-                .fileName(file.getTitle())
-                .description(file.getDescription())
-                .fileType(file.getType())
-                .subject(file.getSubject().getName())
-                .uploaderUsername(file.getUploader().getUsername())
-                .build();
+    public List<UploadProposal> getAllProposals() {
+        return uploadProposalRepository.findAll();
     }
 
-    private String generateFileHash(byte[] data) {
+    @Transactional
+    public UploadProposal getProposalById(Long id) {
+        return uploadProposalRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Proposal not found"));
+    }
+
+    public ResponseEntity<ByteArrayResource> downloadProposalFile(Long id) {
+        UploadProposal proposal = uploadProposalRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Proposal not found"));
+
+        TempFile tempFile = proposal.getTempFile();
+        if (tempFile == null) {
+            throw new NotFoundException("No TempFile associated with this proposal");
+        }
+
+        ByteArrayResource resource = new ByteArrayResource(tempFile.getFileData());
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment;filename=" + tempFile.getTitle())
+                .contentType(MediaType.APPLICATION_OCTET_STREAM)
+                .contentLength(tempFile.getFileData().length)
+                .body(resource);
+    }
+
+    private String generateFileHash(byte[] fileData) {
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            byte[] hashBytes = digest.digest(data);
-            StringBuilder hexString = new StringBuilder();
+            byte[] hashBytes = digest.digest(fileData);
+            StringBuilder sb = new StringBuilder();
             for (byte b : hashBytes) {
-                String hex = Integer.toHexString(0xff & b);
-                if (hex.length() == 1) hexString.append('0');
-                hexString.append(hex);
+                sb.append(String.format("%02x", b));
             }
-            return hexString.toString();
+            return sb.toString();
         } catch (NoSuchAlgorithmException e) {
             throw new RuntimeException("Error generating file hash", e);
         }
