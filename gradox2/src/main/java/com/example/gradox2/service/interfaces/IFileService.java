@@ -5,12 +5,12 @@ import java.util.List;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.ResponseEntity;
 
+import com.example.gradox2.presentation.dto.fileProposal.UploadFileProposalRequest;
 import com.example.gradox2.presentation.dto.files.FileResponse;
-import com.example.gradox2.presentation.dto.files.UploadFileRequest;
 
 public interface IFileService {
 
-    ResponseEntity<String> uploadFile(UploadFileRequest dto);
+    ResponseEntity<String> uploadFile(UploadFileProposalRequest dto);
     List<FileResponse> getAllFiles();
     FileResponse getFile(Long id);
     ResponseEntity<ByteArrayResource> downloadFile(Long id);

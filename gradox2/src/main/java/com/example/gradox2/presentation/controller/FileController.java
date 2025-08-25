@@ -3,8 +3,8 @@ package com.example.gradox2.presentation.controller;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.example.gradox2.presentation.dto.fileProposal.UploadFileProposalRequest;
 import com.example.gradox2.presentation.dto.files.FileResponse;
-import com.example.gradox2.presentation.dto.files.UploadFileRequest;
 import com.example.gradox2.service.interfaces.IFileService;
 
 import java.util.List;
@@ -42,7 +42,7 @@ public class FileController {
     }
 
     @PostMapping("/upload")
-    public ResponseEntity<String> uploadFile(@ModelAttribute UploadFileRequest uploadFileRequest){
+    public ResponseEntity<String> uploadFile(@ModelAttribute UploadFileProposalRequest uploadFileRequest){
         return fileService.uploadFile(uploadFileRequest);
     }
 }

@@ -24,8 +24,8 @@ import com.example.gradox2.persistence.repository.FileRepository;
 import com.example.gradox2.persistence.repository.SubjectRepository;
 import com.example.gradox2.persistence.repository.TempFileRepository;
 import com.example.gradox2.persistence.repository.FileProposalRepository;
+import com.example.gradox2.presentation.dto.fileProposal.UploadFileProposalRequest;
 import com.example.gradox2.presentation.dto.files.FileResponse;
-import com.example.gradox2.presentation.dto.files.UploadFileRequest;
 import com.example.gradox2.service.exceptions.NotFoundException;
 import com.example.gradox2.service.interfaces.IFileService;
 import com.example.gradox2.utils.GetAuthUser;
@@ -61,7 +61,7 @@ public class FileServiceImpl implements IFileService {
     }
 
     @Transactional
-    public ResponseEntity<String> uploadFile(UploadFileRequest dto) {
+    public ResponseEntity<String> uploadFile(UploadFileProposalRequest dto) {
         // 1. Buscar la materia
         Subject subject = subjectRepository.findById(dto.getSubjectId())
                 .orElseThrow(() -> new NotFoundException("Subject not found"));

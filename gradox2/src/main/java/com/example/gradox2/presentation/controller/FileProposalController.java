@@ -4,7 +4,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.example.gradox2.persistence.entities.FileProposal;
-import com.example.gradox2.presentation.dto.files.UploadFileRequest;
+import com.example.gradox2.presentation.dto.fileProposal.FileProposalResponse;
+import com.example.gradox2.presentation.dto.fileProposal.UploadFileProposalRequest;
 import com.example.gradox2.service.interfaces.IFileProposalService;
 
 import java.util.List;
@@ -28,18 +29,18 @@ public class FileProposalController {
     }
 
     @PostMapping("/upload")
-    public ResponseEntity<String> uploadProposal(@ModelAttribute UploadFileRequest fileProposalRequest) {
+    public ResponseEntity<String> uploadProposal(@ModelAttribute UploadFileProposalRequest fileProposalRequest) {
         return fileProposalService.uploadFileProposal(fileProposalRequest);
     }
 
     // TODO Devolver otro tipo de dato
     @GetMapping("/all")
-    public ResponseEntity<List<FileProposal>> getAllUploadProposals() {
+    public ResponseEntity<List<FileProposalResponse>> getAllUploadProposals() {
         return ResponseEntity.ok(fileProposalService.getAllFileProposals());
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<FileProposal> getUploadProposal(@PathVariable Long id) {
+    public ResponseEntity<FileProposalResponse> getUploadProposal(@PathVariable Long id) {
         return ResponseEntity.ok(fileProposalService.getFileProposalById(id));
     }
 

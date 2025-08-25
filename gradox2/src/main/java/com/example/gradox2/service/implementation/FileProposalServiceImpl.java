@@ -20,29 +20,31 @@ import com.example.gradox2.persistence.entities.User;
 import com.example.gradox2.persistence.entities.enums.ProposalStatus;
 import com.example.gradox2.persistence.repository.SubjectRepository;
 import com.example.gradox2.persistence.repository.TempFileRepository;
+import com.example.gradox2.presentation.dto.fileProposal.FileProposalResponse;
+import com.example.gradox2.presentation.dto.fileProposal.UploadFileProposalRequest;
 import com.example.gradox2.persistence.repository.FileProposalRepository;
-import com.example.gradox2.presentation.dto.files.UploadFileRequest;
 import com.example.gradox2.service.exceptions.NotFoundException;
 import com.example.gradox2.service.interfaces.IFileProposalService;
 import com.example.gradox2.utils.GetAuthUser;
+import com.example.gradox2.utils.mapper.FileProposalMapper;
 
 @Service
 public class FileProposalServiceImpl implements IFileProposalService {
 
     private final TempFileRepository tempFileRepository;
-    private final FileProposalRepository fileProposalService;
+    private final FileProposalRepository fileProposalRepository;
     private final SubjectRepository subjectRepository;
 
     public FileProposalServiceImpl(TempFileRepository tempFileRepository,
-            FileProposalRepository fileProposalService, SubjectRepository subjectRepository,
+            FileProposalRepository fileProposalRepository, SubjectRepository subjectRepository,
             SecurityFilterChain filterChain) {
         this.tempFileRepository = tempFileRepository;
-        this.fileProposalService = fileProposalService;
+        this.fileProposalRepository = fileProposalRepository;
         this.subjectRepository = subjectRepository;
     }
 
     @Transactional
-    public ResponseEntity<String> uploadFileProposal(UploadFileRequest dto) {
+    public ResponseEntity<String> uploadFileProposal(UploadFileProposalRequest dto) {
         // 1. Buscar la materia
         Subject subject = subjectRepository.findById(dto.getSubjectId())
                 .orElseThrow(() -> new NotFoundException("Subject not found"));
@@ -69,7 +71,7 @@ public class FileProposalServiceImpl implements IFileProposalService {
             proposal.setStatus(ProposalStatus.PENDING);
             proposal.setQuorumRequired(5);
             proposal.setApprovalThreshold(0.6);
-            fileProposalService.save(proposal);
+            fileProposalRepository.save(proposal);
 
             // 5. Devolver respuesta
             return ResponseEntity.ok("Archivo enviado para revisión. ID de propuesta: " + proposal.getId());
@@ -82,7 +84,7 @@ public class FileProposalServiceImpl implements IFileProposalService {
     public ResponseEntity<String> deleteFileProposal(Long id) {
         User authUser = GetAuthUser.getAuthUser();
 
-        FileProposal proposal = fileProposalService.findById(id)
+        FileProposal proposal = fileProposalRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Proposal not found"));
 
         if(proposal.getStatus() != ProposalStatus.PENDING) {
@@ -100,23 +102,25 @@ public class FileProposalServiceImpl implements IFileProposalService {
         }
 
         // Eliminar la propuesta
-        fileProposalService.delete(proposal);
+        fileProposalRepository.delete(proposal);
 
         return ResponseEntity.ok("Proposal and associated TempFile deleted successfully");
     }
 
-    public List<FileProposal> getAllFileProposals() {
-        return fileProposalService.findAll();
+    public List<FileProposalResponse> getAllFileProposals() {
+        return fileProposalRepository.findAll().stream()
+                .map(FileProposalMapper::toFileProposalResponse)
+                .toList();
     }
 
     @Transactional
-    public FileProposal getFileProposalById(Long id) {
-        return fileProposalService.findById(id)
-                .orElseThrow(() -> new NotFoundException("Proposal not found"));
+    public FileProposalResponse getFileProposalById(Long id) {
+        return FileProposalMapper.toFileProposalResponse(fileProposalRepository.findById(id).orElseThrow(() -> new NotFoundException("Proposal not found")));
+
     }
 
     public ResponseEntity<ByteArrayResource> downloadFileFromProposal(Long id) {
-        FileProposal proposal = fileProposalService.findById(id)
+        FileProposal proposal = fileProposalRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Proposal not found"));
 
         TempFile tempFile = proposal.getTempFile();
