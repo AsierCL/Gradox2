@@ -8,7 +8,7 @@ import lombok.*;
 @NoArgsConstructor
 @Entity
 @DiscriminatorValue("UPLOAD")
-public class UploadProposal extends Proposal {
+public class FileProposal extends Proposal {
 
     // Archivo temporal asociado a la propuesta
     @ManyToOne

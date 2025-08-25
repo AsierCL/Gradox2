@@ -6,8 +6,6 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -16,9 +14,9 @@ import com.example.gradox2.persistence.repository.UserRepository;
 import com.example.gradox2.presentation.dto.users.MyProfileResponse;
 import com.example.gradox2.presentation.dto.users.PublicProfileResponse;
 import com.example.gradox2.presentation.dto.users.UpdateMyProfileRequest;
-import com.example.gradox2.service.exceptions.UnauthenticatedAccessException;
 import com.example.gradox2.service.exceptions.NotFoundException;
 import com.example.gradox2.service.interfaces.IUserService;
+import com.example.gradox2.utils.GetAuthUser;
 import com.example.gradox2.utils.mapper.UserMapper;
 
 
@@ -33,43 +31,14 @@ public class UserServiceImpl implements IUserService {
     }
 
     public MyProfileResponse getCurrentUser() {
-        // 1. Obtener el objeto de autenticación del contexto de seguridad
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-
-        if (authentication == null || !authentication.isAuthenticated()) {
-            throw new UnauthenticatedAccessException("El usuario no está autenticado.");
-        }
-
-        // 2. Extraer el nombre de usuario del objeto de autenticación
-        Object principal = authentication.getPrincipal();
-        String username;
-
-        if (principal instanceof User) {
-            username = ((User) principal).getUsername();
-        } else {
-            username = principal.toString();
-        }
+        User authUser = GetAuthUser.getAuthUser();
 
         // 3. Buscar el usuario completo en la base de datos
-        User user = userRepository.findByUsername(username)
+        User user = userRepository.findByUsername(authUser.getUsername())
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado en la base de datos"));
 
         // 4. Mapear la entidad User a UserDTO
         return UserMapper.mapper.toMyProfileResponse(user);
-    }
-
-    private User getAuthenticatedUser() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication == null || !authentication.isAuthenticated()) {
-            throw new UnauthenticatedAccessException("El usuario no está autenticado.");
-        }
-
-        Object principal = authentication.getPrincipal();
-        if (!(principal instanceof User)) {
-            throw new UnauthenticatedAccessException("El usuario no es una instancia de User.");
-        }
-
-        return (User) principal;
     }
 
     public PublicProfileResponse getUserProfile(Long id) {
@@ -101,7 +70,7 @@ public class UserServiceImpl implements IUserService {
 
     public MyProfileResponse updateCurrentUser(UpdateMyProfileRequest userProfile) {
         // 1. Obtener el usuario actual
-        User user = getAuthenticatedUser();
+        User user = GetAuthUser.getAuthUser();
 
         // 2. Actualizar los campos necesarios
         if (userProfile.getUsername() != null && !userProfile.getUsername().isBlank()) {

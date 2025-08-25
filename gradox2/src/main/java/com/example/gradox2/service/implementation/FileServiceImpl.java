@@ -10,9 +10,6 @@ import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,38 +17,34 @@ import org.springframework.transaction.annotation.Transactional;
 import com.example.gradox2.persistence.entities.File;
 import com.example.gradox2.persistence.entities.Subject;
 import com.example.gradox2.persistence.entities.TempFile;
-import com.example.gradox2.persistence.entities.UploadProposal;
+import com.example.gradox2.persistence.entities.FileProposal;
 import com.example.gradox2.persistence.entities.User;
 import com.example.gradox2.persistence.entities.enums.ProposalStatus;
 import com.example.gradox2.persistence.repository.FileRepository;
 import com.example.gradox2.persistence.repository.SubjectRepository;
 import com.example.gradox2.persistence.repository.TempFileRepository;
-import com.example.gradox2.persistence.repository.UploadProposalRepository;
+import com.example.gradox2.persistence.repository.FileProposalRepository;
 import com.example.gradox2.presentation.dto.files.FileResponse;
 import com.example.gradox2.presentation.dto.files.UploadFileRequest;
 import com.example.gradox2.service.exceptions.NotFoundException;
-import com.example.gradox2.service.exceptions.UnauthenticatedAccessException;
 import com.example.gradox2.service.interfaces.IFileService;
 import com.example.gradox2.utils.GetAuthUser;
-
 
 @Service
 public class FileServiceImpl implements IFileService {
 
     private final FileRepository fileRepository;
     private final TempFileRepository tempFileRepository;
-    private final UploadProposalRepository uploadProposalRepository;
+    private final FileProposalRepository uploadProposalRepository;
     private final SubjectRepository subjectRepository;
-    private final PasswordEncoder passwordEncoder;
 
     public FileServiceImpl(FileRepository fileRepository, TempFileRepository tempFileRepository,
-            UploadProposalRepository uploadProposalRepository, SubjectRepository subjectRepository,
-            PasswordEncoder passwordEncoder, SecurityFilterChain filterChain) {
+            FileProposalRepository uploadProposalRepository, SubjectRepository subjectRepository,
+            SecurityFilterChain filterChain) {
         this.fileRepository = fileRepository;
         this.tempFileRepository = tempFileRepository;
         this.uploadProposalRepository = uploadProposalRepository;
         this.subjectRepository = subjectRepository;
-        this.passwordEncoder = passwordEncoder;
     }
 
     public ResponseEntity<ByteArrayResource> downloadFile(Long id) {
@@ -90,7 +83,7 @@ public class FileServiceImpl implements IFileService {
             tempFileRepository.save(tempFile);
 
             // 4. Crear UploadProposal asociada al TempFile
-            UploadProposal proposal = new UploadProposal();
+            FileProposal proposal = new FileProposal();
             proposal.setProposer(uploader);
             proposal.setTempFile(tempFile);
             proposal.setStatus(ProposalStatus.PENDING);
@@ -140,7 +133,8 @@ public class FileServiceImpl implements IFileService {
             StringBuilder hexString = new StringBuilder();
             for (byte b : hashBytes) {
                 String hex = Integer.toHexString(0xff & b);
-                if (hex.length() == 1) hexString.append('0');
+                if (hex.length() == 1)
+                    hexString.append('0');
                 hexString.append(hex);
             }
             return hexString.toString();

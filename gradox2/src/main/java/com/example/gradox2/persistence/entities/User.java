@@ -44,6 +44,7 @@ public class User implements UserDetails{
     @Column(nullable = false)
     private UserRole role;
 
+    @Builder.Default
     @Column(nullable = false)
     private Double reputation = 0.0;
 

@@ -4,55 +4,45 @@ import java.io.IOException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.List;
-import java.util.stream.Collectors;
 
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.example.gradox2.persistence.entities.File;
 import com.example.gradox2.persistence.entities.Subject;
 import com.example.gradox2.persistence.entities.TempFile;
-import com.example.gradox2.persistence.entities.UploadProposal;
+import com.example.gradox2.persistence.entities.FileProposal;
 import com.example.gradox2.persistence.entities.User;
 import com.example.gradox2.persistence.entities.enums.ProposalStatus;
-import com.example.gradox2.persistence.repository.FileRepository;
 import com.example.gradox2.persistence.repository.SubjectRepository;
 import com.example.gradox2.persistence.repository.TempFileRepository;
-import com.example.gradox2.persistence.repository.UploadProposalRepository;
-import com.example.gradox2.presentation.dto.files.FileResponse;
+import com.example.gradox2.persistence.repository.FileProposalRepository;
 import com.example.gradox2.presentation.dto.files.UploadFileRequest;
 import com.example.gradox2.service.exceptions.NotFoundException;
-import com.example.gradox2.service.exceptions.UnauthenticatedAccessException;
-import com.example.gradox2.service.interfaces.IUploadProposalService;
+import com.example.gradox2.service.interfaces.IFileProposalService;
 import com.example.gradox2.utils.GetAuthUser;
 
 @Service
-public class UploadProposalServiceImpl implements IUploadProposalService {
+public class FileProposalServiceImpl implements IFileProposalService {
 
-    private final FileRepository fileRepository;
     private final TempFileRepository tempFileRepository;
-    private final UploadProposalRepository uploadProposalRepository;
+    private final FileProposalRepository fileProposalService;
     private final SubjectRepository subjectRepository;
 
-    public UploadProposalServiceImpl(FileRepository fileRepository, TempFileRepository tempFileRepository,
-            UploadProposalRepository uploadProposalRepository, SubjectRepository subjectRepository,
+    public FileProposalServiceImpl(TempFileRepository tempFileRepository,
+            FileProposalRepository fileProposalService, SubjectRepository subjectRepository,
             SecurityFilterChain filterChain) {
-        this.fileRepository = fileRepository;
         this.tempFileRepository = tempFileRepository;
-        this.uploadProposalRepository = uploadProposalRepository;
+        this.fileProposalService = fileProposalService;
         this.subjectRepository = subjectRepository;
     }
 
     @Transactional
-    public ResponseEntity<String> uploadProposal(UploadFileRequest dto) {
+    public ResponseEntity<String> uploadFileProposal(UploadFileRequest dto) {
         // 1. Buscar la materia
         Subject subject = subjectRepository.findById(dto.getSubjectId())
                 .orElseThrow(() -> new NotFoundException("Subject not found"));
@@ -73,13 +63,13 @@ public class UploadProposalServiceImpl implements IUploadProposalService {
             tempFileRepository.save(tempFile);
 
             // 4. Crear UploadProposal asociada al TempFile
-            UploadProposal proposal = new UploadProposal();
+            FileProposal proposal = new FileProposal();
             proposal.setProposer(uploader);
             proposal.setTempFile(tempFile);
             proposal.setStatus(ProposalStatus.PENDING);
             proposal.setQuorumRequired(5);
             proposal.setApprovalThreshold(0.6);
-            uploadProposalRepository.save(proposal);
+            fileProposalService.save(proposal);
 
             // 5. Devolver respuesta
             return ResponseEntity.ok("Archivo enviado para revisión. ID de propuesta: " + proposal.getId());
@@ -89,10 +79,10 @@ public class UploadProposalServiceImpl implements IUploadProposalService {
         }
     }
 
-    public ResponseEntity<String> deleteProposal(Long id) {
+    public ResponseEntity<String> deleteFileProposal(Long id) {
         User authUser = GetAuthUser.getAuthUser();
 
-        UploadProposal proposal = uploadProposalRepository.findById(id)
+        FileProposal proposal = fileProposalService.findById(id)
                 .orElseThrow(() -> new NotFoundException("Proposal not found"));
 
         if(proposal.getStatus() != ProposalStatus.PENDING) {
@@ -110,23 +100,23 @@ public class UploadProposalServiceImpl implements IUploadProposalService {
         }
 
         // Eliminar la propuesta
-        uploadProposalRepository.delete(proposal);
+        fileProposalService.delete(proposal);
 
         return ResponseEntity.ok("Proposal and associated TempFile deleted successfully");
     }
 
-    public List<UploadProposal> getAllProposals() {
-        return uploadProposalRepository.findAll();
+    public List<FileProposal> getAllFileProposals() {
+        return fileProposalService.findAll();
     }
 
     @Transactional
-    public UploadProposal getProposalById(Long id) {
-        return uploadProposalRepository.findById(id)
+    public FileProposal getFileProposalById(Long id) {
+        return fileProposalService.findById(id)
                 .orElseThrow(() -> new NotFoundException("Proposal not found"));
     }
 
-    public ResponseEntity<ByteArrayResource> downloadProposalFile(Long id) {
-        UploadProposal proposal = uploadProposalRepository.findById(id)
+    public ResponseEntity<ByteArrayResource> downloadFileFromProposal(Long id) {
+        FileProposal proposal = fileProposalService.findById(id)
                 .orElseThrow(() -> new NotFoundException("Proposal not found"));
 
         TempFile tempFile = proposal.getTempFile();

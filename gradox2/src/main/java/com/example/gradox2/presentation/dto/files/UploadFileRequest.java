@@ -8,6 +8,8 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+// TODO Eliminar esta clase, archivos non se suben directamente
+
 @NoArgsConstructor
 @AllArgsConstructor
 @Data
