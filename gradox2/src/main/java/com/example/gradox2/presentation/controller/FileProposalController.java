@@ -3,7 +3,6 @@ package com.example.gradox2.presentation.controller;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.example.gradox2.persistence.entities.FileProposal;
 import com.example.gradox2.presentation.dto.fileProposal.FileProposalResponse;
 import com.example.gradox2.presentation.dto.fileProposal.UploadFileProposalRequest;
 import com.example.gradox2.service.interfaces.IFileProposalService;
@@ -33,7 +32,6 @@ public class FileProposalController {
         return fileProposalService.uploadFileProposal(fileProposalRequest);
     }
 
-    // TODO Devolver otro tipo de dato
     @GetMapping("/all")
     public ResponseEntity<List<FileProposalResponse>> getAllUploadProposals() {
         return ResponseEntity.ok(fileProposalService.getAllFileProposals());

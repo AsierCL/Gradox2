@@ -7,6 +7,7 @@ import lombok.*;
 
 @Getter
 @Setter
+@Builder
 @AllArgsConstructor
 @NoArgsConstructor
 @Entity
@@ -26,6 +27,8 @@ public class Vote {
 
     private Double weight;
     private Boolean inFavor;
+
+    @Builder.Default
     private Instant votedAt = Instant.now();
 
 }
