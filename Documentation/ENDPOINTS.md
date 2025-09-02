@@ -13,17 +13,16 @@
 | POST   | `/auth/password/reset-request` | Solicitar reinicio de contraseña         |     |
 | POST   | `/auth/password/reset`         | Confirmar cambio de contraseña con token |     |
 
----import java.util.Set;
-
+---
 ## 👤 2. Usuarios
 
-| Método | Endpoint                | Descripción                        | ✔️  |
-| ------ | ----------------------- | ---------------------------------- | --- |
-| GET    | `/users/me`             | Obtener perfil propio              | ✅   |
-| PUT    | `/users/me`             | Editar perfil (nombre, alias, bio) | ✅   |
-| GET    | `/users/{id}`           | Ver perfil público                 | ✅   |
-| GET    | `/users`                | Buscar usuarios                    | ✅   |
-| GET    | `/users/reputation/top` | Ranking por reputación             |     |
+| Método | Endpoint                                       | Descripción                        | ✔️  |
+| ------ | ---------------------------------------------- | ---------------------------------- | --- |
+| GET    | `/users/me`                                    | Obtener perfil propio              | ✅   |
+| PUT    | `/users/me`                                    | Editar perfil (nombre, alias, bio) | ✅   |
+| GET    | `/users/{id}`                                  | Ver perfil público                 | ✅   |
+| GET    | `/users/all`                                   | Todos los usuarios                 | ✅   |
+| GET    | `/users/paged?page=0&size=5&sortBy=reputation` | Todos los usuarios paginados       | ✅   |
 
 
 ---
@@ -38,19 +37,31 @@
 | POST   | `/roles/demote/vote`     | Votar expulsión de master       |     |
 
 ---
-## 📁 4. Repositorio de Archivos
+## ➕ 4. Propuestas de archivos
 
-| Método | Endpoint              | Descripción                                    | ✔️  |
-| ------ | --------------------- | ---------------------------------------------- | --- |
-| POST   | `/files/upload`       | Subir archivo (curso, asignatura, descripción) |     |
-| GET    | `/files`              | Listar archivos                                |     |
-| GET    | `/files/{id}`         | Ver/descargar archivo                          |     |
-| DELETE | `/files/{id}`         | Proponer eliminación (requiere votación)       |     |
-| POST   | `/files/{id}/vote`    | Votar sobre archivo (subida o eliminación)     |     |
-| GET    | `/files/{id}/history` | Ver historial de cambios, votos y denuncias    |     |
+| Método | Endpoint                        | Descripción                        | ✔️  |
+| ------ | ------------------------------- | ---------------------------------- | --- |
+| POST   | `/uploadProposal/upload`        | Proponer nuevo archivo             | ✅   |
+| GET    | `/uploadProposal/all`           | Listar archivos todos los archivos | ✅   |
+| GET    | `/uploadProposal/{id}`          | Ver datos del archivo              | ✅   |
+| GET    | `/uploadProposal/{id}/download` | Descargar archivo                  | ✅   |
+| DELETE | `/uploadProposal/{id}`          | Borrar propuesta de archivo        | ✅   |
 
 ---
-## 📝 5. Hilos y Exámenes
+## 📁 5. Archivos
+
+| Método | Endpoint                    | Descripción                              | ✔️  |
+| ------ | --------------------------- | ---------------------------------------- | --- |
+| GET    | `/files/all`                | Listar archivos todos los archivos       | ✅   |
+| GET    | `/files/{id}`               | Ver datos del archivo                    | ✅   |
+| GET    | `/files/{id}/download`      | Descargar archivo                        | ✅   |
+| DELETE | `/files/{id}`               | Proponer eliminación (requiere votación) |     |
+| POST   | `/files/{id}/vote/{upvote}` | Votar para puntuar un archivo            |     |
+| DELETE | `/files/{id}/vote`<br>      | Quitar votacion de un archivo            |     |
+
+
+---
+## 📝 6. Hilos y Exámenes
 
 | Método | Endpoint              | Descripción                     | ✔️  |
 | ------ | --------------------- | ------------------------------- | --- |
@@ -61,7 +72,7 @@
 | POST   | `/threads/{id}/vote`  | Votar en respuestas             |     |
 
 ---
-## 🚨 6. Moderación
+## 🚨 7. Moderación
 
 | Método | Endpoint                           | Descripción                  | ✔️  |
 | ------ | ---------------------------------- | ---------------------------- | --- |
@@ -70,7 +81,7 @@
 | POST   | `/moderation/reports/{id}/resolve` | Resolver denuncia            |     |
 
 ---
-## 🔔 7. Notificaciones
+## 🔔 8. Notificaciones
 
 | Método | Endpoint              | Descripción                    | ✔️  |
 | ------ | --------------------- | ------------------------------ | --- |
@@ -78,7 +89,7 @@
 | POST   | `/notifications/read` | Marcar como leídas             |     |
 
 ---
-## 📊 8. Métricas y Estadísticas
+## 📊 9. Métricas y Estadísticas
 
 | Método | Endpoint             | Descripción              | ✔️  |
 | ------ | -------------------- | ------------------------ | --- |
@@ -87,16 +98,17 @@
 | GET    | `/stats/activity`    | Actividad por usuario    |     |
 
 ---
-## 🗳️ 9. Sistema de Votaciones (Global)
+## 🗳️ 10. Sistema de Votaciones (Global)
 
-| Método | Endpoint                     | Descripción                   | ✔️  |
-| ------ | ---------------------------- | ----------------------------- | --- |
-| GET    | `/votes/pending`             | Ver propuestas activas        |     |
-| POST   | `/votes/{proposalId}`        | Emitir voto                   |     |
-| GET    | `/votes/{proposalId}/result` | Ver resultado parcial o final |     |
+| Método | Endpoint              | Descripción                           | ✔️  |
+| ------ | --------------------- | ------------------------------------- | --- |
+| GET    | `/vote/{id}`          | Ver mi voto en una propusta           | ✅   |
+| GET    | `/vote/{id}/results`  | Ver resultado actual de una propuesta | ✅   |
+| POST   | `/vote/{id}/{upvote}` | Votar en una propuesta (true/false)   | ✅   |
+| DELETE | `/vote/{id}`          | Borrar un voto                        | ✅   |
 
 ---
-## ⚙️ 10. Administración (Solo masters)
+## ⚙️ 11. Administración (Solo masters)
 
 | Método | Endpoint                  | Descripción                       | ✔️  |
 | ------ | ------------------------- | --------------------------------- | --- |
@@ -106,9 +118,3 @@
 | PUT    | `/admin/config`           | Ajustar parámetros del sistema    |     |
 
 ---
-## 🛡 Seguridad y Control de Acceso
-
-- Todos los endpoints protegidos con Spring Security (roles y permisos).
-- Tokens JWT con expiración y refresh.
-- Filtros de seguridad para rutas públicas/privadas.
-- Validación por dominio del correo institucional.
