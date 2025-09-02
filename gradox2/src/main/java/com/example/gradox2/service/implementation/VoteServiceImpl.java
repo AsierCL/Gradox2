@@ -4,18 +4,23 @@ import java.util.Optional;
 
 import org.springframework.stereotype.Service;
 
+import com.example.gradox2.persistence.entities.File;
+import com.example.gradox2.persistence.entities.FileProposal;
 import com.example.gradox2.persistence.entities.Proposal;
+import com.example.gradox2.persistence.entities.TempFile;
 import com.example.gradox2.persistence.entities.User;
 import com.example.gradox2.persistence.entities.Vote;
-import com.example.gradox2.persistence.repository.FileProposalRepository;
-import com.example.gradox2.persistence.repository.PromotionProposalRepository;
-import com.example.gradox2.persistence.repository.ProposalRepository;
-import com.example.gradox2.persistence.repository.VoteRepository;
+import com.example.gradox2.persistence.entities.enums.ProposalStatus;
+import com.example.gradox2.persistence.repository.*;
 import com.example.gradox2.service.interfaces.IVoteService;
 import com.example.gradox2.utils.GetAuthUser;
 
 @Service
 public class VoteServiceImpl implements IVoteService {
+
+    private final FileRepository fileRepository;
+
+    private final UserRepository userRepository;
     private final VoteRepository voteRepository;
     private final ProposalRepository proposalRepository;
     private final FileProposalRepository fileProposalRepository;
@@ -23,24 +28,32 @@ public class VoteServiceImpl implements IVoteService {
 
     public VoteServiceImpl(VoteRepository voteRepository, ProposalRepository proposalRepository,
             FileProposalRepository fileProposalRepository,
-            PromotionProposalRepository promotionProposalRepository) {
+            PromotionProposalRepository promotionProposalRepository, UserRepository userRepository, FileRepository fileRepository) {
         this.voteRepository = voteRepository;
         this.proposalRepository = proposalRepository;
         this.fileProposalRepository = fileProposalRepository;
         this.promotionProposalRepository = promotionProposalRepository;
+        this.userRepository = userRepository;
+        this.fileRepository = fileRepository;
     }
 
     public String voteProposal(Long proposalId, boolean upvote) {
         User auth = GetAuthUser.getAuthUser();
-        // Buscar la propuesta (sea del tipo que sea)
+        // Buscar a proposta
         Proposal proposal = proposalRepository.findById(proposalId)
                 .orElseThrow(() -> new RuntimeException("Proposal not found"));
 
-        // Comprobar si el usuario ya votó
+        if(proposal.getStatus() != ProposalStatus.PENDING){
+            return "This proposal is no longer open for voting.";
+        }
+
+        // Checkear si xa votou
         Optional<Vote> existingVote = voteRepository.findByVoterAndProposal(auth, proposal);
         if (existingVote.isPresent()) {
             return "You have already voted for this proposal.";
         }
+
+
 
         Vote vote = Vote.builder()
                 .voter(auth)
@@ -50,13 +63,47 @@ public class VoteServiceImpl implements IVoteService {
 
         voteRepository.save(vote);
 
+        checkProposalStatus(proposal);
+
         return "Vote registered successfully.";
+    }
+
+    private void checkProposalStatus(Proposal proposal) {
+        //De momento, para testear, si hay un voto a favor, se aprueba
+        long upvotes = voteRepository.countByProposalAndInFavor(proposal, true);
+        long downvotes = voteRepository.countByProposalAndInFavor(proposal, false);
+
+        if (upvotes >= 1) {
+            if(proposal instanceof FileProposal){
+                FileProposal fileProposal = (FileProposal) proposal;
+                fileProposal.setStatus(ProposalStatus.APPROVED);
+                TempFile tempFile = fileProposal.getTempFile();
+                if (tempFile != null) {
+                    File file = File.builder()
+                            .title(tempFile.getTitle())
+                            .description(tempFile.getDescription())
+                            .type(tempFile.getType())
+                            .fileData(tempFile.getFileData())
+                            .fileHash(tempFile.getFileHash())
+                            .uploader(tempFile.getUploader())
+                            .subject(tempFile.getSubject())
+                            .build();
+
+                            fileProposalRepository.save(fileProposal);
+                            fileRepository.save(file);
+               }
+            }
+        }
     }
 
     public String retractVote(Long proposalId) {
         User auth = GetAuthUser.getAuthUser();
         Proposal proposal = proposalRepository.findById(proposalId)
                 .orElseThrow(() -> new RuntimeException("Proposal not found"));
+
+        if(proposal.getStatus() != ProposalStatus.PENDING){
+            return "This proposal is no longer open for voting.";
+        }
 
         Optional<Vote> vote = voteRepository.findByVoterAndProposal(auth, proposal);
         if (vote.isPresent()) {
@@ -67,7 +114,6 @@ public class VoteServiceImpl implements IVoteService {
         return "No vote found for this proposal.";
     }
 
-    @Override
     public String getVoteCount(Long id) {
         Proposal proposal = proposalRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Proposal not found"));
@@ -78,8 +124,7 @@ public class VoteServiceImpl implements IVoteService {
         return "Upvotes: " + upvotes + ", Downvotes: " + downvotes;
     }
 
-    @Override
-    public String getVoteMyVote(Long id) {
+    public String getMyVote(Long id) {
         User auth = GetAuthUser.getAuthUser();
         Proposal proposal = proposalRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Proposal not found"));
@@ -91,5 +136,4 @@ public class VoteServiceImpl implements IVoteService {
 
         return "You have not voted on this proposal.";
     }
-
 }

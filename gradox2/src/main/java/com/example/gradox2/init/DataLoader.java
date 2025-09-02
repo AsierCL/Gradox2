@@ -8,7 +8,6 @@ import com.example.gradox2.persistence.repository.SubjectRepository;
 import com.example.gradox2.persistence.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 
-import java.io.File;
 import java.time.Instant;
 
 import org.springframework.boot.CommandLineRunner;

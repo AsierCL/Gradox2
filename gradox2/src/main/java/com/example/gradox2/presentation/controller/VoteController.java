@@ -28,7 +28,7 @@ public class VoteController {
 
     @GetMapping("/{id}")
     public ResponseEntity<String> getMyVoteProposal(@PathVariable Long id) {
-        return ResponseEntity.ok(voteService.getVoteMyVote(id));
+        return ResponseEntity.ok(voteService.getMyVote(id));
     }
 
 

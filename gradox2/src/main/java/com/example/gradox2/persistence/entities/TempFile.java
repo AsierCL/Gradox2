@@ -13,7 +13,7 @@ import lombok.*;
 @AllArgsConstructor
 @NoArgsConstructor
 @Entity
-@Table(name = "files")
+@Table(name = "temp_files")
 public class TempFile {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
