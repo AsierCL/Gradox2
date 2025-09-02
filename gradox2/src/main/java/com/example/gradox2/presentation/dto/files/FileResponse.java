@@ -20,5 +20,4 @@ public class FileResponse {
     private FileType fileType;
     private String subject;
     private String uploaderUsername;
-    private MultipartFile file;
 }

@@ -19,7 +19,7 @@ import com.example.gradox2.utils.GetAuthUser;
 public class VoteServiceImpl implements IVoteService {
 
     private final FileRepository fileRepository;
-
+    private final TempFileRepository tempFileRepository;
     private final UserRepository userRepository;
     private final VoteRepository voteRepository;
     private final ProposalRepository proposalRepository;
@@ -27,7 +27,7 @@ public class VoteServiceImpl implements IVoteService {
     private final PromotionProposalRepository promotionProposalRepository;
 
     public VoteServiceImpl(VoteRepository voteRepository, ProposalRepository proposalRepository,
-            FileProposalRepository fileProposalRepository,
+            FileProposalRepository fileProposalRepository, TempFileRepository tempFileRepository,
             PromotionProposalRepository promotionProposalRepository, UserRepository userRepository, FileRepository fileRepository) {
         this.voteRepository = voteRepository;
         this.proposalRepository = proposalRepository;
@@ -35,6 +35,7 @@ public class VoteServiceImpl implements IVoteService {
         this.promotionProposalRepository = promotionProposalRepository;
         this.userRepository = userRepository;
         this.fileRepository = fileRepository;
+        this.tempFileRepository = tempFileRepository;
     }
 
     public String voteProposal(Long proposalId, boolean upvote) {
@@ -89,8 +90,11 @@ public class VoteServiceImpl implements IVoteService {
                             .subject(tempFile.getSubject())
                             .build();
 
-                            fileProposalRepository.save(fileProposal);
+                            fileProposal.setTempFile(null);
+                            fileProposal.setFile(file);
                             fileRepository.save(file);
+                            tempFileRepository.delete(tempFile);
+                            fileProposalRepository.save(fileProposal);
                }
             }
         }

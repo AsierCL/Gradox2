@@ -116,12 +116,15 @@ public class FileProposalServiceImpl implements IFileProposalService {
     @Transactional
     public FileProposalResponse getFileProposalById(Long id) {
         return FileProposalMapper.toFileProposalResponse(fileProposalRepository.findById(id).orElseThrow(() -> new NotFoundException("Proposal not found")));
-
     }
 
     public ResponseEntity<ByteArrayResource> downloadFileFromProposal(Long id) {
         FileProposal proposal = fileProposalRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Proposal not found"));
+
+        if (proposal.getStatus() != ProposalStatus.PENDING) {
+            throw new NotFoundException("Proposal is not pending");
+        }
 
         TempFile tempFile = proposal.getTempFile();
         if (tempFile == null) {

@@ -11,8 +11,8 @@ import lombok.*;
 public class FileProposal extends Proposal {
 
     // Archivo temporal asociado a la propuesta
-    @ManyToOne
-    @JoinColumn(name = "temp_file_id", nullable = false)
+    @OneToOne(cascade = CascadeType.ALL, orphanRemoval = true)
+    @JoinColumn(name = "temp_file_id", nullable = true)
     private TempFile tempFile;
 
     // Archivo definitivo, solo se llena cuando se aprueba
