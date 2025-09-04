@@ -72,6 +72,15 @@ public class User implements UserDetails{
     @Builder.Default
     private Instant lastLogin = Instant.now();
 
+    @Builder.Default
+    @Column(nullable = false)
+    private boolean enabled = false;
+
+    @Override
+    public boolean isEnabled() {
+        return enabled;
+    }
+
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         return List.of(new SimpleGrantedAuthority("ROLE_" + role.name()));

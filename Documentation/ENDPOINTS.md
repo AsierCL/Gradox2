@@ -105,7 +105,7 @@
 | GET    | `/vote/{id}`          | Ver mi voto en una propusta           | ✅   |
 | GET    | `/vote/{id}/results`  | Ver resultado actual de una propuesta | ✅   |
 | POST   | `/vote/{id}/{upvote}` | Votar en una propuesta (true/false)   | ✅   |
-| DELETE | `/vote/{id}`          | Borrar un voto                        | ✅   |
+| DELETE | `/vote/{id}`          | Borrar mi voto                        | ✅   |
 
 ---
 ## ⚙️ 11. Administración (Solo masters)

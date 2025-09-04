@@ -15,10 +15,10 @@ import com.example.gradox2.service.exceptions.NotFoundException;
 public class GlobalExceptionHandler {
 
     @ExceptionHandler(AlreadyExistsException.class)
-    public ResponseEntity<ErrorDTO> handleUserAlreadyExists(AlreadyExistsException ex) {
+    public ResponseEntity<ErrorDTO> handleAlreadyExists(AlreadyExistsException ex) {
         ErrorDTO error = ErrorDTO.builder()
                 .errorMessage(ex.getMessage())
-                .errorCode("USER_ALREADY_EXISTS")
+                .errorCode("ALREADY_EXIST_ERROR")
                 .build();
         return new ResponseEntity<>(error, HttpStatus.CONFLICT);
     }

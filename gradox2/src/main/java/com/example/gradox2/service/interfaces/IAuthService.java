@@ -7,4 +7,5 @@ import com.example.gradox2.presentation.dto.auth.RegisterRequest;
 public interface IAuthService {
     AuthResponse login(LoginRequest request);
     AuthResponse register(RegisterRequest request);
+    boolean verifyToken(String token);
 }
