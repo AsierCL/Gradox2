@@ -77,6 +77,8 @@ public class AuthServiceImpl implements IAuthService {
         emailService.sendEmail(user.getEmail(), "Verifica tu cuenta",
                 "Haz clic aquí para verificar tu cuenta: " + verifyUrl);
 
+        System.out.println(user.getUsername() +  "Haz clic aquí para verificar tu cuenta: " + verifyUrl);
+
         return new AuthResponse(null, user.getUsername(), user.getRole().name());
     }
 

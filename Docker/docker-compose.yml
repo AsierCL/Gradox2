@@ -6,14 +6,34 @@ services:
     container_name: postgresDB_Gradox2
     restart: always
     environment:
-      POSTGRES_USER: gradox
-      POSTGRES_PASSWORD: 12345678
-      POSTGRES_DB: gradoxdb
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
     ports:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
+    profiles: ["db", "full"]
+
+  app:
+    build:
+      context: ..
+      dockerfile: Docker/Dockerfile
+    container_name: gradox2_app
+    depends_on:
+      - db
+    environment:
+      SPRING_DATASOURCE_URL: ${SPRING_DATASOURCE_URL}
+      SPRING_DATASOURCE_USERNAME: ${SPRING_DATASOURCE_USERNAME}
+      SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD}
+      SPRING_MAIL_HOST: ${SPRING_MAIL_HOST}
+      SPRING_MAIL_PORT: ${SPRING_MAIL_PORT}
+      SPRING_MAIL_USERNAME: ${SPRING_MAIL_USERNAME}
+      SPRING_MAIL_PASSWORD: ${SPRING_MAIL_PASSWORD}
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE}
+    ports:
+      - "8080:8080"
+    profiles: ["full"]
 
 volumes:
   pgdata:
-

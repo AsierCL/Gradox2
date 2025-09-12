@@ -32,6 +32,7 @@ public class DataLoader {
                 .reputation(10.0)
                 .createdAt(Instant.now())
                 .lastLogin(Instant.now())
+                .enabled(true)
                 .build());
 
                 userRepository.save(User.builder()
@@ -42,6 +43,7 @@ public class DataLoader {
                 .reputation(50.0)
                 .createdAt(Instant.now())
                 .lastLogin(Instant.now())
+                .enabled(true)
                 .build());
 
                 userRepository.save(User.builder()
@@ -52,6 +54,7 @@ public class DataLoader {
                 .reputation(5.0)
                 .createdAt(Instant.now())
                 .lastLogin(Instant.now())
+                .enabled(true)
                 .build());
 
                 userRepository.save(User.builder()
@@ -62,6 +65,7 @@ public class DataLoader {
                 .reputation(7.5)
                 .createdAt(Instant.now())
                 .lastLogin(Instant.now())
+                .enabled(true)
                 .build());
 
                 userRepository.save(User.builder()
@@ -72,6 +76,7 @@ public class DataLoader {
                 .reputation(20.0)
                 .createdAt(Instant.now())
                 .lastLogin(Instant.now())
+                .enabled(true)
                 .build());
 
                 userRepository.save(User.builder()
@@ -82,6 +87,7 @@ public class DataLoader {
                 .reputation(12.0)
                 .createdAt(Instant.now())
                 .lastLogin(Instant.now())
+                .enabled(true)
                 .build());
 
                 userRepository.save(User.builder()
@@ -92,6 +98,7 @@ public class DataLoader {
                 .reputation(30.5)
                 .createdAt(Instant.now())
                 .lastLogin(Instant.now())
+                .enabled(true)
                 .build());
 
                 userRepository.save(User.builder()
@@ -102,6 +109,7 @@ public class DataLoader {
                 .reputation(8.5)
                 .createdAt(Instant.now())
                 .lastLogin(Instant.now())
+                .enabled(true)
                 .build());
 
                 userRepository.save(User.builder()
@@ -112,6 +120,7 @@ public class DataLoader {
                 .reputation(60.0)
                 .createdAt(Instant.now())
                 .lastLogin(Instant.now())
+                .enabled(true)
                 .build());
 
                 userRepository.save(User.builder()
@@ -122,6 +131,7 @@ public class DataLoader {
                 .reputation(15.0)
                 .createdAt(Instant.now())
                 .lastLogin(Instant.now())
+                .enabled(true)
                 .build());
 
                 userRepository.save(User.builder()
@@ -132,6 +142,7 @@ public class DataLoader {
                 .reputation(5.5)
                 .createdAt(Instant.now())
                 .lastLogin(Instant.now())
+                .enabled(true)
                 .build());
 
                 userRepository.save(User.builder()
@@ -142,6 +153,7 @@ public class DataLoader {
                 .reputation(27.0)
                 .createdAt(Instant.now())
                 .lastLogin(Instant.now())
+                .enabled(true)
                 .build());
 
                 userRepository.save(User.builder()
@@ -152,6 +164,7 @@ public class DataLoader {
                 .reputation(80.0)
                 .createdAt(Instant.now())
                 .lastLogin(Instant.now())
+                .enabled(true)
                 .build());
 
                 userRepository.save(User.builder()
@@ -162,6 +175,7 @@ public class DataLoader {
                 .reputation(13.0)
                 .createdAt(Instant.now())
                 .lastLogin(Instant.now())
+                .enabled(true)
                 .build());
 
                 userRepository.save(User.builder()
@@ -172,6 +186,7 @@ public class DataLoader {
                 .reputation(55.0)
                 .createdAt(Instant.now())
                 .lastLogin(Instant.now())
+                .enabled(true)
                 .build());
 
                 userRepository.save(User.builder()
@@ -182,6 +197,7 @@ public class DataLoader {
                 .reputation(9.5)
                 .createdAt(Instant.now())
                 .lastLogin(Instant.now())
+                .enabled(true)
                 .build());
 
                 userRepository.save(User.builder()
@@ -192,6 +208,7 @@ public class DataLoader {
                 .reputation(33.0)
                 .createdAt(Instant.now())
                 .lastLogin(Instant.now())
+                .enabled(true)
                 .build());
 
                 userRepository.save(User.builder()
@@ -202,6 +219,7 @@ public class DataLoader {
                 .reputation(17.0)
                 .createdAt(Instant.now())
                 .lastLogin(Instant.now())
+                .enabled(true)
                 .build());
 
                 userRepository.save(User.builder()
@@ -212,6 +230,7 @@ public class DataLoader {
                 .reputation(6.0)
                 .createdAt(Instant.now())
                 .lastLogin(Instant.now())
+                .enabled(true)
                 .build());
 
                 userRepository.save(User.builder()
@@ -222,6 +241,7 @@ public class DataLoader {
                 .reputation(70.0)
                 .createdAt(Instant.now())
                 .lastLogin(Instant.now())
+                .enabled(true)
                 .build());
 
                 userRepository.save(User.builder()
@@ -232,6 +252,7 @@ public class DataLoader {
                 .reputation(11.0)
                 .createdAt(Instant.now())
                 .lastLogin(Instant.now())
+                .enabled(true)
                 .build());
 
                 userRepository.save(User.builder()
@@ -242,6 +263,7 @@ public class DataLoader {
                 .reputation(65.0)
                 .createdAt(Instant.now())
                 .lastLogin(Instant.now())
+                .enabled(true)
                 .build());
 
                 userRepository.save(User.builder()
@@ -252,7 +274,11 @@ public class DataLoader {
                 .reputation(14.0)
                 .createdAt(Instant.now())
                 .lastLogin(Instant.now())
+                .enabled(true)
                 .build());
+
+                System.out.println("✅ Usuarios de prueba insertados en la base de datos.");
+
 
                 userRepository.save(User.builder()
                 .username("mariana010")
@@ -262,6 +288,7 @@ public class DataLoader {
                 .reputation(29.0)
                 .createdAt(Instant.now())
                 .lastLogin(Instant.now())
+                .enabled(true)
                 .build());
 
                 Course primero = courseRepository.save(Course.builder()
@@ -310,8 +337,6 @@ public class DataLoader {
                 ));
 
                 System.out.println("✅ Cursos de prueba insertados en la base de datos.");
-
-                System.out.println("✅ Usuarios de prueba insertados en la base de datos.");
             }
         };
     }

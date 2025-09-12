@@ -6,6 +6,7 @@ target/
 
 # Ignore environment variables
 .env
+Docker/.env
 
 ### STS ###
 .apt_generated
