@@ -46,28 +46,30 @@ Gradox 2.0 usa PostgreSQL y está preparada para usar Docker.
 ```bash
 cd Docker
 ```
+- Antes de levantar la app, debes crear un .env en este directorio, con los siguientes datos:
+```
+# Base de datos
+POSTGRES_USER=xxxxxxxx
+POSTGRES_PASSWORD=xxxxxxxx
+POSTGRES_DB=xxxxxxxx
+
+# Spring DataSource
+SPRING_DATASOURCE_URL=jdbc:postgresql://xxxxxxxx
+SPRING_DATASOURCE_USERNAME=xxxxxxxx
+SPRING_DATASOURCE_PASSWORD=xxxxxxxx
+
+# Mail
+SPRING_MAIL_HOST=smtp.gmail.com
+SPRING_MAIL_PORT=587
+SPRING_MAIL_USERNAME=xxxxxxxx
+SPRING_MAIL_PASSWORD=xxxxxxxx
+
+# Spring profile
+SPRING_PROFILES_ACTIVE=docker
+```
 - Levanta el contenedor con Docker Compose
 ```bash
-docker compose up -d
-```
-- Verifica que la base de datos está corriendo.
-```bash
-docker ps
-```
-
-## 4. Compilar y Ejecutar la Aplicación
-
-- Entra en el directorio raiz de la aplicación:
-```bash
-cd ../gradox2
-```
-- Compila con Maven
-```bash
-./mvnw clean install
-```
-- Ejecuta Spring Boot
-```bash
-./mvnw spring-boot:run
+docker-compose --env-file .env --profile full up --build
 ```
 - La aplicación está disponible en:
 ```bash
