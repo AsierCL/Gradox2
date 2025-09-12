@@ -33,6 +33,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(authz -> authz
                                 .requestMatchers("/admin/**").hasRole("MASTER") // Sin implementar aún
                                 .requestMatchers("/api/auth/**").permitAll()
+                                .requestMatchers("/health**").permitAll()
                                 .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
