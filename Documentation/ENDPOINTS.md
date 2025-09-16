@@ -6,7 +6,7 @@
 | Método | Endpoint                       | Descripción                              | ✔️  |
 | ------ | ------------------------------ | ---------------------------------------- | --- |
 | POST   | `/auth/register`               | Registro con email institucional         | ✅   |
-| POST   | `/auth/verify-email`           | Verificar email con token                |     |
+| POST   | `/auth/verify-email`           | Verificar email con token                | ✅   |
 | POST   | `/auth/login`                  | Login con email y contraseña             | ✅   |
 | POST   | `/auth/token/refresh`          | Renovar token de acceso                  |     |
 | POST   | `/auth/logout`                 | Cierre de sesión                         |     |
@@ -57,7 +57,7 @@
 | GET    | `/files/{id}/download`      | Descargar archivo                        | ✅   |
 | DELETE | `/files/{id}`               | Proponer eliminación (requiere votación) |     |
 | POST   | `/files/{id}/vote/{upvote}` | Votar para puntuar un archivo            |     |
-| DELETE | `/files/{id}/vote`<br>      | Quitar votacion de un archivo            |     |
+| DELETE | `/files/{id}/vote`      | Quitar votacion de un archivo            |     |
 
 
 ---
