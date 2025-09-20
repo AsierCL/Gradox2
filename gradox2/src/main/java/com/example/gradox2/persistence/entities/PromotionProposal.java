@@ -6,6 +6,8 @@ import lombok.*;
 @Getter
 @Setter
 @NoArgsConstructor
+@AllArgsConstructor
+@Builder
 @Entity
 @DiscriminatorValue("PROMOTION")
 public class PromotionProposal extends Proposal {

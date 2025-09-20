@@ -64,7 +64,7 @@ public class FileProposalServiceImpl implements IFileProposalService {
                     .build();
             tempFileRepository.save(tempFile);
 
-            // 4. Crear UploadProposal asociada al TempFile
+            // TODO : FACER ESTO CON BUILDER E NON HARDCODEAR OS VALORES
             FileProposal proposal = new FileProposal();
             proposal.setProposer(uploader);
             proposal.setTempFile(tempFile);

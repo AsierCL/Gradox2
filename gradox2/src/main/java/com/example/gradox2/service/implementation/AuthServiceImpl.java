@@ -17,7 +17,6 @@ import com.example.gradox2.utils.EmailService;
 
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.HttpClientErrorException.Unauthorized;
 
 @Service
 public class AuthServiceImpl implements IAuthService {
