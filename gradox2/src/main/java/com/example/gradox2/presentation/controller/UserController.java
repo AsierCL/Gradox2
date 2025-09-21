@@ -47,18 +47,18 @@ public class UserController {
     }
 
     @GetMapping("/all")
-    public ResponseEntity<List<PublicProfileResponse>> getAllUsers() {
-        List<PublicProfileResponse> users = userService.getAllUsers();
-        return ResponseEntity.ok(users);
-    }
-
-    @GetMapping("/paged")
-    public ResponseEntity<Page<PublicProfileResponse>> getUsers(
+    public ResponseEntity<?> getUsers(
+            @RequestParam(defaultValue = "false") Boolean paged,
             @RequestParam(defaultValue = "0") int page,
-            // @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "10") int size,
             @RequestParam(defaultValue = "id") String sortBy) {
-        Page<PublicProfileResponse> users = userService.getUsersPaged(page, 5, sortBy);
-        return ResponseEntity.ok(users);
-    }
 
+        if (paged) {
+            Page<PublicProfileResponse> users = userService.getUsersPaged(page, size, sortBy);
+            return ResponseEntity.ok(users);
+        } else {
+            List<PublicProfileResponse> users = userService.getAllUsers();
+            return ResponseEntity.ok(users);
+        }
+    }
 }

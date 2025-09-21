@@ -11,7 +11,9 @@ import com.example.gradox2.service.interfaces.IFileProposalService;
 import java.util.List;
 
 import org.springframework.core.io.ByteArrayResource;
+import org.springframework.data.domain.Page;
 import org.springframework.http.HttpHeaders;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ModelAttribute;
@@ -35,9 +37,20 @@ public class FileProposalController {
         return ResponseEntity.ok(fileProposalService.uploadFileProposal(fileProposalRequest));
     }
 
-    @GetMapping("/all")
-    public ResponseEntity<List<FileProposalResponse>> getAllUploadProposals() {
-        return ResponseEntity.ok(fileProposalService.getAllFileProposals());
+    @GetMapping
+    public ResponseEntity<?> getAllUploadProposals(
+            @RequestParam(defaultValue = "false") Boolean paged,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "id") String sortBy) {
+
+        if (paged) {
+            Page<FileProposalResponse> proposals = fileProposalService.getFileProposalsPaged(page, size, sortBy);
+            return ResponseEntity.ok(proposals);
+        } else {
+            List<FileProposalResponse> proposals = fileProposalService.getAllFileProposals();
+            return ResponseEntity.ok(proposals);
+        }
     }
 
     @GetMapping("/{id}")

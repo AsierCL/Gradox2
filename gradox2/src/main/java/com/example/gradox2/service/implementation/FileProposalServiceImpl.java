@@ -5,6 +5,10 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.List;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -104,9 +108,13 @@ public class FileProposalServiceImpl implements IFileProposalService {
     }
 
     public List<FileProposalResponse> getAllFileProposals() {
-        return fileProposalRepository.findAll().stream()
-                .map(FileProposalMapper::toFileProposalResponse)
-                .toList();
+        return getFileProposalsPaged(0, Integer.MAX_VALUE, "id").getContent();
+    }
+
+    public Page<FileProposalResponse> getFileProposalsPaged(int page, int size, String sortBy) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by(sortBy).descending());
+        Page<FileProposal> proposalPage = fileProposalRepository.findAll(pageable);
+        return proposalPage.map(FileProposalMapper::toFileProposalResponse);
     }
 
     @Transactional

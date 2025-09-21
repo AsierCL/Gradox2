@@ -52,20 +52,12 @@ public class UserServiceImpl implements IUserService {
     }
 
     public List<PublicProfileResponse> getAllUsers() {
-        // 1. Obtener todos los usuarios de la base de datos
-        List<User> users = userRepository.findAll();
-
-        // 2. Mapear cada usuario a PublicProfileResponse
-        return users.stream()
-                .map(UserMapper.mapper::toPublicProfileResponse)
-                .toList();
+        return getUsersPaged(0, Integer.MAX_VALUE, "id").getContent();
     }
 
     public Page<PublicProfileResponse> getUsersPaged(int page, int size, String sortBy) {
         Pageable pageable = PageRequest.of(page, size, Sort.by(sortBy).descending());
         Page<User> userPage = userRepository.findAll(pageable);
-
-        // Mapear cada User a PublicProfileResponse
         return userPage.map(UserMapper.mapper::toPublicProfileResponse);
     }
 

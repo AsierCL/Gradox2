@@ -3,6 +3,10 @@ package com.example.gradox2.service.implementation;
 import java.util.List;
 
 import org.hibernate.usertype.UserType;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
 import com.example.gradox2.persistence.entities.PromotionProposal;
@@ -54,9 +58,14 @@ public class RoleServiceImpl implements IRoleService{
 
     @Override
     public List<PromotionProposalResponse> getPendingPromoteProposals() {
-        return promotionProposalRepository.findByStatus(ProposalStatus.PENDING).stream()
-                .map(PromotionProposerMapper::toPromotionProposalResponse)
-                .toList();
+        return getPendingPromoteProposalsPaged(0, Integer.MAX_VALUE, "id").getContent();
+    }
+
+    @Override
+    public Page<PromotionProposalResponse> getPendingPromoteProposalsPaged(int page, int size, String sortBy) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by(sortBy).descending());
+        Page<PromotionProposal> proposalPage = promotionProposalRepository.findByStatus(ProposalStatus.PENDING, pageable);
+        return proposalPage.map(PromotionProposerMapper::toPromotionProposalResponse);
     }
 
     @Override

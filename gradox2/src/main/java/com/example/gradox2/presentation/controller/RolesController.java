@@ -8,6 +8,7 @@ import com.example.gradox2.service.interfaces.IRoleService;
 
 import java.util.List;
 
+import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -36,8 +37,19 @@ public class RolesController {
     }
 
     @GetMapping("/pending")
-    public ResponseEntity<List<PromotionProposalResponse>> getPendingPromoteProposals() {
-        return ResponseEntity.ok(roleService.getPendingPromoteProposals());
+    public ResponseEntity<?> getPendingPromoteProposals(
+            @RequestParam(defaultValue = "false") Boolean paged,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "id") String sortBy) {
+
+        if (paged) {
+            Page<PromotionProposalResponse> proposals = roleService.getPendingPromoteProposalsPaged(page, size, sortBy);
+            return ResponseEntity.ok(proposals);
+        } else {
+            List<PromotionProposalResponse> proposals = roleService.getPendingPromoteProposals();
+            return ResponseEntity.ok(proposals);
+        }
     }
 
     @GetMapping("/{id}")
