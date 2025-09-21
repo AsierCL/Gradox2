@@ -26,7 +26,7 @@ public class RolesController {
     }
 
     @PostMapping("/request")
-    public ResponseEntity<String> promoteToMaster() {
+    public ResponseEntity<PromotionProposalResponse> promoteToMaster() {
         return ResponseEntity.ok(roleService.promoteToMaster());
     }
 
@@ -46,7 +46,7 @@ public class RolesController {
     }
 
     @PostMapping("/demote/{id}")
-    public ResponseEntity<String> demoteToUser(@PathVariable Long id) {
+    public ResponseEntity<PromotionProposalResponse> demoteToUser(@PathVariable Long id) {
         return ResponseEntity.ok(roleService.demoteToUser(id));
     }
 

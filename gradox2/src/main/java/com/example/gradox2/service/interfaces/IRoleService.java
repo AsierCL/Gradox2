@@ -6,11 +6,11 @@ import com.example.gradox2.presentation.dto.promotionProposal.PromotionProposalR
 
 public interface IRoleService {
 
-    String promoteToMaster();
+    PromotionProposalResponse promoteToMaster();
 
     List<PromotionProposalResponse> getPendingPromoteProposals();
 
-    String demoteToUser(Long id);
+    PromotionProposalResponse demoteToUser(Long id);
 
     String deleteMyPromoteRequest();
 

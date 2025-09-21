@@ -3,6 +3,7 @@ package com.example.gradox2.presentation.controller;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.example.gradox2.persistence.entities.TempFile;
 import com.example.gradox2.presentation.dto.fileProposal.FileProposalResponse;
 import com.example.gradox2.presentation.dto.fileProposal.UploadFileProposalRequest;
 import com.example.gradox2.service.interfaces.IFileProposalService;
@@ -10,6 +11,8 @@ import com.example.gradox2.service.interfaces.IFileProposalService;
 import java.util.List;
 
 import org.springframework.core.io.ByteArrayResource;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -28,8 +31,8 @@ public class FileProposalController {
     }
 
     @PostMapping("/upload")
-    public ResponseEntity<String> uploadProposal(@ModelAttribute UploadFileProposalRequest fileProposalRequest) {
-        return fileProposalService.uploadFileProposal(fileProposalRequest);
+    public ResponseEntity<FileProposalResponse> uploadProposal(@ModelAttribute UploadFileProposalRequest fileProposalRequest) {
+        return ResponseEntity.ok(fileProposalService.uploadFileProposal(fileProposalRequest));
     }
 
     @GetMapping("/all")
@@ -44,11 +47,18 @@ public class FileProposalController {
 
     @GetMapping("/{id}/download")
     public ResponseEntity<ByteArrayResource> downloadProposalFile(@PathVariable Long id) {
-        return fileProposalService.downloadFileFromProposal(id);
+        TempFile file = fileProposalService.downloadFileFromProposal(id);
+        ByteArrayResource resource = new ByteArrayResource(file.getFileData());
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment;filename=" + file.getTitle())
+                .contentType(MediaType.APPLICATION_OCTET_STREAM)
+                .contentLength(file.getFileData().length)
+                .body(resource);
     }
 
     @GetMapping("/{id}/delete")
     public ResponseEntity<String> deleteUploadProposal(@PathVariable Long id) {
-        return fileProposalService.deleteFileProposal(id);
+        return ResponseEntity.ok(fileProposalService.deleteFileProposal(id));
     }
 }

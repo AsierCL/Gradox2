@@ -32,7 +32,7 @@ public class RoleServiceImpl implements IRoleService{
     }
 
     @Override
-    public String promoteToMaster() {
+    public PromotionProposalResponse promoteToMaster() {
         User user = GetAuthUser.getAuthUser();
 
         if(user.getRole().equals(UserRole.MASTER)) {
@@ -49,18 +49,18 @@ public class RoleServiceImpl implements IRoleService{
 
         promotionProposalRepository.save(proposal);
 
-        return "Solicitud de promoción a Master enviada.";
+        return PromotionProposerMapper.toPromotionProposalResponse(proposal);
     }
 
     @Override
     public List<PromotionProposalResponse> getPendingPromoteProposals() {
         return promotionProposalRepository.findByStatus(ProposalStatus.PENDING).stream()
-                .map(PromotionProposerMapper::toPromoteProposalResponse)
+                .map(PromotionProposerMapper::toPromotionProposalResponse)
                 .toList();
     }
 
     @Override
-    public String demoteToUser(Long id) {
+    public PromotionProposalResponse demoteToUser(Long id) {
         // TODO Auto-generated method stub
         throw new UnsupportedOperationException("Unimplemented method 'demoteToUser'");
     }
@@ -69,12 +69,12 @@ public class RoleServiceImpl implements IRoleService{
     @Transactional
     public String deleteMyPromoteRequest() {
         promotionProposalRepository.deleteByProposer(GetAuthUser.getAuthUser());
-        return "Solicitud de promoción eliminada.";
+        return "Promotion request deleted successfully";
     }
 
     @Override
     public PromotionProposalResponse getPromoteProposalById(Long id) {
-        return PromotionProposerMapper.toPromoteProposalResponse(promotionProposalRepository.findById(id)
+        return PromotionProposerMapper.toPromotionProposalResponse(promotionProposalRepository.findById(id)
             .orElseThrow(() -> new NotFoundException("Proposal not found")));
     }
 

@@ -5,7 +5,7 @@ import com.example.gradox2.presentation.dto.promotionProposal.PromotionProposalR
 
 public class PromotionProposerMapper {
 
-    public static final PromotionProposalResponse toPromoteProposalResponse(PromotionProposal promotionProposal) {
+    public static final PromotionProposalResponse toPromotionProposalResponse(PromotionProposal promotionProposal) {
         return PromotionProposalResponse.builder()
                 .id(promotionProposal.getId())
                 .proposer(promotionProposal.getProposer() != null ? promotionProposal.getProposer().getUsername() : null)

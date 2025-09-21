@@ -5,10 +5,6 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.List;
 
-import org.springframework.core.io.ByteArrayResource;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,7 +19,10 @@ import com.example.gradox2.persistence.repository.TempFileRepository;
 import com.example.gradox2.presentation.dto.fileProposal.FileProposalResponse;
 import com.example.gradox2.presentation.dto.fileProposal.UploadFileProposalRequest;
 import com.example.gradox2.persistence.repository.FileProposalRepository;
+import com.example.gradox2.service.exceptions.InternalServerErrorException;
+import com.example.gradox2.service.exceptions.InvalidFileOperation;
 import com.example.gradox2.service.exceptions.NotFoundException;
+import com.example.gradox2.service.exceptions.ProposalClosedException;
 import com.example.gradox2.service.interfaces.IFileProposalService;
 import com.example.gradox2.utils.GetAuthUser;
 import com.example.gradox2.utils.mapper.FileProposalMapper;
@@ -44,15 +43,13 @@ public class FileProposalServiceImpl implements IFileProposalService {
     }
 
     @Transactional
-    public ResponseEntity<String> uploadFileProposal(UploadFileProposalRequest dto) {
-        // 1. Buscar la materia
+    public FileProposalResponse uploadFileProposal(UploadFileProposalRequest dto) {
         Subject subject = subjectRepository.findById(dto.getSubjectId())
                 .orElseThrow(() -> new NotFoundException("Subject not found"));
 
         User uploader = GetAuthUser.getAuthUser();
 
         try {
-            // 3. Crear TempFile con el archivo subido
             TempFile tempFile = TempFile.builder()
                     .title(dto.getTitle())
                     .description(dto.getDescription())
@@ -73,26 +70,25 @@ public class FileProposalServiceImpl implements IFileProposalService {
             proposal.setApprovalThreshold(0.6);
             fileProposalRepository.save(proposal);
 
-            // 5. Devolver respuesta
-            return ResponseEntity.ok("Archivo enviado para revisión. ID de propuesta: " + proposal.getId());
+            return FileProposalMapper.toFileProposalResponse(proposal);
 
         } catch (IOException e) {
-            return ResponseEntity.status(500).body("Error al procesar el archivo: " + e.getMessage());
+            throw new InternalServerErrorException("Error processing file", e);
         }
     }
 
-    public ResponseEntity<String> deleteFileProposal(Long id) {
+    public String deleteFileProposal(Long id) {
         User authUser = GetAuthUser.getAuthUser();
 
         FileProposal proposal = fileProposalRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Proposal not found"));
 
         if(proposal.getStatus() != ProposalStatus.PENDING) {
-            return ResponseEntity.status(400).body("Only pending proposals can be deleted");
+            throw new ProposalClosedException("Only pending proposals can be deleted");
         }
 
         if(proposal.getProposer().equals(authUser) == false) {
-            return ResponseEntity.status(403).body("You can only delete your own proposals");
+            throw new InvalidFileOperation("Only the proposer can delete this proposal");
         }
 
         // Eliminar el TempFile asociado
@@ -104,7 +100,7 @@ public class FileProposalServiceImpl implements IFileProposalService {
         // Eliminar la propuesta
         fileProposalRepository.delete(proposal);
 
-        return ResponseEntity.ok("Proposal and associated TempFile deleted successfully");
+        return "Proposal and associated TempFile deleted.";
     }
 
     public List<FileProposalResponse> getAllFileProposals() {
@@ -118,7 +114,7 @@ public class FileProposalServiceImpl implements IFileProposalService {
         return FileProposalMapper.toFileProposalResponse(fileProposalRepository.findById(id).orElseThrow(() -> new NotFoundException("Proposal not found")));
     }
 
-    public ResponseEntity<ByteArrayResource> downloadFileFromProposal(Long id) {
+    public TempFile downloadFileFromProposal(Long id) {
         FileProposal proposal = fileProposalRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Proposal not found"));
 
@@ -131,13 +127,7 @@ public class FileProposalServiceImpl implements IFileProposalService {
             throw new NotFoundException("No TempFile associated with this proposal");
         }
 
-        ByteArrayResource resource = new ByteArrayResource(tempFile.getFileData());
-
-        return ResponseEntity.ok()
-                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment;filename=" + tempFile.getTitle())
-                .contentType(MediaType.APPLICATION_OCTET_STREAM)
-                .contentLength(tempFile.getFileData().length)
-                .body(resource);
+        return tempFile;
     }
 
     private String generateFileHash(byte[] fileData) {

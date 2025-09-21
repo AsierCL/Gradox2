@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import com.example.gradox2.presentation.dto.auth.ErrorDTO;
 import com.example.gradox2.service.exceptions.UnauthenticatedAccessException;
 import com.example.gradox2.service.exceptions.AlreadyExistsException;
+import com.example.gradox2.service.exceptions.InternalServerErrorException;
 import com.example.gradox2.service.exceptions.InvalidRoleOperationException;
 import com.example.gradox2.service.exceptions.NotFoundException;
 import com.example.gradox2.service.exceptions.ProposalClosedException;
@@ -59,5 +60,14 @@ public class GlobalExceptionHandler {
                 .errorCode("PROPOSAL_CLOSED")
                 .build();
         return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(InternalServerErrorException.class)
+    public ResponseEntity<ErrorDTO> handleInternalServerError(InternalServerErrorException ex) {
+        ErrorDTO error = ErrorDTO.builder()
+                .errorMessage("An unexpected error occurred. Please try again later.")
+                .errorCode("INTERNAL_SERVER_ERROR")
+                .build();
+        return new ResponseEntity<>(error, HttpStatus.INTERNAL_SERVER_ERROR);
     }
 }
