@@ -1,11 +1,14 @@
 package com.example.gradox2.init;
 import com.example.gradox2.persistence.entities.Course;
 import com.example.gradox2.persistence.entities.User;
+import com.example.gradox2.persistence.entities.VoteConfig;
 import com.example.gradox2.persistence.entities.enums.UserRole;
 import com.example.gradox2.persistence.repository.CourseRepository;
 import com.example.gradox2.persistence.repository.FileRepository;
 import com.example.gradox2.persistence.repository.SubjectRepository;
 import com.example.gradox2.persistence.repository.UserRepository;
+import com.example.gradox2.persistence.repository.VoteConfigRepository;
+
 import lombok.RequiredArgsConstructor;
 
 import java.time.Instant;
@@ -21,7 +24,11 @@ public class DataLoader {
     private final PasswordEncoder passwordEncoder;
 
     @Bean
-    CommandLineRunner initDatabase(UserRepository userRepository, FileRepository fileRepository, SubjectRepository subjectRepository, CourseRepository courseRepository) {
+    CommandLineRunner initDatabase(UserRepository userRepository,
+                                    FileRepository fileRepository,
+                                    SubjectRepository subjectRepository,
+                                    CourseRepository courseRepository,
+                                    VoteConfigRepository voteConfigRepository) {
         return args -> {
             if (userRepository.count() < 3) { // Solo carga si non hai usuarios (deixo 3 de margen)
                 userRepository.save(User.builder()
@@ -337,6 +344,16 @@ public class DataLoader {
                 ));
 
                 System.out.println("✅ Cursos de prueba insertados en la base de datos.");
+            }
+
+            if (voteConfigRepository.count() == 0) {
+                voteConfigRepository.save(
+                    VoteConfig.builder()
+                        .quorumRequired(5)       // valor por defecto
+                        .approvalThreshold(0.6)  // 60% de votos positivos
+                        .build()
+                );
+                System.out.println("✅ Configuración de votaciones inicial insertada en la base de datos.");
             }
         };
     }
