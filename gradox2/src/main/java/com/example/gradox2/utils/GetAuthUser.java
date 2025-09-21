@@ -10,11 +10,23 @@ public final class GetAuthUser {
     public static User getAuthUser() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication == null || !authentication.isAuthenticated()) {
-               throw new UnauthenticatedAccessException("El usuario no está autenticado.");
+            throw new UnauthenticatedAccessException("El usuario no está autenticado.");
         }
         Object principal = authentication.getPrincipal();
         if (!(principal instanceof User uploader)) {
             throw new UnauthenticatedAccessException("El usuario no es una instancia de User.");
+        }
+        return uploader;
+    }
+
+    public static User getAuthUserUnsecureEndpoint(){
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return null;
+        }
+        Object principal = authentication.getPrincipal();
+        if (!(principal instanceof User uploader)) {
+            return null;
         }
         return uploader;
     }

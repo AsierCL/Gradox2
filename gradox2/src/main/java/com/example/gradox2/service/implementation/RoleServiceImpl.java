@@ -12,10 +12,13 @@ import com.example.gradox2.persistence.entities.enums.UserRole;
 import com.example.gradox2.persistence.repository.PromotionProposalRepository;
 import com.example.gradox2.persistence.repository.UserRepository;
 import com.example.gradox2.presentation.dto.promotionProposal.PromotionProposalResponse;
+import com.example.gradox2.service.exceptions.InvalidRoleOperationException;
 import com.example.gradox2.service.exceptions.NotFoundException;
 import com.example.gradox2.service.interfaces.IRoleService;
 import com.example.gradox2.utils.GetAuthUser;
 import com.example.gradox2.utils.mapper.PromotionProposerMapper;
+
+import jakarta.transaction.Transactional;
 
 @Service
 public class RoleServiceImpl implements IRoleService{
@@ -33,7 +36,7 @@ public class RoleServiceImpl implements IRoleService{
         User user = GetAuthUser.getAuthUser();
 
         if(user.getRole().equals(UserRole.MASTER)) {
-            return "Ya eres Master.";
+            throw new InvalidRoleOperationException("El usuario ya es Master.");
         }
 
         // TODO : FACER ESTO CON BUILDER E NON HARDCODEAR OS VALORES
@@ -63,14 +66,16 @@ public class RoleServiceImpl implements IRoleService{
     }
 
     @Override
+    @Transactional
     public String deleteMyPromoteRequest() {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'deleteMyPromoteRequest'");
+        promotionProposalRepository.deleteByProposer(GetAuthUser.getAuthUser());
+        return "Solicitud de promoción eliminada.";
     }
 
     @Override
     public PromotionProposalResponse getPromoteProposalById(Long id) {
-        return PromotionProposerMapper.toPromoteProposalResponse(promotionProposalRepository.findById(id).orElseThrow(() -> new NotFoundException("Proposal not found")));
+        return PromotionProposerMapper.toPromoteProposalResponse(promotionProposalRepository.findById(id)
+            .orElseThrow(() -> new NotFoundException("Proposal not found")));
     }
 
 }

@@ -1,17 +1,23 @@
 package com.example.gradox2.service.implementation;
 
+import java.time.Instant;
 import java.util.Optional;
 
 import org.springframework.stereotype.Service;
 
 import com.example.gradox2.persistence.entities.File;
 import com.example.gradox2.persistence.entities.FileProposal;
+import com.example.gradox2.persistence.entities.PromotionProposal;
 import com.example.gradox2.persistence.entities.Proposal;
 import com.example.gradox2.persistence.entities.TempFile;
 import com.example.gradox2.persistence.entities.User;
 import com.example.gradox2.persistence.entities.Vote;
 import com.example.gradox2.persistence.entities.enums.ProposalStatus;
+import com.example.gradox2.persistence.entities.enums.UserRole;
 import com.example.gradox2.persistence.repository.*;
+import com.example.gradox2.service.exceptions.AlreadyExistsException;
+import com.example.gradox2.service.exceptions.NotFoundException;
+import com.example.gradox2.service.exceptions.ProposalClosedException;
 import com.example.gradox2.service.interfaces.IVoteService;
 import com.example.gradox2.utils.GetAuthUser;
 
@@ -42,16 +48,16 @@ public class VoteServiceImpl implements IVoteService {
         User auth = GetAuthUser.getAuthUser();
         // Buscar a proposta
         Proposal proposal = proposalRepository.findById(proposalId)
-                .orElseThrow(() -> new RuntimeException("Proposal not found"));
+                .orElseThrow(() -> new NotFoundException("Proposal not found"));
 
         if(proposal.getStatus() != ProposalStatus.PENDING){
-            return "This proposal is no longer open for voting.";
+            throw new ProposalClosedException("This proposal is no longer open for voting.");
         }
 
         // Checkear si xa votou
         Optional<Vote> existingVote = voteRepository.findByVoterAndProposal(auth, proposal);
         if (existingVote.isPresent()) {
-            return "You have already voted for this proposal.";
+            throw new AlreadyExistsException("Already voted on this proposal.");
         }
 
 
@@ -78,6 +84,7 @@ public class VoteServiceImpl implements IVoteService {
             if(proposal instanceof FileProposal){
                 FileProposal fileProposal = (FileProposal) proposal;
                 fileProposal.setStatus(ProposalStatus.APPROVED);
+                fileProposal.setClosedAt(Instant.now());
                 TempFile tempFile = fileProposal.getTempFile();
                 if (tempFile != null) {
                     File file = File.builder()
@@ -97,30 +104,39 @@ public class VoteServiceImpl implements IVoteService {
                             fileProposalRepository.save(fileProposal);
                }
             }
+            if(proposal instanceof PromotionProposal){
+                PromotionProposal promotionProposal = (PromotionProposal) proposal;
+                promotionProposal.setStatus(ProposalStatus.APPROVED);
+                promotionProposal.setClosedAt(Instant.now());
+                User user = promotionProposal.getCandidate();
+                user.setRole(UserRole.MASTER);
+                userRepository.save(user);
+                promotionProposalRepository.save(promotionProposal);
+            }
         }
     }
 
     public String retractVote(Long proposalId) {
         User auth = GetAuthUser.getAuthUser();
         Proposal proposal = proposalRepository.findById(proposalId)
-                .orElseThrow(() -> new RuntimeException("Proposal not found"));
+                .orElseThrow(() -> new NotFoundException("Proposal not found"));
 
         if(proposal.getStatus() != ProposalStatus.PENDING){
-            return "This proposal is no longer open for voting.";
+            throw new ProposalClosedException("This proposal is no longer open for voting.");
         }
 
         Optional<Vote> vote = voteRepository.findByVoterAndProposal(auth, proposal);
-        if (vote.isPresent()) {
-            voteRepository.delete(vote.get());
-            return "Vote retracted successfully.";
+        if (!vote.isPresent()) {
+            throw new NotFoundException("No vote found for this proposal.");
         }
 
-        return "No vote found for this proposal.";
+        voteRepository.delete(vote.get());
+        return "Vote retracted successfully.";
     }
 
     public String getVoteCount(Long id) {
         Proposal proposal = proposalRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Proposal not found"));
+                .orElseThrow(() -> new NotFoundException("Proposal not found"));
 
         long upvotes = voteRepository.countByProposalAndInFavor(proposal, true);
         long downvotes = voteRepository.countByProposalAndInFavor(proposal, false);
@@ -131,13 +147,13 @@ public class VoteServiceImpl implements IVoteService {
     public String getMyVote(Long id) {
         User auth = GetAuthUser.getAuthUser();
         Proposal proposal = proposalRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Proposal not found"));
+                .orElseThrow(() -> new NotFoundException("Proposal not found"));
 
         Optional<Vote> vote = voteRepository.findByVoterAndProposal(auth, proposal);
         if (vote.isPresent()) {
             return vote.get().getInFavor() ? "You voted in favor." : "You voted against.";
         }
 
-        return "You have not voted on this proposal.";
+        throw new NotFoundException("You have not voted on this proposal.");
     }
 }

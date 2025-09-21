@@ -8,7 +8,9 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import com.example.gradox2.presentation.dto.auth.ErrorDTO;
 import com.example.gradox2.service.exceptions.UnauthenticatedAccessException;
 import com.example.gradox2.service.exceptions.AlreadyExistsException;
+import com.example.gradox2.service.exceptions.InvalidRoleOperationException;
 import com.example.gradox2.service.exceptions.NotFoundException;
+import com.example.gradox2.service.exceptions.ProposalClosedException;
 
 
 @RestControllerAdvice
@@ -33,11 +35,29 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(NotFoundException.class)
-    public ResponseEntity<ErrorDTO> handleUserNotFound(NotFoundException ex) {
+    public ResponseEntity<ErrorDTO> handleNotFound(NotFoundException ex) {
         ErrorDTO error = ErrorDTO.builder()
                 .errorMessage(ex.getMessage())
-                .errorCode("USER_NOT_FOUND")
+                .errorCode("NOT_FOUND")
                 .build();
         return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+    }
+
+    @ExceptionHandler(InvalidRoleOperationException.class)
+    public ResponseEntity<ErrorDTO> handleInvalidRoleOperation(InvalidRoleOperationException ex) {
+        ErrorDTO error = ErrorDTO.builder()
+                .errorMessage(ex.getMessage())
+                .errorCode("INVALID_ROLE_OPERATION")
+                .build();
+        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(ProposalClosedException.class)
+    public ResponseEntity<ErrorDTO> handleProposalClosed(ProposalClosedException ex) {
+        ErrorDTO error = ErrorDTO.builder()
+                .errorMessage(ex.getMessage())
+                .errorCode("PROPOSAL_CLOSED")
+                .build();
+        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
     }
 }

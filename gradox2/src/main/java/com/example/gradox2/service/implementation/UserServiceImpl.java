@@ -15,6 +15,7 @@ import com.example.gradox2.presentation.dto.users.MyProfileResponse;
 import com.example.gradox2.presentation.dto.users.PublicProfileResponse;
 import com.example.gradox2.presentation.dto.users.UpdateMyProfileRequest;
 import com.example.gradox2.service.exceptions.NotFoundException;
+import com.example.gradox2.service.exceptions.AlreadyExistsException;
 import com.example.gradox2.service.interfaces.IUserService;
 import com.example.gradox2.utils.GetAuthUser;
 import com.example.gradox2.utils.mapper.UserMapper;
@@ -35,7 +36,7 @@ public class UserServiceImpl implements IUserService {
 
         // 3. Buscar el usuario completo en la base de datos
         User user = userRepository.findByUsername(authUser.getUsername())
-                .orElseThrow(() -> new RuntimeException("Usuario no encontrado en la base de datos"));
+                .orElseThrow(() -> new NotFoundException("Usuario no encontrado en la base de datos"));
 
         // 4. Mapear la entidad User a UserDTO
         return UserMapper.mapper.toMyProfileResponse(user);
@@ -74,6 +75,9 @@ public class UserServiceImpl implements IUserService {
 
         // 2. Actualizar los campos necesarios
         if (userProfile.getUsername() != null && !userProfile.getUsername().isBlank()) {
+            if (userRepository.findByUsername(userProfile.getUsername()).isPresent()) {
+                throw new AlreadyExistsException("Username duplicado");
+            }
             user.setUsername(userProfile.getUsername());
         }
 
