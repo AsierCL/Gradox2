@@ -4,6 +4,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.example.gradox2.presentation.dto.vote.VoteResponse;
+import com.example.gradox2.presentation.dto.vote.VoteResultResponse;
 import com.example.gradox2.service.interfaces.IVoteService;
 
 import org.apache.catalina.connector.Response;
@@ -27,19 +29,19 @@ public class VoteController {
 
 
     @GetMapping("/{id}")
-    public ResponseEntity<String> getMyVoteProposal(@PathVariable Long id) {
+    public ResponseEntity<VoteResponse> getMyVoteProposal(@PathVariable Long id) {
         return ResponseEntity.ok(voteService.getMyVote(id));
     }
 
 
     @GetMapping("/{id}/results")
-    public ResponseEntity<String> getAllVotesProposal(@PathVariable Long id) {
+    public ResponseEntity<VoteResultResponse> getAllVotesProposal(@PathVariable Long id) {
         return ResponseEntity.ok(voteService.getVoteCount(id));
     }
 
 
     @PostMapping("/{id}/{upvote}")
-    public ResponseEntity<String> voteProposal(@PathVariable Long id, @PathVariable boolean upvote) {
+    public ResponseEntity<VoteResponse> voteProposal(@PathVariable Long id, @PathVariable boolean upvote) {
         return ResponseEntity.ok(voteService.voteProposal(id, upvote));
     }
 

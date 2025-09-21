@@ -15,11 +15,14 @@ import com.example.gradox2.persistence.entities.Vote;
 import com.example.gradox2.persistence.entities.enums.ProposalStatus;
 import com.example.gradox2.persistence.entities.enums.UserRole;
 import com.example.gradox2.persistence.repository.*;
+import com.example.gradox2.presentation.dto.vote.VoteResponse;
+import com.example.gradox2.presentation.dto.vote.VoteResultResponse;
 import com.example.gradox2.service.exceptions.AlreadyExistsException;
 import com.example.gradox2.service.exceptions.NotFoundException;
 import com.example.gradox2.service.exceptions.ProposalClosedException;
 import com.example.gradox2.service.interfaces.IVoteService;
 import com.example.gradox2.utils.GetAuthUser;
+import com.example.gradox2.utils.mapper.VoteMapper;
 
 @Service
 public class VoteServiceImpl implements IVoteService {
@@ -44,7 +47,7 @@ public class VoteServiceImpl implements IVoteService {
         this.tempFileRepository = tempFileRepository;
     }
 
-    public String voteProposal(Long proposalId, boolean upvote) {
+    public VoteResponse voteProposal(Long proposalId, boolean upvote) {
         User auth = GetAuthUser.getAuthUser();
         // Buscar a proposta
         Proposal proposal = proposalRepository.findById(proposalId)
@@ -72,7 +75,7 @@ public class VoteServiceImpl implements IVoteService {
 
         checkProposalStatus(proposal);
 
-        return "Vote registered successfully.";
+        return VoteMapper.toVoteResponse(vote);
     }
 
     private void checkProposalStatus(Proposal proposal) {
@@ -134,24 +137,24 @@ public class VoteServiceImpl implements IVoteService {
         return "Vote retracted successfully.";
     }
 
-    public String getVoteCount(Long id) {
+    public VoteResultResponse getVoteCount(Long id) {
         Proposal proposal = proposalRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Proposal not found"));
 
         long upvotes = voteRepository.countByProposalAndInFavor(proposal, true);
         long downvotes = voteRepository.countByProposalAndInFavor(proposal, false);
 
-        return "Upvotes: " + upvotes + ", Downvotes: " + downvotes;
+        return new VoteResultResponse(upvotes, downvotes);
     }
 
-    public String getMyVote(Long id) {
+    public VoteResponse getMyVote(Long id) {
         User auth = GetAuthUser.getAuthUser();
         Proposal proposal = proposalRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Proposal not found"));
 
         Optional<Vote> vote = voteRepository.findByVoterAndProposal(auth, proposal);
         if (vote.isPresent()) {
-            return vote.get().getInFavor() ? "You voted in favor." : "You voted against.";
+            return VoteMapper.toVoteResponse(vote.get());
         }
 
         throw new NotFoundException("You have not voted on this proposal.");
