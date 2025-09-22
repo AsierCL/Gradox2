@@ -14,7 +14,7 @@ El objetivo es crear una red **colaborativa, segura y democrática**, con un sis
 - [Endpoints de la API](./Documentation/ENDPOINTS.md)
 - [Sistema de reputación y votaciones](./Documentation/REPUTACION.md)
 - [Guía de contribución](./Documentation/CONTRIBUTING.md) _(pendiente)_
-- [Licencia](LICENSE) _(pendiente)_
+- [Licencia GPL-3.0](LICENSE)
 
 ---
 
