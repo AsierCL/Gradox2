@@ -46,7 +46,7 @@ public class User implements UserDetails{
 
     @Builder.Default
     @Column(nullable = false)
-    private Double reputation = 0.0;
+    private Double reputation = 10.0;
 
     @ManyToMany
     @Builder.Default
