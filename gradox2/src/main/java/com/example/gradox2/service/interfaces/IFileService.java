@@ -7,6 +7,7 @@ import org.springframework.http.ResponseEntity;
 
 import com.example.gradox2.presentation.dto.fileProposal.UploadFileProposalRequest;
 import com.example.gradox2.presentation.dto.files.FileResponse;
+import com.example.gradox2.presentation.dto.vote.VoteResponse;
 
 public interface IFileService {
 
@@ -14,4 +15,6 @@ public interface IFileService {
     List<FileResponse> getAllFiles();
     FileResponse getFile(Long id);
     ResponseEntity<ByteArrayResource> downloadFile(Long id);
+    VoteResponse voteFile(Long id, boolean upvote);
+    VoteResponse retractVote(Long id);
 }

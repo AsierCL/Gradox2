@@ -8,6 +8,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @Data
 public class VoteResultResponse {
+    private Long fileId;
     private Long upvotes;
     private Long downvotes;
 }

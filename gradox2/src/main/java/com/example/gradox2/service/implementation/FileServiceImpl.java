@@ -19,16 +19,22 @@ import com.example.gradox2.persistence.entities.Subject;
 import com.example.gradox2.persistence.entities.TempFile;
 import com.example.gradox2.persistence.entities.FileProposal;
 import com.example.gradox2.persistence.entities.User;
+import com.example.gradox2.persistence.entities.Score;
 import com.example.gradox2.persistence.entities.enums.ProposalStatus;
 import com.example.gradox2.persistence.repository.FileRepository;
 import com.example.gradox2.persistence.repository.SubjectRepository;
 import com.example.gradox2.persistence.repository.TempFileRepository;
+import com.example.gradox2.persistence.repository.ScoreRepository;
 import com.example.gradox2.persistence.repository.FileProposalRepository;
 import com.example.gradox2.presentation.dto.fileProposal.UploadFileProposalRequest;
 import com.example.gradox2.presentation.dto.files.FileResponse;
+import com.example.gradox2.presentation.dto.vote.VoteResponse;
+import com.example.gradox2.presentation.dto.vote.VoteResultResponse;
+import com.example.gradox2.service.exceptions.InvalidFileOperation;
 import com.example.gradox2.service.exceptions.NotFoundException;
 import com.example.gradox2.service.interfaces.IFileService;
 import com.example.gradox2.utils.GetAuthUser;
+import com.example.gradox2.utils.mapper.FileMapper;
 
 @Service
 public class FileServiceImpl implements IFileService {
@@ -37,14 +43,16 @@ public class FileServiceImpl implements IFileService {
     private final TempFileRepository tempFileRepository;
     private final FileProposalRepository uploadProposalRepository;
     private final SubjectRepository subjectRepository;
+    private final ScoreRepository scoreRepository;
 
     public FileServiceImpl(FileRepository fileRepository, TempFileRepository tempFileRepository,
             FileProposalRepository uploadProposalRepository, SubjectRepository subjectRepository,
-            SecurityFilterChain filterChain) {
+            SecurityFilterChain filterChain, ScoreRepository scoreRepository) {
         this.fileRepository = fileRepository;
         this.tempFileRepository = tempFileRepository;
         this.uploadProposalRepository = uploadProposalRepository;
         this.subjectRepository = subjectRepository;
+        this.scoreRepository = scoreRepository;
     }
 
     public ResponseEntity<ByteArrayResource> downloadFile(Long id) {
@@ -95,7 +103,7 @@ public class FileServiceImpl implements IFileService {
             return ResponseEntity.ok("Archivo enviado para revisión. ID de propuesta: " + proposal.getId());
 
         } catch (IOException e) {
-            return ResponseEntity.status(500).body("Error al procesar el archivo: " + e.getMessage());
+            return ResponseEntity.status(500).body("Errofile);r al procesar el archivo: " + e.getMessage());
         }
     }
 
@@ -116,14 +124,7 @@ public class FileServiceImpl implements IFileService {
         File file = fileRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("File not found"));
 
-        return FileResponse.builder()
-                .id(file.getId())
-                .fileName(file.getTitle())
-                .description(file.getDescription())
-                .fileType(file.getType())
-                .subject(file.getSubject().getName())
-                .uploaderUsername(file.getUploader().getUsername())
-                .build();
+        return FileMapper.toFileResponse(file);
     }
 
     private String generateFileHash(byte[] data) {
@@ -141,5 +142,67 @@ public class FileServiceImpl implements IFileService {
         } catch (NoSuchAlgorithmException e) {
             throw new RuntimeException("Error generating file hash", e);
         }
+    }
+
+    @Transactional
+    public VoteResponse voteFile(Long id, boolean upvote) {
+        File file = fileRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("File not found"));
+
+        User user = GetAuthUser.getAuthUser();
+
+        // Comprobar si ya existe voto
+        Score existingScore = scoreRepository.findByFileAndUser(file, user);
+
+        if (existingScore != null) {
+            // Si el usuario intenta votar lo mismo otra vez, devolver mensaje coherente
+            if ((upvote && existingScore.getScore() == 1.0) ||
+                (!upvote && existingScore.getScore() == -1.0)) {
+                throw new InvalidFileOperation("Already voted this way");
+            }
+
+            // Si quiere cambiar el voto, actualizarlo
+            existingScore.setScore(upvote ? 1.0 : -1.0);
+            scoreRepository.save(existingScore);
+            fileRepository.save(file);
+            return new VoteResponse(id, existingScore.getId(), user.getUsername(), upvote, existingScore.getScoredAt());
+        }
+
+        // Nuevo voto
+        Score score = Score.builder()
+                .user(user)
+                .file(file)
+                .score(upvote ? 1.0 : -1.0)
+                .build();
+
+        file.addScore(score);
+        scoreRepository.save(score);
+        fileRepository.save(file);
+
+        return new VoteResponse(id, score.getId(), user.getUsername(), upvote, score.getScoredAt());
+}
+
+
+    @Transactional
+    public VoteResponse retractVote(Long id) {
+        // Obtener el archivo
+        File file = fileRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("File not found"));
+
+        // Obtener el usuario autenticado
+        User user = GetAuthUser.getAuthUser();
+
+        // Buscar el voto existente
+        Score existingScore = scoreRepository.findByFileAndUser(file, user);
+        if (existingScore == null) {
+            throw new NotFoundException("No existing vote to retract");
+        }
+
+        // Eliminar el score
+        file.removeScore(existingScore);
+        scoreRepository.delete(existingScore);
+        fileRepository.save(file);
+
+        return new VoteResponse(id, existingScore.getId(), user.getUsername(), false, existingScore.getScoredAt());
     }
 }

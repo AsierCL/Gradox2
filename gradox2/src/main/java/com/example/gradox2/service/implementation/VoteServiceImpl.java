@@ -144,7 +144,7 @@ public class VoteServiceImpl implements IVoteService {
         long upvotes = voteRepository.countByProposalAndInFavor(proposal, true);
         long downvotes = voteRepository.countByProposalAndInFavor(proposal, false);
 
-        return new VoteResultResponse(upvotes, downvotes);
+        return new VoteResultResponse(id, upvotes, downvotes);
     }
 
     public VoteResponse getMyVote(Long id) {

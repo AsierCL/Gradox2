@@ -1,21 +1,26 @@
 package com.example.gradox2.utils.mapper;
 
-import org.mapstruct.Mapper;
-import org.mapstruct.Mapping;
-import org.mapstruct.factory.Mappers;
+import org.springframework.stereotype.Component;
 
 import com.example.gradox2.persistence.entities.File;
 import com.example.gradox2.presentation.dto.files.FileResponse;
 
-@Mapper(componentModel = "spring")
-public interface FileMapper {
-    FileMapper INSTANCE = Mappers.getMapper(FileMapper.class);
+@Component
+public class FileMapper {
 
-    @Mapping(target = "uploaderUsername", source = "uploader.username")
-    FileResponse toFileResponse(File file);
+    public static final FileResponse toFileResponse(File file) {
+        if (file == null) {
+            return null;
+        }
 
-    @Mapping(target = ".", source = "subject")
-    default String subjectToString(com.example.gradox2.persistence.entities.Subject subject) {
-        return subject != null ? subject.getName() : null;
+        return FileResponse.builder()
+            .id(file.getId())
+            .fileName(file.getTitle())
+            .description(file.getDescription())
+            .fileType(file.getType())
+            .subject(file.getSubject() != null ? file.getSubject().getName() : null)
+            .uploaderUsername(file.getUploader() != null ? file.getUploader().getUsername() : null)
+            .score(file.calculateTotalScore())
+            .build();
     }
 }

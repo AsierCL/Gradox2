@@ -1,7 +1,5 @@
 package com.example.gradox2.presentation.dto.files;
 
-import org.springframework.web.multipart.MultipartFile;
-
 import com.example.gradox2.persistence.entities.enums.FileType;
 
 import lombok.AllArgsConstructor;
@@ -20,4 +18,5 @@ public class FileResponse {
     private FileType fileType;
     private String subject;
     private String uploaderUsername;
+    private Double score;
 }
