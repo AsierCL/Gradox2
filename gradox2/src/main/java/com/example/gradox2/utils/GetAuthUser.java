@@ -18,16 +18,4 @@ public final class GetAuthUser {
         }
         return uploader;
     }
-
-    public static User getAuthUserUnsecureEndpoint(){
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication == null || !authentication.isAuthenticated()) {
-            return null;
-        }
-        Object principal = authentication.getPrincipal();
-        if (!(principal instanceof User uploader)) {
-            return null;
-        }
-        return uploader;
-    }
 }

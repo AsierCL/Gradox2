@@ -13,7 +13,7 @@ public class HealthController {
 
     @RequestMapping
     public ResponseEntity<String> checkHealth() {
-        User user = GetAuthUser.getAuthUserUnsecureEndpoint();
+        User user = GetAuthUser.getAuthUser();
         if(user == null){
             return ResponseEntity.ok("Service is up and running! (Unauthenticated)");
         }else{
