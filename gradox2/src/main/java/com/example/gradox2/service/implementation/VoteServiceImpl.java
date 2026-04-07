@@ -103,7 +103,6 @@ public class VoteServiceImpl implements IVoteService {
                             fileProposal.setTempFile(null);
                             fileProposal.setFile(file);
                             fileRepository.save(file);
-                            tempFileRepository.delete(tempFile);
                             fileProposalRepository.save(fileProposal);
                }
             }

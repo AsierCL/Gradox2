@@ -123,6 +123,7 @@ public class FileServiceImpl implements IFileService {
                 .collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
     public FileResponse getFile(Long id) {
         File file = fileRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("File not found"));

@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.List;
+import java.util.Objects;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -92,17 +93,11 @@ public class FileProposalServiceImpl implements IFileProposalService {
             throw new ProposalClosedException("Only pending proposals can be deleted");
         }
 
-        if(proposal.getProposer().equals(authUser) == false) {
+        if (!Objects.equals(proposal.getProposer().getId(), authUser.getId())) {
             throw new InvalidFileOperation("Only the proposer can delete this proposal");
         }
 
-        // Eliminar el TempFile asociado
-        TempFile tempFile = proposal.getTempFile();
-        if (tempFile != null) {
-            tempFileRepository.delete(tempFile);
-        }
-
-        // Eliminar la propuesta
+        // Let JPA cascading/orphan removal handle TempFile cleanup safely.
         fileProposalRepository.delete(proposal);
 
         return "Proposal and associated TempFile deleted.";
