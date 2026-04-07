@@ -42,11 +42,19 @@ cd Gradox2
 
 Gradox 2.0 usa PostgreSQL y está preparada para usar Docker.
 
+Si solo quieres desarrollar en local con Docker, no necesitas preparar `.env` todavía: el comando `./run.sh dev` usa valores locales por defecto.
+
+Si quieres levantar el stack orientado a VPS o producción, sigue estos pasos:
+
 - Ve al directorio Docker
 ```bash
 cd Docker
 ```
-- Antes de levantar la app, debes crear un .env en este directorio, con los siguientes datos:
+- Copia la plantilla de entorno y ajusta los valores reales:
+```bash
+cp .env.example .env
+```
+- Antes de levantar la app, revisa que `.env` tenga los datos correctos:
 ```
 # Base de datos
 POSTGRES_USER=xxxxxxxx
@@ -67,11 +75,40 @@ SPRING_MAIL_PASSWORD=xxxxxxxx
 # Spring profile
 SPRING_PROFILES_ACTIVE=docker
 ```
+
+> Nota: `JWT_SECRET` debe tener al menos 32 bytes para HS256.
+
 - Levanta el contenedor con Docker Compose
 ```bash
-docker-compose --env-file .env --profile full up --build
+docker compose --env-file .env --profile full up --build
 ```
 - La aplicación está disponible en:
 ```bash
 http://localhost:8080
+```
+
+## 4. Ejecución local sin Docker
+
+Si prefieres arrancar la aplicación desde el proyecto Maven, usa el script incluido:
+```bash
+./run.sh run
+```
+
+Para ejecutar la suite de pruebas:
+```bash
+./run.sh test
+```
+
+## 5. Ejecución local con Docker
+
+Si quieres desarrollar con la base de datos en contenedor y la app montada desde el código fuente:
+```bash
+./run.sh
+```
+
+Este modo levanta la base de datos y la aplicación en un stack único para desarrollo.
+
+Para producción o VPS, usa el stack de Docker con `.env`:
+```bash
+./run.sh docker-up
 ```

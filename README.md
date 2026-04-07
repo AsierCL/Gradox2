@@ -20,7 +20,7 @@ El objetivo es crear una red **colaborativa, segura y democrática**, con un sis
 
 ## 🚀 Estado del proyecto
 
-Actualmente en fase de **diseño y documentación**.
+Actualmente en fase de **base técnica y endurecimiento del entorno**.
 Las funcionalidades completas hasta el momento son:
 - Autenticación de usuarios.
 - Subida de archivos mediante votaciones.
@@ -32,6 +32,17 @@ El siguiente paso es el desarrollo de un MVP con:
 - Herramientas avanzadas de moderación de usuarios.
 - Sistema de notificación en la app y/o por correo.
 - Métricas y estadísticas globales de la app para favorecer la transparencia.
+
+## 🚀 Arranque rápido
+
+1. Para desarrollo local con contenedor y código montado, usa `./run.sh`
+2. Para detener el entorno de desarrollo, usa `./run.sh dev-down`
+3. Para ejecución directa contra una base local ya levantada, usa `./run.sh run`
+4. Para pruebas, usa `./run.sh test`
+5. Para VPS o despliegue con `.env`, copia primero la plantilla: `cp Docker/.env.example Docker/.env`
+6. Levanta el stack de VPS con `./run.sh docker-up`
+
+Nota: `JWT_SECRET` debe tener al menos 32 bytes.
 
 ---
 

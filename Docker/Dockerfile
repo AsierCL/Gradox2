@@ -19,4 +19,6 @@ COPY --from=build /app/target/gradox2-0.0.1-SNAPSHOT.jar app.jar
 # Puerto por defecto de Spring Boot
 EXPOSE 8080
 
+HEALTHCHECK --interval=30s --timeout=5s --start-period=45s --retries=3 CMD bash -c 'exec 3<>/dev/tcp/localhost/8080'
+
 ENTRYPOINT ["java","-jar","app.jar"]
