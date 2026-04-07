@@ -7,6 +7,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.validation.annotation.Validated;
 
 import com.example.gradox2.presentation.dto.users.MyProfileResponse;
 import com.example.gradox2.presentation.dto.users.PublicProfileResponse;
@@ -17,8 +18,14 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.Positive;
+
 @RestController
 @RequestMapping("/users")
+@Validated
 public class UserController {
 
     private final IUserService userService;
@@ -35,13 +42,13 @@ public class UserController {
 
     @PutMapping("/me")
     public ResponseEntity<MyProfileResponse> updateCurrentUser(
-            @RequestBody UpdateMyProfileRequest updateMyProfileRequest) {
+            @Valid @RequestBody UpdateMyProfileRequest updateMyProfileRequest) {
         MyProfileResponse updatedUser = userService.updateCurrentUser(updateMyProfileRequest);
         return ResponseEntity.ok(updatedUser);
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<PublicProfileResponse> getUserProfile(@PathVariable Long id) {
+    public ResponseEntity<PublicProfileResponse> getUserProfile(@PathVariable @Positive Long id) {
         PublicProfileResponse userProfile = userService.getUserProfile(id);
         return ResponseEntity.ok(userProfile);
     }
@@ -49,8 +56,8 @@ public class UserController {
     @GetMapping("/all")
     public ResponseEntity<?> getUsers(
             @RequestParam(defaultValue = "false") Boolean paged,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "0") @Min(0) int page,
+            @RequestParam(defaultValue = "10") @Min(1) @Max(100) int size,
             @RequestParam(defaultValue = "id") String sortBy) {
 
         if (paged) {

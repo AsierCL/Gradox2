@@ -12,6 +12,7 @@ import com.example.gradox2.service.exceptions.InternalServerErrorException;
 import com.example.gradox2.service.exceptions.InvalidRoleOperationException;
 import com.example.gradox2.service.exceptions.NotFoundException;
 import com.example.gradox2.service.exceptions.ProposalClosedException;
+import com.example.gradox2.service.exceptions.RateLimitExceededException;
 
 
 @RestControllerAdvice
@@ -69,5 +70,14 @@ public class GlobalExceptionHandler {
                 .errorCode("INTERNAL_SERVER_ERROR")
                 .build();
         return new ResponseEntity<>(error, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    @ExceptionHandler(RateLimitExceededException.class)
+    public ResponseEntity<ErrorDTO> handleRateLimitExceeded(RateLimitExceededException ex) {
+        ErrorDTO error = ErrorDTO.builder()
+                .errorMessage(ex.getMessage())
+                .errorCode("RATE_LIMIT_EXCEEDED")
+                .build();
+        return new ResponseEntity<>(error, HttpStatus.TOO_MANY_REQUESTS);
     }
 }

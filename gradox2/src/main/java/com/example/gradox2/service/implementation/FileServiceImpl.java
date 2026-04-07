@@ -6,6 +6,8 @@ import java.security.NoSuchAlgorithmException;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -38,6 +40,7 @@ import com.example.gradox2.utils.mapper.FileMapper;
 
 @Service
 public class FileServiceImpl implements IFileService {
+    private static final int MAX_LIST_SIZE = 100;
 
     private final FileRepository fileRepository;
     private final TempFileRepository tempFileRepository;
@@ -108,7 +111,7 @@ public class FileServiceImpl implements IFileService {
     }
 
     public List<FileResponse> getAllFiles() {
-        return fileRepository.findAll().stream()
+        return fileRepository.findAll(PageRequest.of(0, MAX_LIST_SIZE, Sort.by("id").descending())).getContent().stream()
                 .map(file -> FileResponse.builder()
                         .id(file.getId())
                         .fileName(file.getTitle())

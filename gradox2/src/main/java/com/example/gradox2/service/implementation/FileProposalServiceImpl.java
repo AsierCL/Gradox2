@@ -33,6 +33,7 @@ import com.example.gradox2.utils.mapper.FileProposalMapper;
 
 @Service
 public class FileProposalServiceImpl implements IFileProposalService {
+    private static final int MAX_PAGE_SIZE = 100;
 
     private final TempFileRepository tempFileRepository;
     private final FileProposalRepository fileProposalRepository;
@@ -108,11 +109,13 @@ public class FileProposalServiceImpl implements IFileProposalService {
     }
 
     public List<FileProposalResponse> getAllFileProposals() {
-        return getFileProposalsPaged(0, Integer.MAX_VALUE, "id").getContent();
+        return getFileProposalsPaged(0, MAX_PAGE_SIZE, "id").getContent();
     }
 
     public Page<FileProposalResponse> getFileProposalsPaged(int page, int size, String sortBy) {
-        Pageable pageable = PageRequest.of(page, size, Sort.by(sortBy).descending());
+        int safePage = Math.max(page, 0);
+        int safeSize = Math.min(Math.max(size, 1), MAX_PAGE_SIZE);
+        Pageable pageable = PageRequest.of(safePage, safeSize, Sort.by(sortBy).descending());
         Page<FileProposal> proposalPage = fileProposalRepository.findAll(pageable);
         return proposalPage.map(FileProposalMapper::toFileProposalResponse);
     }

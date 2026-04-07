@@ -26,6 +26,7 @@ import jakarta.transaction.Transactional;
 
 @Service
 public class RoleServiceImpl implements IRoleService{
+    private static final int MAX_PAGE_SIZE = 100;
 
     private final UserRepository userRepository;
     private final PromotionProposalRepository promotionProposalRepository;
@@ -58,12 +59,14 @@ public class RoleServiceImpl implements IRoleService{
 
     @Override
     public List<PromotionProposalResponse> getPendingPromoteProposals() {
-        return getPendingPromoteProposalsPaged(0, Integer.MAX_VALUE, "id").getContent();
+        return getPendingPromoteProposalsPaged(0, MAX_PAGE_SIZE, "id").getContent();
     }
 
     @Override
     public Page<PromotionProposalResponse> getPendingPromoteProposalsPaged(int page, int size, String sortBy) {
-        Pageable pageable = PageRequest.of(page, size, Sort.by(sortBy).descending());
+        int safePage = Math.max(page, 0);
+        int safeSize = Math.min(Math.max(size, 1), MAX_PAGE_SIZE);
+        Pageable pageable = PageRequest.of(safePage, safeSize, Sort.by(sortBy).descending());
         Page<PromotionProposal> proposalPage = promotionProposalRepository.findByStatus(ProposalStatus.PENDING, pageable);
         return proposalPage.map(PromotionProposerMapper::toPromotionProposalResponse);
     }

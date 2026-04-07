@@ -12,6 +12,8 @@ import com.example.gradox2.persistence.entities.VoteConfig;
 import com.example.gradox2.presentation.dto.voteConfig.VoteConfigUpdateRequest;
 import com.example.gradox2.service.interfaces.IVoteConfigService;
 
+import jakarta.validation.Valid;
+
 @RestController
 @RequestMapping("/vote-config")
 public class VoteConfigController {
@@ -24,7 +26,7 @@ public class VoteConfigController {
 
     @PutMapping
     @PreAuthorize("hasRole('MASTER')")
-    public ResponseEntity<VoteConfig> updateConfig(@RequestBody VoteConfigUpdateRequest request) {
+        public ResponseEntity<VoteConfig> updateConfig(@Valid @RequestBody VoteConfigUpdateRequest request) {
     return ResponseEntity.ok(
             voteConfigService.updateConfig(request.getQuorumRequired(), request.getApprovalThreshold())
     );

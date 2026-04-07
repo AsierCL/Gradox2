@@ -15,10 +15,16 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.validation.annotation.Validated;
+
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.Positive;
 
 
 @RestController
 @RequestMapping("/promoteProposal")
+@Validated
 public class RolesController {
     private final IRoleService roleService;
 
@@ -39,8 +45,8 @@ public class RolesController {
     @GetMapping("/pending")
     public ResponseEntity<?> getPendingPromoteProposals(
             @RequestParam(defaultValue = "false") Boolean paged,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "0") @Min(0) int page,
+            @RequestParam(defaultValue = "10") @Min(1) @Max(100) int size,
             @RequestParam(defaultValue = "id") String sortBy) {
 
         if (paged) {
@@ -53,12 +59,12 @@ public class RolesController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<PromotionProposalResponse> getPromoteProposalById(@PathVariable Long id) {
+    public ResponseEntity<PromotionProposalResponse> getPromoteProposalById(@PathVariable @Positive Long id) {
         return ResponseEntity.ok(roleService.getPromoteProposalById(id));
     }
 
     @PostMapping("/demote/{id}")
-    public ResponseEntity<PromotionProposalResponse> demoteToUser(@PathVariable Long id) {
+    public ResponseEntity<PromotionProposalResponse> demoteToUser(@PathVariable @Positive Long id) {
         return ResponseEntity.ok(roleService.demoteToUser(id));
     }
 

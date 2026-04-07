@@ -8,6 +8,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.example.gradox2.persistence.entities.User;
 import com.example.gradox2.persistence.repository.UserRepository;
@@ -23,6 +24,8 @@ import com.example.gradox2.utils.mapper.UserMapper;
 
 @Service
 public class UserServiceImpl implements IUserService {
+    private static final int MAX_PAGE_SIZE = 100;
+
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
 
@@ -31,6 +34,7 @@ public class UserServiceImpl implements IUserService {
         this.passwordEncoder = passwordEncoder;
     }
 
+    @Transactional(readOnly = true)
     public MyProfileResponse getCurrentUser() {
         User authUser = GetAuthUser.getAuthUser();
 
@@ -42,6 +46,7 @@ public class UserServiceImpl implements IUserService {
         return UserMapper.mapper.toMyProfileResponse(user);
     }
 
+    @Transactional(readOnly = true)
     public PublicProfileResponse getUserProfile(Long id) {
         // 1. Buscar el usuario por ID
         User user = userRepository.findById(id)
@@ -51,16 +56,21 @@ public class UserServiceImpl implements IUserService {
         return UserMapper.mapper.toPublicProfileResponse(user);
     }
 
+    @Transactional(readOnly = true)
     public List<PublicProfileResponse> getAllUsers() {
-        return getUsersPaged(0, Integer.MAX_VALUE, "id").getContent();
+        return getUsersPaged(0, MAX_PAGE_SIZE, "id").getContent();
     }
 
+    @Transactional(readOnly = true)
     public Page<PublicProfileResponse> getUsersPaged(int page, int size, String sortBy) {
-        Pageable pageable = PageRequest.of(page, size, Sort.by(sortBy).descending());
+        int safePage = Math.max(page, 0);
+        int safeSize = Math.min(Math.max(size, 1), MAX_PAGE_SIZE);
+        Pageable pageable = PageRequest.of(safePage, safeSize, Sort.by(sortBy).descending());
         Page<User> userPage = userRepository.findAll(pageable);
         return userPage.map(UserMapper.mapper::toPublicProfileResponse);
     }
 
+    @Transactional
     public MyProfileResponse updateCurrentUser(UpdateMyProfileRequest userProfile) {
         // 1. Obtener el usuario actual
         User user = GetAuthUser.getAuthUser();
