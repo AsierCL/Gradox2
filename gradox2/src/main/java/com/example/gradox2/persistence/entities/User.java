@@ -57,6 +57,10 @@ public class User implements UserDetails{
     )
     private Set<Badge> badges = new HashSet<>();
 
+    @OneToMany(mappedBy = "user", cascade = CascadeType.REMOVE, orphanRemoval = true)
+    @Builder.Default
+    private Set<RefreshToken> refreshTokens = new HashSet<>();
+
     @OneToMany(mappedBy = "delegator")
     @Builder.Default
     private Set<Delegation> delegationsGiven = new HashSet<>();

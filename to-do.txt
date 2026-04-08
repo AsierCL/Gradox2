@@ -1,0 +1,9 @@
+Revisar que funcione ben todo o tema de subir arquivos e ir probando os thresholds
+
+Documentar api con swagger ou algo similar
+
+Endpoints de salud /health/ready, /version, ...
+
+Verificacion de que é facil modificar e ir actualizando API e DB sin perder datos
+
+Verificar que nos procesos de actualización, podemos ter algo levantado para que se vexa que está en mantenimiento

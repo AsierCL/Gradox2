@@ -91,4 +91,20 @@ public class UserServiceImpl implements IUserService {
         MyProfileResponse updatedProfile = UserMapper.mapper.toMyProfileResponse(user);
         return updatedProfile;
     }
+
+    @Transactional
+    public void banUser(Long id) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Usuario no encontrado"));
+        user.setEnabled(false);
+        userRepository.save(user);
+    }
+
+    @Transactional
+    public void unbanUser(Long id) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Usuario no encontrado"));
+        user.setEnabled(true);
+        userRepository.save(user);
+    }
 }

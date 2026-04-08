@@ -6,12 +6,14 @@ import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.ResponseEntity;
 
 import com.example.gradox2.presentation.dto.fileProposal.UploadFileProposalRequest;
+import com.example.gradox2.presentation.dto.fileProposal.FileProposalResponse;
 import com.example.gradox2.presentation.dto.files.FileResponse;
 import com.example.gradox2.presentation.dto.vote.VoteResponse;
 
 public interface IFileService {
 
     ResponseEntity<String> uploadFile(UploadFileProposalRequest dto);
+    FileProposalResponse requestFileDeletion(Long id);
     List<FileResponse> getAllFiles();
     FileResponse getFile(Long id);
     ResponseEntity<ByteArrayResource> downloadFile(Long id);

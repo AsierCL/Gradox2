@@ -25,6 +25,8 @@ import org.springframework.test.web.servlet.MockMvc;
 import com.example.gradox2.persistence.entities.User;
 import com.example.gradox2.persistence.entities.VerificationToken;
 import com.example.gradox2.persistence.entities.enums.UserRole;
+import com.example.gradox2.persistence.repository.PasswordResetTokenRepository;
+import com.example.gradox2.persistence.repository.RefreshTokenRepository;
 import com.example.gradox2.persistence.repository.UserRepository;
 import com.example.gradox2.persistence.repository.VerificationTokenRepository;
 import com.example.gradox2.utils.EmailService;
@@ -48,11 +50,19 @@ class AuthRegistrationIntegrationTest {
     @Autowired
     private VerificationTokenRepository verificationTokenRepository;
 
+        @Autowired
+        private RefreshTokenRepository refreshTokenRepository;
+
+        @Autowired
+        private PasswordResetTokenRepository passwordResetTokenRepository;
+
         @MockitoBean
     private EmailService emailService;
 
     @BeforeEach
     void setUp() {
+                passwordResetTokenRepository.deleteAll();
+                refreshTokenRepository.deleteAll();
         verificationTokenRepository.deleteAll();
         userRepository.deleteAll();
     }

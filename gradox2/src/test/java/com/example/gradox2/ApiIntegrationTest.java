@@ -33,7 +33,9 @@ import com.example.gradox2.persistence.entities.enums.UserRole;
 import com.example.gradox2.persistence.repository.CourseRepository;
 import com.example.gradox2.persistence.repository.FileProposalRepository;
 import com.example.gradox2.persistence.repository.FileRepository;
+import com.example.gradox2.persistence.repository.PasswordResetTokenRepository;
 import com.example.gradox2.persistence.repository.ProposalRepository;
+import com.example.gradox2.persistence.repository.RefreshTokenRepository;
 import com.example.gradox2.persistence.repository.ScoreRepository;
 import com.example.gradox2.persistence.repository.SubjectRepository;
 import com.example.gradox2.persistence.repository.TempFileRepository;
@@ -68,6 +70,12 @@ class ApiIntegrationTest {
 
     @Autowired
     private VerificationTokenRepository verificationTokenRepository;
+
+    @Autowired
+    private RefreshTokenRepository refreshTokenRepository;
+
+    @Autowired
+    private PasswordResetTokenRepository passwordResetTokenRepository;
 
     @Autowired
     private VoteRepository voteRepository;
@@ -107,6 +115,8 @@ class ApiIntegrationTest {
         proposalRepository.deleteAll();
         fileRepository.deleteAll();
         tempFileRepository.deleteAll();
+        passwordResetTokenRepository.deleteAll();
+        refreshTokenRepository.deleteAll();
         verificationTokenRepository.deleteAll();
         voteConfigRepository.deleteAll();
         subjectRepository.deleteAll();

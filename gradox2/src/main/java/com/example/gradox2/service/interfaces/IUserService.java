@@ -14,4 +14,6 @@ public interface IUserService {
     List<PublicProfileResponse> getAllUsers();
     Page<PublicProfileResponse> getUsersPaged(int page, int size, String sortBy);
     MyProfileResponse updateCurrentUser(UpdateMyProfileRequest userProfile);
+    void banUser(Long id);
+    void unbanUser(Long id);
 }

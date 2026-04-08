@@ -10,6 +10,7 @@ import com.example.gradox2.service.exceptions.UnauthenticatedAccessException;
 import com.example.gradox2.service.exceptions.AlreadyExistsException;
 import com.example.gradox2.service.exceptions.InternalServerErrorException;
 import com.example.gradox2.service.exceptions.InvalidRoleOperationException;
+import com.example.gradox2.service.exceptions.InvalidFileOperation;
 import com.example.gradox2.service.exceptions.NotFoundException;
 import com.example.gradox2.service.exceptions.ProposalClosedException;
 import com.example.gradox2.service.exceptions.RateLimitExceededException;
@@ -59,6 +60,15 @@ public class GlobalExceptionHandler {
         ErrorDTO error = ErrorDTO.builder()
                 .errorMessage(ex.getMessage())
                 .errorCode("PROPOSAL_CLOSED")
+                .build();
+        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(InvalidFileOperation.class)
+    public ResponseEntity<ErrorDTO> handleInvalidFileOperation(InvalidFileOperation ex) {
+        ErrorDTO error = ErrorDTO.builder()
+                .errorMessage(ex.getMessage())
+                .errorCode("INVALID_FILE_OPERATION")
                 .build();
         return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
     }

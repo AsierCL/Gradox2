@@ -97,6 +97,17 @@ public class VoteServiceImpl implements IVoteService {
             fileProposal.setStatus(ProposalStatus.APPROVED);
             fileProposal.setClosedAt(Instant.now());
             TempFile tempFile = fileProposal.getTempFile();
+            if (proposal.getActionType() == ActionType.DELETE && fileProposal.getFile() != null) {
+                File targetFile = fileProposal.getFile();
+                java.util.List<FileProposal> linkedProposals = fileProposalRepository.findAllByFile(targetFile);
+                for (FileProposal linkedProposal : linkedProposals) {
+                    linkedProposal.setFile(null);
+                }
+                fileProposalRepository.saveAllAndFlush(linkedProposals);
+                fileRepository.deleteById(targetFile.getId());
+                return;
+            }
+
             if (tempFile != null) {
                 File file = File.builder()
                         .title(tempFile.getTitle())
@@ -111,7 +122,7 @@ public class VoteServiceImpl implements IVoteService {
                 fileProposal.setTempFile(null);
                 fileProposal.setFile(file);
                 fileRepository.save(file);
-                fileProposalRepository.save(fileProposal);
+                fileProposalRepository.saveAndFlush(fileProposal);
             }
             return;
         }

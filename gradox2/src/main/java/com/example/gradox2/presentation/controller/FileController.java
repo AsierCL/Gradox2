@@ -5,6 +5,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.validation.annotation.Validated;
 
 import com.example.gradox2.presentation.dto.fileProposal.UploadFileProposalRequest;
+import com.example.gradox2.presentation.dto.fileProposal.FileProposalResponse;
 import com.example.gradox2.presentation.dto.files.FileResponse;
 import com.example.gradox2.presentation.dto.vote.VoteResponse;
 import com.example.gradox2.service.interfaces.IFileService;
@@ -52,6 +53,11 @@ public class FileController {
     @PostMapping("/upload")
     public ResponseEntity<String> uploadFile(@Valid @ModelAttribute UploadFileProposalRequest uploadFileRequest){
         return fileService.uploadFile(uploadFileRequest);
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<FileProposalResponse> requestFileDeletion(@PathVariable @Positive Long id) {
+        return ResponseEntity.ok(fileService.requestFileDeletion(id));
     }
 
     @PostMapping("/{id}/vote/{upvote}")

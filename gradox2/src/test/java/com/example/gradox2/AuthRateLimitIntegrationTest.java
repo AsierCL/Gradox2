@@ -18,6 +18,8 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import com.example.gradox2.persistence.entities.User;
 import com.example.gradox2.persistence.entities.enums.UserRole;
+import com.example.gradox2.persistence.repository.PasswordResetTokenRepository;
+import com.example.gradox2.persistence.repository.RefreshTokenRepository;
 import com.example.gradox2.persistence.repository.UserRepository;
 import com.example.gradox2.persistence.repository.VerificationTokenRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -40,10 +42,18 @@ class AuthRateLimitIntegrationTest {
     private VerificationTokenRepository verificationTokenRepository;
 
     @Autowired
+    private RefreshTokenRepository refreshTokenRepository;
+
+    @Autowired
+    private PasswordResetTokenRepository passwordResetTokenRepository;
+
+    @Autowired
     private PasswordEncoder passwordEncoder;
 
     @BeforeEach
     void setUp() {
+        passwordResetTokenRepository.deleteAll();
+        refreshTokenRepository.deleteAll();
         verificationTokenRepository.deleteAll();
         userRepository.deleteAll();
 

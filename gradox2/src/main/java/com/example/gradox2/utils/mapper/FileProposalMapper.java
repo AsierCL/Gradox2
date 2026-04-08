@@ -28,7 +28,7 @@ public class FileProposalMapper {
                 }
             }
         }
-        // Si aún no está aprobada, usar TempFile
+        // Si aún no está aprobada, usar TempFile o el archivo objetivo de una propuesta de borrado
         else if (fileProposal.getTempFile() != null) {
             TempFile tempFile = fileProposal.getTempFile();
             title = tempFile.getTitle();
@@ -38,6 +38,17 @@ public class FileProposalMapper {
                 subjectName = tempFile.getSubject().getName();
                 if (tempFile.getSubject().getCourse() != null) {
                     course = tempFile.getSubject().getCourse().getName();
+                }
+            }
+        } else if (fileProposal.getFile() != null) {
+            File file = fileProposal.getFile();
+            title = file.getTitle();
+            description = file.getDescription();
+            type = file.getType() != null ? file.getType().toString() : null;
+            if (file.getSubject() != null) {
+                subjectName = file.getSubject().getName();
+                if (file.getSubject().getCourse() != null) {
+                    course = file.getSubject().getCourse().getName();
                 }
             }
         }

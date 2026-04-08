@@ -1,6 +1,6 @@
 # Testing actual del proyecto
 
-Este documento resume **todos los casos de prueba que se están ejecutando actualmente** en el proyecto.
+Este documento resume los casos de prueba que están activos en el proyecto y la cobertura que aportan.
 
 ## Cómo se ejecutan
 
@@ -18,9 +18,9 @@ Qué hace internamente:
 ```
 
 Notas:
-- Los tests de integración usan `@ActiveProfiles("test")`, por lo que se ejecutan contra configuración de test.
-- La ejecución reciente de Maven reporta: **33 tests, 0 fallos, 0 errores**.
-- La lista siguiente enumera los casos explícitamente visibles en la fuente; el total reportado por Maven puede incluir ejecuciones adicionales internas del runner.
+- Los tests de integración usan `@ActiveProfiles("test")`, por lo que se ejecutan contra la configuración de test.
+- La ejecución más reciente de Maven reporta: **40 tests, 0 fallos, 0 errores**.
+- El conjunto de suites incluye ahora cobertura explícita para sesión de auth, administración de usuarios y eliminación de archivos mediante propuesta.
 
 ## Suite actual
 
@@ -34,7 +34,7 @@ Archivo: [gradox2/src/test/java/com/example/gradox2/Gradox2ApplicationTests.java
 Archivo: [gradox2/src/test/java/com/example/gradox2/AuthRateLimitIntegrationTest.java](gradox2/src/test/java/com/example/gradox2/AuthRateLimitIntegrationTest.java)
 
 - `loginShouldReturnTooManyRequestsAfterFiveFailuresFromSameIp`
-  - Simula 5 intentos de login fallidos desde la misma IP (espera `401`).
+  - Simula 5 intentos de login fallidos desde la misma IP.
   - En el sexto intento espera `429 TOO_MANY_REQUESTS` con `errorCode = RATE_LIMIT_EXCEEDED`.
 
 ### 3) ApiIntegrationTest (12 casos)
@@ -75,7 +75,7 @@ Archivo: [gradox2/src/test/java/com/example/gradox2/ApiIntegrationTest.java](gra
   - Descarga del temporal de propuesta.
   - Votación positiva y consulta de resultados.
   - Verifica publicación en `/files/all`, detalle y descarga del archivo final.
-  - Verifica que propuesta cerrada no se puede borrar (`PROPOSAL_CLOSED`).
+  - Verifica que la propuesta cerrada no se puede borrar (`PROPOSAL_CLOSED`).
 
 - `pendingProposalShouldAllowDownvoteRetractAndDeleteByOwner`
   - Crea propuesta pendiente.
@@ -150,17 +150,77 @@ Archivo: [gradox2/src/test/java/com/example/gradox2/GovernanceRulesIntegrationTe
 - `demoteShouldReturnNotFoundWhenCandidateDoesNotExist`
   - Verifica respuesta `404 NOT_FOUND` para candidatos inexistentes.
 
+### 6) AuthSessionIntegrationTest (7 casos)
+Archivo: [gradox2/src/test/java/com/example/gradox2/AuthSessionIntegrationTest.java](gradox2/src/test/java/com/example/gradox2/AuthSessionIntegrationTest.java)
+
+#### Sesión y refresh token
+- `loginShouldReturnAccessAndRefreshTokensAndPersistRefreshSession`
+  - Verifica que el login devuelve `token` y `refreshToken`.
+  - Verifica que el refresh token se persiste y no queda revocado.
+
+- `refreshShouldRotateRefreshTokenAndInvalidatePreviousOne`
+  - Verifica rotación del refresh token.
+  - Verifica que el token antiguo queda revocado y ya no sirve para renovar.
+
+- `logoutShouldRevokeRefreshTokenAndBlockReuse`
+  - Verifica que el logout revoca el refresh token.
+  - Verifica que el mismo token no puede reutilizarse.
+
+#### Reset de contraseña
+- `requestPasswordResetShouldStoreTokenAndSendEmail`
+  - Verifica que se crea el token de reset para el usuario correcto.
+  - Verifica que se envía el correo con el enlace configurado por `app.base-url`.
+
+- `requestPasswordResetShouldBeSilentForUnknownEmail`
+  - Verifica respuesta silenciosa para emails inexistentes.
+  - Verifica que no se crean tokens ni se envían correos.
+
+- `resetPasswordShouldChangePasswordAndInvalidateSessions`
+  - Verifica que la contraseña cambia correctamente.
+  - Verifica que se invalidan refresh tokens previos.
+  - Verifica que el usuario ya no puede iniciar sesión con la contraseña antigua.
+
+- `resetPasswordShouldRejectUnknownToken`
+  - Verifica rechazo de tokens de reset inexistentes.
+
+### 7) AdminAndFileDeletionIntegrationTest (5 casos)
+Archivo: [gradox2/src/test/java/com/example/gradox2/AdminAndFileDeletionIntegrationTest.java](gradox2/src/test/java/com/example/gradox2/AdminAndFileDeletionIntegrationTest.java)
+
+#### Administración de usuarios
+- `masterShouldBeAbleToBanAndUnbanAUser`
+  - Verifica que un master puede banear y rehabilitar usuarios.
+  - Verifica que el usuario baneado no puede autenticarse.
+
+- `nonMasterShouldNotBeAbleToBanUsers`
+  - Verifica que un usuario normal no puede acceder a la acción de ban.
+
+#### Eliminación de archivos por votación
+- `fileDeletionProposalShouldExposeMetadataAndRemainPendingBelowQuorum`
+  - Verifica que la propuesta de borrado expone metadatos correctos.
+  - Verifica que permanece pendiente cuando no se alcanza el quorum.
+
+- `fileDeletionProposalShouldApproveAndRemoveFileWhenQuorumIsMet`
+  - Verifica que al alcanzar quorum la propuesta se aprueba.
+  - Verifica que el archivo se elimina del repositorio.
+
+- `duplicateFileDeletionProposalShouldBeRejectedWhilePending`
+  - Verifica que no se puede crear una segunda propuesta de borrado mientras la primera siga activa.
+  - Verifica respuesta `400` con `errorCode = INVALID_FILE_OPERATION`.
+
 ---
 
 ## Resumen de cobertura actual
 
 - **Smoke**: arranque de contexto Spring Boot.
-- **Seguridad de acceso**: endpoints protegidos, login con credenciales válidas/invalidas, rate limiting de login.
+- **Seguridad de acceso**: endpoints protegidos, login con credenciales válidas e inválidas, rate limiting de login.
+- **Gestión de sesión**: login con refresh token persistente, rotación de refresh, logout, invalidación de sesiones al cambiar la contraseña.
+- **Reset de contraseña**: solicitud, correo, confirmación y rechazo de tokens inválidos.
 - **Validaciones de entrada**: payloads inválidos, límites de paginación, IDs no válidos.
-- **Auth y verificación**: duplicados de registro, habilitación por token válido, rechazo de token expirado/inexistente.
+- **Auth y verificación**: duplicados de registro, habilitación por token válido, rechazo de token expirado e inexistente.
 - **Gobernanza de propuestas**: quorum, umbral, snapshot de configuración, fallback de configuración.
-- **Roles**: flujo de despromoción con propuesta de expulsión y reglas negativas.
+- **Roles y administración**: despromoción con propuesta de expulsión y ban/unban de usuarios por master.
 - **E2E funcional**: ciclo completo propuesta -> voto -> publicación -> votación sobre archivo -> retractación.
+- **Borrado de archivos**: propuesta de eliminación, aprobación por quorum y bloqueo de propuestas duplicadas mientras están activas.
 
 ## Observación
 

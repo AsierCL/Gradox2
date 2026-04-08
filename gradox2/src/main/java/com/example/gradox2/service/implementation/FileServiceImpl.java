@@ -21,17 +21,19 @@ import com.example.gradox2.persistence.entities.Subject;
 import com.example.gradox2.persistence.entities.TempFile;
 import com.example.gradox2.persistence.entities.FileProposal;
 import com.example.gradox2.persistence.entities.User;
+import com.example.gradox2.persistence.entities.VoteConfig;
 import com.example.gradox2.persistence.entities.Score;
+import com.example.gradox2.persistence.entities.enums.ActionType;
 import com.example.gradox2.persistence.entities.enums.ProposalStatus;
 import com.example.gradox2.persistence.repository.FileRepository;
 import com.example.gradox2.persistence.repository.SubjectRepository;
 import com.example.gradox2.persistence.repository.TempFileRepository;
 import com.example.gradox2.persistence.repository.ScoreRepository;
 import com.example.gradox2.persistence.repository.FileProposalRepository;
+import com.example.gradox2.service.interfaces.IVoteConfigService;
 import com.example.gradox2.presentation.dto.fileProposal.UploadFileProposalRequest;
 import com.example.gradox2.presentation.dto.files.FileResponse;
 import com.example.gradox2.presentation.dto.vote.VoteResponse;
-import com.example.gradox2.presentation.dto.vote.VoteResultResponse;
 import com.example.gradox2.service.exceptions.InvalidFileOperation;
 import com.example.gradox2.service.exceptions.NotFoundException;
 import com.example.gradox2.service.interfaces.IFileService;
@@ -47,15 +49,17 @@ public class FileServiceImpl implements IFileService {
     private final FileProposalRepository uploadProposalRepository;
     private final SubjectRepository subjectRepository;
     private final ScoreRepository scoreRepository;
+    private final IVoteConfigService voteConfigService;
 
     public FileServiceImpl(FileRepository fileRepository, TempFileRepository tempFileRepository,
             FileProposalRepository uploadProposalRepository, SubjectRepository subjectRepository,
-            SecurityFilterChain filterChain, ScoreRepository scoreRepository) {
+            IVoteConfigService voteConfigService, SecurityFilterChain filterChain, ScoreRepository scoreRepository) {
         this.fileRepository = fileRepository;
         this.tempFileRepository = tempFileRepository;
         this.uploadProposalRepository = uploadProposalRepository;
         this.subjectRepository = subjectRepository;
         this.scoreRepository = scoreRepository;
+        this.voteConfigService = voteConfigService;
     }
 
     public ResponseEntity<ByteArrayResource> downloadFile(Long id) {
@@ -93,13 +97,15 @@ public class FileServiceImpl implements IFileService {
                     .build();
             tempFileRepository.save(tempFile);
 
+            VoteConfig config = voteConfigService.getConfig();
             // 4. Crear UploadProposal asociada al TempFile
             FileProposal proposal = new FileProposal();
             proposal.setProposer(uploader);
             proposal.setTempFile(tempFile);
             proposal.setStatus(ProposalStatus.PENDING);
-            proposal.setQuorumRequired(5);
-            proposal.setApprovalThreshold(0.6);
+            proposal.setActionType(ActionType.UPLOAD);
+            proposal.setQuorumRequired(config.getQuorumRequired());
+            proposal.setApprovalThreshold(config.getApprovalThreshold());
             uploadProposalRepository.save(proposal);
 
             // 5. Devolver respuesta
@@ -129,6 +135,30 @@ public class FileServiceImpl implements IFileService {
                 .orElseThrow(() -> new NotFoundException("File not found"));
 
         return FileMapper.toFileResponse(file);
+    }
+
+    @Transactional
+    public com.example.gradox2.presentation.dto.fileProposal.FileProposalResponse requestFileDeletion(Long id) {
+        File file = fileRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("File not found"));
+
+        if (uploadProposalRepository.existsByFileAndStatus(file, ProposalStatus.PENDING)) {
+            throw new InvalidFileOperation("An active deletion proposal already exists for this file");
+        }
+
+        User requester = GetAuthUser.getAuthUser();
+        VoteConfig config = voteConfigService.getConfig();
+
+        FileProposal proposal = new FileProposal();
+        proposal.setProposer(requester);
+        proposal.setFile(file);
+        proposal.setStatus(ProposalStatus.PENDING);
+        proposal.setActionType(ActionType.DELETE);
+        proposal.setQuorumRequired(config.getQuorumRequired());
+        proposal.setApprovalThreshold(config.getApprovalThreshold());
+
+        uploadProposalRepository.save(proposal);
+        return com.example.gradox2.utils.mapper.FileProposalMapper.toFileProposalResponse(proposal);
     }
 
     private String generateFileHash(byte[] data) {
