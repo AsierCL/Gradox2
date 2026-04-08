@@ -4,6 +4,7 @@ import java.time.Instant;
 import java.util.HashSet;
 import java.util.Set;
 
+import com.example.gradox2.persistence.entities.enums.ActionType;
 import com.example.gradox2.persistence.entities.enums.ProposalStatus;
 
 import jakarta.persistence.*;
@@ -35,6 +36,10 @@ public abstract class Proposal {
     private Instant endsAt = createdAt.plusSeconds(7 * 24 * 60 * 60); // Por defecto, 7 días
 
     private Instant closedAt;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private ActionType actionType = ActionType.UPLOAD;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)

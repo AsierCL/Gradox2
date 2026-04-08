@@ -18,6 +18,8 @@ import com.example.gradox2.persistence.entities.Subject;
 import com.example.gradox2.persistence.entities.TempFile;
 import com.example.gradox2.persistence.entities.FileProposal;
 import com.example.gradox2.persistence.entities.User;
+import com.example.gradox2.persistence.entities.VoteConfig;
+import com.example.gradox2.persistence.entities.enums.ActionType;
 import com.example.gradox2.persistence.entities.enums.ProposalStatus;
 import com.example.gradox2.persistence.repository.SubjectRepository;
 import com.example.gradox2.persistence.repository.TempFileRepository;
@@ -29,6 +31,7 @@ import com.example.gradox2.service.exceptions.InvalidFileOperation;
 import com.example.gradox2.service.exceptions.NotFoundException;
 import com.example.gradox2.service.exceptions.ProposalClosedException;
 import com.example.gradox2.service.interfaces.IFileProposalService;
+import com.example.gradox2.service.interfaces.IVoteConfigService;
 import com.example.gradox2.utils.GetAuthUser;
 import com.example.gradox2.utils.mapper.FileProposalMapper;
 
@@ -39,13 +42,15 @@ public class FileProposalServiceImpl implements IFileProposalService {
     private final TempFileRepository tempFileRepository;
     private final FileProposalRepository fileProposalRepository;
     private final SubjectRepository subjectRepository;
+    private final IVoteConfigService voteConfigService;
 
     public FileProposalServiceImpl(TempFileRepository tempFileRepository,
             FileProposalRepository fileProposalRepository, SubjectRepository subjectRepository,
-            SecurityFilterChain filterChain) {
+            IVoteConfigService voteConfigService, SecurityFilterChain filterChain) {
         this.tempFileRepository = tempFileRepository;
         this.fileProposalRepository = fileProposalRepository;
         this.subjectRepository = subjectRepository;
+        this.voteConfigService = voteConfigService;
     }
 
     @Transactional
@@ -67,13 +72,14 @@ public class FileProposalServiceImpl implements IFileProposalService {
                     .build();
             tempFileRepository.save(tempFile);
 
-            // TODO : FACER ESTO CON BUILDER E NON HARDCODEAR OS VALORES
+            VoteConfig config = voteConfigService.getConfig();
             FileProposal proposal = new FileProposal();
             proposal.setProposer(uploader);
             proposal.setTempFile(tempFile);
             proposal.setStatus(ProposalStatus.PENDING);
-            proposal.setQuorumRequired(5);
-            proposal.setApprovalThreshold(0.6);
+            proposal.setActionType(ActionType.UPLOAD);
+            proposal.setQuorumRequired(config.getQuorumRequired());
+            proposal.setApprovalThreshold(config.getApprovalThreshold());
             fileProposalRepository.save(proposal);
 
             return FileProposalMapper.toFileProposalResponse(proposal);

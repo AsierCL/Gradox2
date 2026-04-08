@@ -15,25 +15,38 @@ import com.example.gradox2.service.exceptions.UnauthenticatedAccessException;
 import com.example.gradox2.service.interfaces.IAuthService;
 import com.example.gradox2.utils.EmailService;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.core.env.Environment;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class AuthServiceImpl implements IAuthService {
+
+    private static final Logger logger = LoggerFactory.getLogger(AuthServiceImpl.class);
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtils jwtUtils;
     private final EmailService emailService;
     private final VerificationTokenRepository verificationTokenRepository;
+    private final Environment environment;
+
+    @Value("${app.base-url:http://localhost:8080}")
+    private String appBaseUrl;
 
     public AuthServiceImpl(UserRepository userRepository, PasswordEncoder passwordEncoder, JwtUtils jwtUtils,
-            EmailService emailService, VerificationTokenRepository verificationTokenRepository) {
+            EmailService emailService, VerificationTokenRepository verificationTokenRepository,
+            Environment environment) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtUtils = jwtUtils;
         this.emailService = emailService;
         this.verificationTokenRepository = verificationTokenRepository;
+        this.environment = environment;
     }
 
     @Override
@@ -54,9 +67,14 @@ public class AuthServiceImpl implements IAuthService {
     }
 
     @Override
+    @Transactional
     public AuthResponse register(RegisterRequest request) {
         if (userRepository.existsByUsername(request.username)) {
             throw new AlreadyExistsException("Usuario ya existe");
+        }
+
+        if (userRepository.existsByEmail(request.email)) {
+            throw new AlreadyExistsException("Email ya existe");
         }
 
         User user = new User();
@@ -71,12 +89,16 @@ public class AuthServiceImpl implements IAuthService {
         VerificationToken vt = new VerificationToken(token, user);
         verificationTokenRepository.save(vt);
 
-        String verifyUrl = "http://localhost:8080/api/auth/verify?token=" + token;
+        String verifyUrl = appBaseUrl + "/api/auth/verify?token=" + token;
 
         emailService.sendEmail(user.getEmail(), "Verifica tu cuenta",
                 "Haz clic aquí para verificar tu cuenta: " + verifyUrl);
 
-        System.out.println(user.getUsername() +  "Haz clic aquí para verificar tu cuenta: " + verifyUrl);
+        if (isLocalOrDemo()) {
+            System.out.println(user.getUsername() + " Haz clic aquí para verificar tu cuenta: " + verifyUrl);
+        } else {
+            logger.info("Verification email sent to {}", user.getEmail());
+        }
 
         return new AuthResponse(null, user.getUsername(), user.getRole().name());
     }
@@ -94,5 +116,14 @@ public class AuthServiceImpl implements IAuthService {
             verificationTokenRepository.delete(vt);
             return true;
         }).orElse(false);
+    }
+
+    private boolean isLocalOrDemo() {
+        for (String profile : environment.getActiveProfiles()) {
+            if ("local".equals(profile) || "demo".equals(profile)) {
+                return true;
+            }
+        }
+        return false;
     }
 }

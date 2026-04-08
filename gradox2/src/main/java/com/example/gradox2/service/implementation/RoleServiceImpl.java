@@ -2,7 +2,6 @@ package com.example.gradox2.service.implementation;
 
 import java.util.List;
 
-import org.hibernate.usertype.UserType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -11,6 +10,8 @@ import org.springframework.stereotype.Service;
 
 import com.example.gradox2.persistence.entities.PromotionProposal;
 import com.example.gradox2.persistence.entities.User;
+import com.example.gradox2.persistence.entities.VoteConfig;
+import com.example.gradox2.persistence.entities.enums.ActionType;
 import com.example.gradox2.persistence.entities.enums.ProposalStatus;
 import com.example.gradox2.persistence.entities.enums.UserRole;
 import com.example.gradox2.persistence.repository.PromotionProposalRepository;
@@ -19,6 +20,7 @@ import com.example.gradox2.presentation.dto.promotionProposal.PromotionProposalR
 import com.example.gradox2.service.exceptions.InvalidRoleOperationException;
 import com.example.gradox2.service.exceptions.NotFoundException;
 import com.example.gradox2.service.interfaces.IRoleService;
+import com.example.gradox2.service.interfaces.IVoteConfigService;
 import com.example.gradox2.utils.GetAuthUser;
 import com.example.gradox2.utils.mapper.PromotionProposerMapper;
 
@@ -30,10 +32,13 @@ public class RoleServiceImpl implements IRoleService{
 
     private final UserRepository userRepository;
     private final PromotionProposalRepository promotionProposalRepository;
+    private final IVoteConfigService voteConfigService;
 
-    public RoleServiceImpl(UserRepository userRepository, PromotionProposalRepository promotionProposalRepository) {
+    public RoleServiceImpl(UserRepository userRepository, PromotionProposalRepository promotionProposalRepository,
+            IVoteConfigService voteConfigService) {
         this.userRepository = userRepository;
         this.promotionProposalRepository = promotionProposalRepository;
+        this.voteConfigService = voteConfigService;
     }
 
     @Override
@@ -44,12 +49,13 @@ public class RoleServiceImpl implements IRoleService{
             throw new InvalidRoleOperationException("El usuario ya es Master.");
         }
 
-        // TODO : FACER ESTO CON BUILDER E NON HARDCODEAR OS VALORES
+        VoteConfig config = voteConfigService.getConfig();
         PromotionProposal proposal = new PromotionProposal();
         proposal.setProposer(user);
         proposal.setStatus(ProposalStatus.PENDING);
-        proposal.setQuorumRequired(5);
-        proposal.setApprovalThreshold(0.6);
+        proposal.setActionType(ActionType.PROMOTION);
+        proposal.setQuorumRequired(config.getQuorumRequired());
+        proposal.setApprovalThreshold(config.getApprovalThreshold());
         proposal.setCandidate(user);
 
         promotionProposalRepository.save(proposal);
@@ -73,8 +79,26 @@ public class RoleServiceImpl implements IRoleService{
 
     @Override
     public PromotionProposalResponse demoteToUser(Long id) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'demoteToUser'");
+        User authUser = GetAuthUser.getAuthUser();
+        User candidate = userRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("User not found"));
+
+        if (!candidate.getRole().equals(UserRole.MASTER)) {
+            throw new InvalidRoleOperationException("El usuario no es Master.");
+        }
+
+        VoteConfig config = voteConfigService.getConfig();
+        PromotionProposal proposal = new PromotionProposal();
+        proposal.setProposer(authUser);
+        proposal.setStatus(ProposalStatus.PENDING);
+        proposal.setActionType(ActionType.EXPULSION);
+        proposal.setQuorumRequired(config.getQuorumRequired());
+        proposal.setApprovalThreshold(config.getApprovalThreshold());
+        proposal.setCandidate(candidate);
+
+        promotionProposalRepository.save(proposal);
+
+        return PromotionProposerMapper.toPromotionProposalResponse(proposal);
     }
 
     @Override

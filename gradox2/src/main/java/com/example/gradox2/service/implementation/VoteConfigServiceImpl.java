@@ -5,11 +5,13 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.example.gradox2.persistence.entities.VoteConfig;
 import com.example.gradox2.persistence.repository.VoteConfigRepository;
-import com.example.gradox2.service.exceptions.InternalServerErrorException;
 import com.example.gradox2.service.interfaces.IVoteConfigService;
 
 @Service
 public class VoteConfigServiceImpl implements IVoteConfigService {
+
+    private static final int DEFAULT_QUORUM_REQUIRED = 5;
+    private static final double DEFAULT_APPROVAL_THRESHOLD = 0.6;
 
     private final VoteConfigRepository voteConfigRepository;
 
@@ -17,9 +19,15 @@ public class VoteConfigServiceImpl implements IVoteConfigService {
         this.voteConfigRepository = voteConfigRepository;
     }
 
-    public VoteConfig getConfig() {
-        return voteConfigRepository.findById(1L) // Registro fijo
-                .orElseThrow(() -> new InternalServerErrorException("Vote configuration not found"));
+        @Transactional
+        public VoteConfig getConfig() {
+        return voteConfigRepository.findAll().stream().findFirst()
+            .orElseGet(() -> voteConfigRepository.save(
+                VoteConfig.builder()
+                    .quorumRequired(DEFAULT_QUORUM_REQUIRED)
+                    .approvalThreshold(DEFAULT_APPROVAL_THRESHOLD)
+                    .build()
+            ));
     }
 
     @Transactional

@@ -12,6 +12,7 @@ import com.example.gradox2.persistence.entities.Proposal;
 import com.example.gradox2.persistence.entities.TempFile;
 import com.example.gradox2.persistence.entities.User;
 import com.example.gradox2.persistence.entities.Vote;
+import com.example.gradox2.persistence.entities.enums.ActionType;
 import com.example.gradox2.persistence.entities.enums.ProposalStatus;
 import com.example.gradox2.persistence.entities.enums.UserRole;
 import com.example.gradox2.persistence.repository.*;
@@ -28,7 +29,6 @@ import com.example.gradox2.utils.mapper.VoteMapper;
 public class VoteServiceImpl implements IVoteService {
 
     private final FileRepository fileRepository;
-    private final TempFileRepository tempFileRepository;
     private final UserRepository userRepository;
     private final VoteRepository voteRepository;
     private final ProposalRepository proposalRepository;
@@ -36,7 +36,7 @@ public class VoteServiceImpl implements IVoteService {
     private final PromotionProposalRepository promotionProposalRepository;
 
     public VoteServiceImpl(VoteRepository voteRepository, ProposalRepository proposalRepository,
-            FileProposalRepository fileProposalRepository, TempFileRepository tempFileRepository,
+            FileProposalRepository fileProposalRepository,
             PromotionProposalRepository promotionProposalRepository, UserRepository userRepository, FileRepository fileRepository) {
         this.voteRepository = voteRepository;
         this.proposalRepository = proposalRepository;
@@ -44,7 +44,6 @@ public class VoteServiceImpl implements IVoteService {
         this.promotionProposalRepository = promotionProposalRepository;
         this.userRepository = userRepository;
         this.fileRepository = fileRepository;
-        this.tempFileRepository = tempFileRepository;
     }
 
     public VoteResponse voteProposal(Long proposalId, boolean upvote) {
@@ -83,38 +82,52 @@ public class VoteServiceImpl implements IVoteService {
         long upvotes = voteRepository.countByProposalAndInFavor(proposal, true);
         long downvotes = voteRepository.countByProposalAndInFavor(proposal, false);
 
-        if (upvotes >= 1) {
-            if(proposal instanceof FileProposal){
-                FileProposal fileProposal = (FileProposal) proposal;
-                fileProposal.setStatus(ProposalStatus.APPROVED);
-                fileProposal.setClosedAt(Instant.now());
-                TempFile tempFile = fileProposal.getTempFile();
-                if (tempFile != null) {
-                    File file = File.builder()
-                            .title(tempFile.getTitle())
-                            .description(tempFile.getDescription())
-                            .type(tempFile.getType())
-                            .fileData(tempFile.getFileData())
-                            .fileHash(tempFile.getFileHash())
-                            .uploader(tempFile.getUploader())
-                            .subject(tempFile.getSubject())
-                            .build();
+        int totalVotes = (int) (upvotes + downvotes);
+        if (totalVotes < proposal.getQuorumRequired()) {
+            return;
+        }
 
-                            fileProposal.setTempFile(null);
-                            fileProposal.setFile(file);
-                            fileRepository.save(file);
-                            fileProposalRepository.save(fileProposal);
-               }
+        double approvalRatio = totalVotes == 0 ? 0.0 : (double) upvotes / totalVotes;
+        if (approvalRatio < proposal.getApprovalThreshold()) {
+            return;
+        }
+
+        if (proposal instanceof FileProposal) {
+            FileProposal fileProposal = (FileProposal) proposal;
+            fileProposal.setStatus(ProposalStatus.APPROVED);
+            fileProposal.setClosedAt(Instant.now());
+            TempFile tempFile = fileProposal.getTempFile();
+            if (tempFile != null) {
+                File file = File.builder()
+                        .title(tempFile.getTitle())
+                        .description(tempFile.getDescription())
+                        .type(tempFile.getType())
+                        .fileData(tempFile.getFileData())
+                        .fileHash(tempFile.getFileHash())
+                        .uploader(tempFile.getUploader())
+                        .subject(tempFile.getSubject())
+                        .build();
+
+                fileProposal.setTempFile(null);
+                fileProposal.setFile(file);
+                fileRepository.save(file);
+                fileProposalRepository.save(fileProposal);
             }
-            if(proposal instanceof PromotionProposal){
-                PromotionProposal promotionProposal = (PromotionProposal) proposal;
-                promotionProposal.setStatus(ProposalStatus.APPROVED);
-                promotionProposal.setClosedAt(Instant.now());
-                User user = promotionProposal.getCandidate();
+            return;
+        }
+
+        if (proposal instanceof PromotionProposal) {
+            PromotionProposal promotionProposal = (PromotionProposal) proposal;
+            promotionProposal.setStatus(ProposalStatus.APPROVED);
+            promotionProposal.setClosedAt(Instant.now());
+            User user = promotionProposal.getCandidate();
+            if (proposal.getActionType() == ActionType.EXPULSION) {
+                user.setRole(UserRole.USER);
+            } else {
                 user.setRole(UserRole.MASTER);
-                userRepository.save(user);
-                promotionProposalRepository.save(promotionProposal);
             }
+            userRepository.save(user);
+            promotionProposalRepository.save(promotionProposal);
         }
     }
 

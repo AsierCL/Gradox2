@@ -27,6 +27,7 @@ import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilde
 import com.example.gradox2.persistence.entities.Course;
 import com.example.gradox2.persistence.entities.Subject;
 import com.example.gradox2.persistence.entities.User;
+import com.example.gradox2.persistence.entities.VoteConfig;
 import com.example.gradox2.persistence.entities.enums.FileType;
 import com.example.gradox2.persistence.entities.enums.UserRole;
 import com.example.gradox2.persistence.repository.CourseRepository;
@@ -38,6 +39,7 @@ import com.example.gradox2.persistence.repository.SubjectRepository;
 import com.example.gradox2.persistence.repository.TempFileRepository;
 import com.example.gradox2.persistence.repository.UserRepository;
 import com.example.gradox2.persistence.repository.VerificationTokenRepository;
+import com.example.gradox2.persistence.repository.VoteConfigRepository;
 import com.example.gradox2.persistence.repository.VoteRepository;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -69,6 +71,9 @@ class ApiIntegrationTest {
 
     @Autowired
     private VoteRepository voteRepository;
+
+    @Autowired
+    private VoteConfigRepository voteConfigRepository;
 
     @Autowired
     private ProposalRepository proposalRepository;
@@ -103,9 +108,15 @@ class ApiIntegrationTest {
         fileRepository.deleteAll();
         tempFileRepository.deleteAll();
         verificationTokenRepository.deleteAll();
+        voteConfigRepository.deleteAll();
         subjectRepository.deleteAll();
         courseRepository.deleteAll();
         userRepository.deleteAll();
+
+        voteConfigRepository.save(VoteConfig.builder()
+            .quorumRequired(1)
+            .approvalThreshold(0.5)
+            .build());
     }
 
     @Test
