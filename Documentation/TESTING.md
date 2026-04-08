@@ -19,7 +19,8 @@ Qué hace internamente:
 
 Notas:
 - Los tests de integración usan `@ActiveProfiles("test")`, por lo que se ejecutan contra configuración de test.
-- El reporte actual en `target/surefire-reports` indica: **14 tests, 0 fallos, 0 errores**.
+- La ejecución reciente de Maven reporta: **33 tests, 0 fallos, 0 errores**.
+- La lista siguiente enumera los casos explícitamente visibles en la fuente; el total reportado por Maven puede incluir ejecuciones adicionales internas del runner.
 
 ## Suite actual
 
@@ -87,3 +88,80 @@ Archivo: [gradox2/src/test/java/com/example/gradox2/ApiIntegrationTest.java](gra
   - Aprueba propuesta para materializar archivo.
   - Vota archivo positivo, cambia a negativo y valida score (`-1.0`).
   - Retracta voto y valida score final (`0.0`).
+
+### 4) AuthRegistrationIntegrationTest (6 casos)
+Archivo: [gradox2/src/test/java/com/example/gradox2/AuthRegistrationIntegrationTest.java](gradox2/src/test/java/com/example/gradox2/AuthRegistrationIntegrationTest.java)
+
+#### Registro y duplicados
+- `registerShouldRejectDuplicateUsername`
+  - Rechaza registro cuando el `username` ya existe.
+  - Verifica `409 CONFLICT` con `errorCode = ALREADY_EXIST_ERROR`.
+
+- `registerShouldRejectDuplicateEmail`
+  - Rechaza registro cuando el `email` ya existe.
+  - Verifica `409 CONFLICT` con `errorCode = ALREADY_EXIST_ERROR`.
+
+- `registerShouldPersistDisabledUserAndSendVerificationWithConfiguredBaseUrl`
+  - Verifica que el usuario se crea deshabilitado (`enabled = false`).
+  - Verifica que se crea token de verificación asociado al usuario.
+  - Verifica que el enlace enviado por correo usa `app.base-url` configurado en test (`https://gradox.test`).
+
+#### Verificación de cuenta
+- `verifyShouldEnableUserForValidToken`
+  - Verifica que un token válido habilita la cuenta.
+  - Verifica eliminación del token tras verificación exitosa.
+
+- `verifyShouldRejectExpiredTokenAndDeleteIt`
+  - Verifica rechazo de token expirado.
+  - Verifica que no habilita al usuario y elimina el token expirado.
+
+- `verifyShouldRejectUnknownToken`
+  - Verifica rechazo de token inexistente.
+
+### 5) GovernanceRulesIntegrationTest (8 casos)
+Archivo: [gradox2/src/test/java/com/example/gradox2/GovernanceRulesIntegrationTest.java](gradox2/src/test/java/com/example/gradox2/GovernanceRulesIntegrationTest.java)
+
+#### Reglas de quorum y umbral
+- `fileProposalShouldRemainPendingBelowQuorum`
+  - Verifica que una propuesta no se aprueba si no alcanza quorum, aunque todos los votos emitidos sean positivos.
+
+- `fileProposalShouldRemainPendingWhenApprovalRatioIsInsufficient`
+  - Verifica que una propuesta no se aprueba si alcanza quorum pero no el porcentaje mínimo de aprobación.
+
+- `fileProposalShouldApproveWhenQuorumAndThresholdAreMet`
+  - Verifica aprobación y publicación del archivo cuando se cumplen quorum y umbral.
+
+#### Configuración de voto
+- `proposalShouldKeepSnapshotOfVoteConfigAtCreationTime`
+  - Verifica que cada propuesta guarda snapshot de `quorumRequired` y `approvalThreshold` al crearse.
+  - Verifica que cambios posteriores de `VoteConfig` no alteran propuestas ya existentes.
+
+- `uploadProposalShouldCreateDefaultVoteConfigWhenMissing`
+  - Verifica fallback: si no existe `VoteConfig`, el sistema crea configuración por defecto sin devolver `500`.
+
+#### Despromoción gobernada
+- `demoteShouldCreateExpulsionProposalAndApplyRoleDowngradeWhenApproved`
+  - Verifica que la despromoción crea propuesta de tipo `EXPULSION`.
+  - Verifica cambio de rol final a `USER` cuando la propuesta se aprueba.
+
+- `demoteShouldRejectWhenCandidateIsNotMaster`
+  - Verifica rechazo cuando el candidato no tiene rol `MASTER`.
+
+- `demoteShouldReturnNotFoundWhenCandidateDoesNotExist`
+  - Verifica respuesta `404 NOT_FOUND` para candidatos inexistentes.
+
+---
+
+## Resumen de cobertura actual
+
+- **Smoke**: arranque de contexto Spring Boot.
+- **Seguridad de acceso**: endpoints protegidos, login con credenciales válidas/invalidas, rate limiting de login.
+- **Validaciones de entrada**: payloads inválidos, límites de paginación, IDs no válidos.
+- **Auth y verificación**: duplicados de registro, habilitación por token válido, rechazo de token expirado/inexistente.
+- **Gobernanza de propuestas**: quorum, umbral, snapshot de configuración, fallback de configuración.
+- **Roles**: flujo de despromoción con propuesta de expulsión y reglas negativas.
+- **E2E funcional**: ciclo completo propuesta -> voto -> publicación -> votación sobre archivo -> retractación.
+
+## Observación
+
+- Si cambian los tests de integración o se añaden ejecuciones dinámicas/parametrizadas, conviene refrescar este documento junto con el último `./run.sh test` para mantener alineado el total reportado por Maven.
