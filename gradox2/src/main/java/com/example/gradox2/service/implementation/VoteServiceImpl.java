@@ -89,6 +89,7 @@ public class VoteServiceImpl implements IVoteService {
 
         double approvalRatio = totalVotes == 0 ? 0.0 : (double) upvotes / totalVotes;
         if (approvalRatio < proposal.getApprovalThreshold()) {
+            rejectProposal(proposal);
             return;
         }
 
@@ -140,6 +141,23 @@ public class VoteServiceImpl implements IVoteService {
             userRepository.save(user);
             promotionProposalRepository.save(promotionProposal);
         }
+    }
+
+    private void rejectProposal(Proposal proposal) {
+        proposal.setStatus(ProposalStatus.REJECTED);
+        proposal.setClosedAt(Instant.now());
+
+        if (proposal instanceof FileProposal) {
+            fileProposalRepository.save((FileProposal) proposal);
+            return;
+        }
+
+        if (proposal instanceof PromotionProposal) {
+            promotionProposalRepository.save((PromotionProposal) proposal);
+            return;
+        }
+
+        proposalRepository.save(proposal);
     }
 
     public String retractVote(Long proposalId) {

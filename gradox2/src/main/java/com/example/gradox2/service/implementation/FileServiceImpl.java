@@ -6,6 +6,9 @@ import java.security.NoSuchAlgorithmException;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.core.io.ByteArrayResource;
@@ -43,6 +46,7 @@ import com.example.gradox2.utils.mapper.FileMapper;
 @Service
 public class FileServiceImpl implements IFileService {
     private static final int MAX_LIST_SIZE = 100;
+    private static final Logger logger = LoggerFactory.getLogger(FileServiceImpl.class);
 
     private final FileRepository fileRepository;
     private final TempFileRepository tempFileRepository;
@@ -112,7 +116,8 @@ public class FileServiceImpl implements IFileService {
             return ResponseEntity.ok("Archivo enviado para revisión. ID de propuesta: " + proposal.getId());
 
         } catch (IOException e) {
-            return ResponseEntity.status(500).body("Errofile);r al procesar el archivo: " + e.getMessage());
+            logger.error("File upload failed for subjectId={} title={}", dto.getSubjectId(), dto.getTitle(), e);
+            return ResponseEntity.status(500).body("An unexpected error occurred while processing the file.");
         }
     }
 

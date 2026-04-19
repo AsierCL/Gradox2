@@ -149,7 +149,7 @@ class GovernanceRulesIntegrationTest {
     }
 
     @Test
-    void fileProposalShouldRemainPendingWhenApprovalRatioIsInsufficient() throws Exception {
+        void fileProposalShouldBeRejectedWhenApprovalRatioIsInsufficientAfterQuorum() throws Exception {
         voteConfigRepository.save(VoteConfig.builder().quorumRequired(3).approvalThreshold(0.67).build());
 
         Long subjectId = createSubject();
@@ -174,7 +174,7 @@ class GovernanceRulesIntegrationTest {
 
         mockMvc.perform(get("/uploadProposal/{id}", proposalId).header("Authorization", bearer(proposerToken)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("PENDING"));
+                .andExpect(jsonPath("$.status").value("REJECTED"));
 
         mockMvc.perform(get("/files/all").header("Authorization", bearer(voter1)))
                 .andExpect(status().isOk())
@@ -324,7 +324,10 @@ class GovernanceRulesIntegrationTest {
 
     private String loginAndGetToken(String username, String password) throws Exception {
         MvcResult result = mockMvc.perform(post("/api/auth/login")
-                        .header("X-Forwarded-For", nextTestIp())
+                                                .with(request -> {
+                                                        request.setRemoteAddr(nextTestIp());
+                                                        return request;
+                                                })
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json(Map.of("username", username, "password", password))))
                 .andExpect(status().isOk())

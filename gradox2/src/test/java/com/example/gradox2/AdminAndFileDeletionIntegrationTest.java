@@ -275,7 +275,10 @@ class AdminAndFileDeletionIntegrationTest {
 
     private String loginAndGetToken(String username, String password) throws Exception {
         MvcResult result = mockMvc.perform(post("/api/auth/login")
-                        .header("X-Forwarded-For", nextTestIp())
+                                                .with(request -> {
+                                                        request.setRemoteAddr(nextTestIp());
+                                                        return request;
+                                                })
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json(Map.of("username", username, "password", password))))
                 .andExpect(status().isOk())

@@ -1,6 +1,7 @@
 package com.example.gradox2.service.implementation;
 
 import java.util.List;
+import java.util.Set;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -22,6 +23,7 @@ import com.example.gradox2.service.exceptions.NotFoundException;
 import com.example.gradox2.service.interfaces.IRoleService;
 import com.example.gradox2.service.interfaces.IVoteConfigService;
 import com.example.gradox2.utils.GetAuthUser;
+import com.example.gradox2.utils.SortUtils;
 import com.example.gradox2.utils.mapper.PromotionProposerMapper;
 
 import jakarta.transaction.Transactional;
@@ -29,6 +31,14 @@ import jakarta.transaction.Transactional;
 @Service
 public class RoleServiceImpl implements IRoleService{
     private static final int MAX_PAGE_SIZE = 100;
+    private static final Set<String> ALLOWED_SORT_FIELDS = Set.of(
+            "id",
+            "quorumRequired",
+            "approvalThreshold",
+            "createdAt",
+            "closedAt",
+            "status",
+            "actionType");
 
     private final UserRepository userRepository;
     private final PromotionProposalRepository promotionProposalRepository;
@@ -72,7 +82,8 @@ public class RoleServiceImpl implements IRoleService{
     public Page<PromotionProposalResponse> getPendingPromoteProposalsPaged(int page, int size, String sortBy) {
         int safePage = Math.max(page, 0);
         int safeSize = Math.min(Math.max(size, 1), MAX_PAGE_SIZE);
-        Pageable pageable = PageRequest.of(safePage, safeSize, Sort.by(sortBy).descending());
+        String safeSortBy = SortUtils.resolveSortBy(sortBy, "id", ALLOWED_SORT_FIELDS);
+        Pageable pageable = PageRequest.of(safePage, safeSize, Sort.by(safeSortBy).descending());
         Page<PromotionProposal> proposalPage = promotionProposalRepository.findByStatus(ProposalStatus.PENDING, pageable);
         return proposalPage.map(PromotionProposerMapper::toPromotionProposalResponse);
     }

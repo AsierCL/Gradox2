@@ -46,12 +46,6 @@ import com.example.gradox2.persistence.repository.VoteRepository;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import jakarta.servlet.ServletException;
-import jakarta.validation.ConstraintViolationException;
-
-import static org.junit.jupiter.api.Assertions.assertInstanceOf;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
@@ -142,6 +136,13 @@ class ApiIntegrationTest {
     }
 
     @Test
+    void usersMeShouldNotFailWithMalformedJwt() throws Exception {
+        mockMvc.perform(get("/users/me")
+                        .header("Authorization", "Bearer malformed-token"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
     void loginShouldReturnTokenForEnabledUser() throws Exception {
         createEnabledUser("aliceuser", "alice@rai.usc.es", "SecurePass1!", UserRole.USER);
 
@@ -159,7 +160,10 @@ class ApiIntegrationTest {
         createEnabledUser("bobuser", "bob@rai.usc.es", "SecurePass1!", UserRole.USER);
 
         mockMvc.perform(post("/api/auth/login")
-                        .header("X-Forwarded-For", nextTestIp())
+                        .with(request -> {
+                            request.setRemoteAddr(nextTestIp());
+                            return request;
+                        })
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json(Map.of("username", "bobuser", "password", "WrongPass123!"))))
                 .andExpect(status().isUnauthorized())
@@ -171,7 +175,8 @@ class ApiIntegrationTest {
         mockMvc.perform(post("/api/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json(Map.of("username", "ab", "password", "short"))))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errorCode").value("VALIDATION_ERROR"));
     }
 
     @Test
@@ -191,26 +196,39 @@ class ApiIntegrationTest {
         createEnabledUser("dianauser", "diana@rai.usc.es", "SecurePass1!", UserRole.USER);
         String token = loginAndGetToken("dianauser", "SecurePass1!");
 
-        ServletException ex = assertThrows(ServletException.class, () -> mockMvc.perform(get("/users/all")
+        mockMvc.perform(get("/users/all")
             .header("Authorization", bearer(token))
             .param("paged", "true")
             .param("page", "0")
             .param("size", "101"))
-            .andReturn());
-
-        assertInstanceOf(ConstraintViolationException.class, ex.getCause());
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.errorCode").value("VALIDATION_ERROR"));
     }
+
+            @Test
+            void usersAllShouldFallbackWhenSortFieldIsInvalid() throws Exception {
+            createEnabledUser("sortuser", "sortuser@rai.usc.es", "SecurePass1!", UserRole.USER);
+            String token = loginAndGetToken("sortuser", "SecurePass1!");
+
+            mockMvc.perform(get("/users/all")
+                    .header("Authorization", bearer(token))
+                    .param("paged", "true")
+                    .param("page", "0")
+                    .param("size", "5")
+                    .param("sortBy", "doesNotExist"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[0].username").value("sortuser"));
+            }
 
     @Test
     void userProfileShouldRejectNonPositiveId() throws Exception {
         createEnabledUser("eveuser", "eve@rai.usc.es", "SecurePass1!", UserRole.USER);
         String token = loginAndGetToken("eveuser", "SecurePass1!");
 
-        ServletException ex = assertThrows(ServletException.class, () -> mockMvc.perform(get("/users/{id}", 0)
+        mockMvc.perform(get("/users/{id}", 0)
             .header("Authorization", bearer(token)))
-            .andReturn());
-
-        assertInstanceOf(ConstraintViolationException.class, ex.getCause());
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.errorCode").value("VALIDATION_ERROR"));
     }
 
     @Test
@@ -228,6 +246,31 @@ class ApiIntegrationTest {
                         .content(json(body)))
                 .andExpect(status().isForbidden());
     }
+
+        @Test
+        void uploadProposalShouldReturnValidationErrorForInvalidPayload() throws Exception {
+        Long subjectId = createSubject();
+        createEnabledUser("invalidupload", "invalidupload@rai.usc.es", "SecurePass1!", UserRole.USER);
+        String token = loginAndGetToken("invalidupload", "SecurePass1!");
+
+        MockMultipartFile multipartFile = new MockMultipartFile(
+            "file",
+            "tema.pdf",
+            MediaType.APPLICATION_PDF_VALUE,
+            "contenido-de-prueba".getBytes());
+
+        MockHttpServletRequestBuilder request = multipart("/uploadProposal/upload")
+            .file(multipartFile)
+            .param("title", "")
+            .param("description", "Descripcion valida")
+            .param("type", FileType.APUNTES.name())
+            .param("subjectId", String.valueOf(subjectId))
+            .header("Authorization", bearer(token));
+
+        mockMvc.perform(request)
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.errorCode").value("VALIDATION_ERROR"));
+        }
 
             @Test
             void uploadProposalApproveAndPublishFileShouldWorkEndToEnd() throws Exception {
@@ -283,6 +326,12 @@ class ApiIntegrationTest {
 
             @Test
             void pendingProposalShouldAllowDownvoteRetractAndDeleteByOwner() throws Exception {
+            voteConfigRepository.deleteAll();
+            voteConfigRepository.save(VoteConfig.builder()
+                .quorumRequired(2)
+                .approvalThreshold(0.5)
+                .build());
+
             Long subjectId = createSubject();
 
             createEnabledUser("proposer2", "proposer2@rai.usc.es", "SecurePass1!", UserRole.USER);
@@ -389,7 +438,10 @@ class ApiIntegrationTest {
 
     private String loginAndGetToken(String username, String password) throws Exception {
         MvcResult result = mockMvc.perform(post("/api/auth/login")
-                        .header("X-Forwarded-For", nextTestIp())
+                        .with(request -> {
+                            request.setRemoteAddr(nextTestIp());
+                            return request;
+                        })
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json(Map.of("username", username, "password", password))))
                 .andExpect(status().isOk())

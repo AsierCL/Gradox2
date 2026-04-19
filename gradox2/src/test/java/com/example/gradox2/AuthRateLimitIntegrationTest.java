@@ -69,11 +69,14 @@ class AuthRateLimitIntegrationTest {
 
     @Test
     void loginShouldReturnTooManyRequestsAfterFiveFailuresFromSameIp() throws Exception {
-        String ip = "203.0.113.10";
+        String remoteIp = "10.0.0.10";
 
         for (int i = 0; i < 5; i++) {
             mockMvc.perform(post("/api/auth/login")
-                            .header("X-Forwarded-For", ip)
+                            .with(request -> {
+                                request.setRemoteAddr(remoteIp);
+                                return request;
+                            })
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(json(Map.of("username", "ratelimituser", "password", "WrongPass123!"))))
                     .andExpect(status().isUnauthorized())
@@ -81,7 +84,39 @@ class AuthRateLimitIntegrationTest {
         }
 
         mockMvc.perform(post("/api/auth/login")
-                        .header("X-Forwarded-For", ip)
+                        .with(request -> {
+                            request.setRemoteAddr(remoteIp);
+                            return request;
+                        })
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json(Map.of("username", "ratelimituser", "password", "WrongPass123!"))))
+                .andExpect(status().isTooManyRequests())
+                .andExpect(jsonPath("$.errorCode").value("RATE_LIMIT_EXCEEDED"));
+    }
+
+    @Test
+    void loginRateLimitShouldIgnoreSpoofedForwardedForHeader() throws Exception {
+        String remoteIp = "10.0.0.11";
+
+        for (int i = 0; i < 5; i++) {
+            mockMvc.perform(post("/api/auth/login")
+                            .with(request -> {
+                                request.setRemoteAddr(remoteIp);
+                                return request;
+                            })
+                            .header("X-Forwarded-For", "198.51.100." + i)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(json(Map.of("username", "ratelimituser", "password", "WrongPass123!"))))
+                    .andExpect(status().isUnauthorized())
+                    .andExpect(jsonPath("$.errorCode").value("UNAUTHENTICATED_ACCESS"));
+        }
+
+        mockMvc.perform(post("/api/auth/login")
+                        .with(request -> {
+                            request.setRemoteAddr(remoteIp);
+                            return request;
+                        })
+                        .header("X-Forwarded-For", "203.0.113.200")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json(Map.of("username", "ratelimituser", "password", "WrongPass123!"))))
                 .andExpect(status().isTooManyRequests())

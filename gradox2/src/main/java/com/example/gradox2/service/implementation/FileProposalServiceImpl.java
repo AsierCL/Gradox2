@@ -5,12 +5,12 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
-import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -33,11 +33,21 @@ import com.example.gradox2.service.exceptions.ProposalClosedException;
 import com.example.gradox2.service.interfaces.IFileProposalService;
 import com.example.gradox2.service.interfaces.IVoteConfigService;
 import com.example.gradox2.utils.GetAuthUser;
+import com.example.gradox2.utils.SortUtils;
 import com.example.gradox2.utils.mapper.FileProposalMapper;
 
 @Service
 public class FileProposalServiceImpl implements IFileProposalService {
     private static final int MAX_PAGE_SIZE = 100;
+    // Ten que haber algunha forma mais elegante, non se me ocurreu
+    private static final Set<String> ALLOWED_SORT_FIELDS = Set.of(
+            "id",
+            "quorumRequired",
+            "approvalThreshold",
+            "status",
+            "actionType",
+            "createdAt",
+            "closedAt");
 
     private final TempFileRepository tempFileRepository;
     private final FileProposalRepository fileProposalRepository;
@@ -46,7 +56,7 @@ public class FileProposalServiceImpl implements IFileProposalService {
 
     public FileProposalServiceImpl(TempFileRepository tempFileRepository,
             FileProposalRepository fileProposalRepository, SubjectRepository subjectRepository,
-            IVoteConfigService voteConfigService, SecurityFilterChain filterChain) {
+            IVoteConfigService voteConfigService) {
         this.tempFileRepository = tempFileRepository;
         this.fileProposalRepository = fileProposalRepository;
         this.subjectRepository = subjectRepository;
@@ -116,7 +126,8 @@ public class FileProposalServiceImpl implements IFileProposalService {
     public Page<FileProposalResponse> getFileProposalsPaged(int page, int size, String sortBy) {
         int safePage = Math.max(page, 0);
         int safeSize = Math.min(Math.max(size, 1), MAX_PAGE_SIZE);
-        Pageable pageable = PageRequest.of(safePage, safeSize, Sort.by(sortBy).descending());
+        String safeSortBy = SortUtils.resolveSortBy(sortBy, "id", ALLOWED_SORT_FIELDS);
+        Pageable pageable = PageRequest.of(safePage, safeSize, Sort.by(safeSortBy).descending());
         Page<FileProposal> proposalPage = fileProposalRepository.findAll(pageable);
         return proposalPage.map(FileProposalMapper::toFileProposalResponse);
     }
