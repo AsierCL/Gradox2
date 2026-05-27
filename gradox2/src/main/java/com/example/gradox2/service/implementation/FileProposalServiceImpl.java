@@ -18,7 +18,7 @@ import com.example.gradox2.persistence.entities.Subject;
 import com.example.gradox2.persistence.entities.TempFile;
 import com.example.gradox2.persistence.entities.FileProposal;
 import com.example.gradox2.persistence.entities.User;
-import com.example.gradox2.persistence.entities.VoteConfig;
+import com.example.gradox2.persistence.entities.GlobalConfig;
 import com.example.gradox2.persistence.entities.enums.ActionType;
 import com.example.gradox2.persistence.entities.enums.ProposalStatus;
 import com.example.gradox2.persistence.repository.SubjectRepository;
@@ -31,7 +31,7 @@ import com.example.gradox2.service.exceptions.InvalidFileOperation;
 import com.example.gradox2.service.exceptions.NotFoundException;
 import com.example.gradox2.service.exceptions.ProposalClosedException;
 import com.example.gradox2.service.interfaces.IFileProposalService;
-import com.example.gradox2.service.interfaces.IVoteConfigService;
+import com.example.gradox2.service.interfaces.IGlobalConfigService;
 import com.example.gradox2.utils.GetAuthUser;
 import com.example.gradox2.utils.SortUtils;
 import com.example.gradox2.utils.mapper.FileProposalMapper;
@@ -52,11 +52,11 @@ public class FileProposalServiceImpl implements IFileProposalService {
     private final TempFileRepository tempFileRepository;
     private final FileProposalRepository fileProposalRepository;
     private final SubjectRepository subjectRepository;
-    private final IVoteConfigService voteConfigService;
+    private final IGlobalConfigService voteConfigService;
 
     public FileProposalServiceImpl(TempFileRepository tempFileRepository,
             FileProposalRepository fileProposalRepository, SubjectRepository subjectRepository,
-            IVoteConfigService voteConfigService) {
+            IGlobalConfigService voteConfigService) {
         this.tempFileRepository = tempFileRepository;
         this.fileProposalRepository = fileProposalRepository;
         this.subjectRepository = subjectRepository;
@@ -69,6 +69,8 @@ public class FileProposalServiceImpl implements IFileProposalService {
                 .orElseThrow(() -> new NotFoundException("Subject not found"));
 
         User uploader = GetAuthUser.getAuthUser();
+        GlobalConfig config = voteConfigService.getConfig();
+        ensurePendingUploadLimit(uploader, config.getMaxPendingUploads());
 
         try {
             TempFile tempFile = TempFile.builder()
@@ -83,7 +85,6 @@ public class FileProposalServiceImpl implements IFileProposalService {
                     .build();
             tempFileRepository.save(tempFile);
 
-            VoteConfig config = voteConfigService.getConfig();
             FileProposal proposal = new FileProposal();
             proposal.setProposer(uploader);
             proposal.setTempFile(tempFile);
@@ -175,5 +176,16 @@ public class FileProposalServiceImpl implements IFileProposalService {
             return null;
         }
         return user;
+    }
+
+    private void ensurePendingUploadLimit(User uploader, Integer maxPendingUploads) {
+        long pendingUploads = fileProposalRepository.countByProposerAndStatusAndActionType(
+                uploader,
+                ProposalStatus.PENDING,
+                ActionType.UPLOAD);
+
+        if (maxPendingUploads != null && pendingUploads >= maxPendingUploads) {
+            throw new InvalidFileOperation("Maximum pending uploads reached");
+        }
     }
 }

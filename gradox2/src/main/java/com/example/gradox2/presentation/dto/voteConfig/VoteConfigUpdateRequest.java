@@ -20,4 +20,7 @@ public class VoteConfigUpdateRequest {
     @DecimalMin(value = "0.0", inclusive = false, message = "Approval threshold must be > 0")
     @DecimalMax(value = "1.0", inclusive = true, message = "Approval threshold must be <= 1")
     private Double approvalThreshold;
+
+    @Min(value = 1, message = "Max pending uploads must be at least 1")
+    private Integer maxPendingUploads;
 }

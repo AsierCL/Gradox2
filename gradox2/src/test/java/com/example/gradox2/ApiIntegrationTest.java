@@ -11,6 +11,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,11 +24,11 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 
 import com.example.gradox2.persistence.entities.Course;
 import com.example.gradox2.persistence.entities.Subject;
 import com.example.gradox2.persistence.entities.User;
-import com.example.gradox2.persistence.entities.VoteConfig;
 import com.example.gradox2.persistence.entities.enums.FileType;
 import com.example.gradox2.persistence.entities.enums.UserRole;
 import com.example.gradox2.persistence.repository.CourseRepository;
@@ -43,6 +44,7 @@ import com.example.gradox2.persistence.repository.UserRepository;
 import com.example.gradox2.persistence.repository.VerificationTokenRepository;
 import com.example.gradox2.persistence.repository.VoteConfigRepository;
 import com.example.gradox2.persistence.repository.VoteRepository;
+import com.example.gradox2.service.interfaces.IGlobalConfigService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -101,6 +103,9 @@ class ApiIntegrationTest {
     @Autowired
     private PasswordEncoder passwordEncoder;
 
+    @Autowired
+    private IGlobalConfigService voteConfigService;
+
     @BeforeEach
     void setUp() {
         scoreRepository.deleteAll();
@@ -117,10 +122,8 @@ class ApiIntegrationTest {
         courseRepository.deleteAll();
         userRepository.deleteAll();
 
-        voteConfigRepository.save(VoteConfig.builder()
-            .quorumRequired(1)
-            .approvalThreshold(0.5)
-            .build());
+        voteConfigService.reloadConfig();
+        voteConfigService.updateConfig(1, 0.5, 3);
     }
 
     @Test
@@ -205,20 +208,20 @@ class ApiIntegrationTest {
             .andExpect(jsonPath("$.errorCode").value("VALIDATION_ERROR"));
     }
 
-            @Test
-            void usersAllShouldFallbackWhenSortFieldIsInvalid() throws Exception {
-            createEnabledUser("sortuser", "sortuser@rai.usc.es", "SecurePass1!", UserRole.USER);
-            String token = loginAndGetToken("sortuser", "SecurePass1!");
+    @Test
+    void usersAllShouldFallbackWhenSortFieldIsInvalid() throws Exception {
+        createEnabledUser("sortuser", "sortuser@rai.usc.es", "SecurePass1!", UserRole.USER);
+        String token = loginAndGetToken("sortuser", "SecurePass1!");
 
-            mockMvc.perform(get("/users/all")
-                    .header("Authorization", bearer(token))
-                    .param("paged", "true")
-                    .param("page", "0")
-                    .param("size", "5")
-                    .param("sortBy", "doesNotExist"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.content[0].username").value("sortuser"));
-            }
+        mockMvc.perform(get("/users/all")
+                .header("Authorization", bearer(token))
+                .param("paged", "true")
+                .param("page", "0")
+                .param("size", "5")
+                .param("sortBy", "doesNotExist"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.content[0].username").value("sortuser"));
+    }
 
     @Test
     void userProfileShouldRejectNonPositiveId() throws Exception {
@@ -247,8 +250,8 @@ class ApiIntegrationTest {
                 .andExpect(status().isForbidden());
     }
 
-        @Test
-        void uploadProposalShouldReturnValidationErrorForInvalidPayload() throws Exception {
+    @Test
+    void uploadProposalShouldReturnValidationErrorForInvalidPayload() throws Exception {
         Long subjectId = createSubject();
         createEnabledUser("invalidupload", "invalidupload@rai.usc.es", "SecurePass1!", UserRole.USER);
         String token = loginAndGetToken("invalidupload", "SecurePass1!");
@@ -270,230 +273,266 @@ class ApiIntegrationTest {
         mockMvc.perform(request)
             .andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.errorCode").value("VALIDATION_ERROR"));
-        }
+    }
 
-            @Test
-            void uploadProposalApproveAndPublishFileShouldWorkEndToEnd() throws Exception {
-            Long subjectId = createSubject();
+    @Test
+    void uploadProposalShouldLimitPendingUploadsPerUserAndFreeSlotOnDelete() throws Exception {
+        Long subjectId = createSubject();
 
-            createEnabledUser("proposer1", "proposer1@rai.usc.es", "SecurePass1!", UserRole.USER);
-            createEnabledUser("voter1", "voter1@rai.usc.es", "SecurePass1!", UserRole.USER);
+        createEnabledUser("pendinguser", "pendinguser@rai.usc.es", "SecurePass1!", UserRole.USER);
+        String token = loginAndGetToken("pendinguser", "SecurePass1!");
 
-            String proposerToken = loginAndGetToken("proposer1", "SecurePass1!");
-            String voterToken = loginAndGetToken("voter1", "SecurePass1!");
+        long firstProposalId = uploadProposalAndGetId(token, subjectId, "tema-1.pdf", "Tema 1", "Descripcion 1");
+        long secondProposalId = uploadProposalAndGetId(token, subjectId, "tema-2.pdf", "Tema 2", "Descripcion 2");
+        long thirdProposalId = uploadProposalAndGetId(token, subjectId, "tema-3.pdf", "Tema 3", "Descripcion 3");
 
-            long proposalId = uploadProposalAndGetId(proposerToken, subjectId, "tema1.pdf", "Tema 1", "Apuntes tema 1");
+        mockMvc.perform(multipart("/uploadProposal/upload")
+                .file(new MockMultipartFile("file", "tema-4.pdf", MediaType.APPLICATION_PDF_VALUE, "contenido-de-prueba".getBytes()))
+                .param("title", "Tema 4")
+                .param("description", "Descripcion 4")
+                .param("type", FileType.APUNTES.name())
+                .param("subjectId", String.valueOf(subjectId))
+                .header("Authorization", bearer(token)))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.errorCode").value("INVALID_FILE_OPERATION"));
 
-            mockMvc.perform(get("/uploadProposal/{id}/download", proposalId)
-                    .header("Authorization", bearer(proposerToken)))
-                .andExpect(status().isOk());
+        mockMvc.perform(MockMvcRequestBuilders.delete("/uploadProposal/{id}", firstProposalId)
+                .header("Authorization", bearer(token)))
+            .andExpect(status().isOk());
 
-            mockMvc.perform(post("/vote/{id}/{upvote}", proposalId, true)
-                    .header("Authorization", bearer(voterToken)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.idVote").isNumber())
-                .andExpect(jsonPath("$.inFavor").value(true));
+        mockMvc.perform(multipart("/uploadProposal/upload")
+                .file(new MockMultipartFile("file", "tema-4.pdf", MediaType.APPLICATION_PDF_VALUE, "contenido-de-prueba".getBytes()))
+                .param("title", "Tema 4")
+                .param("description", "Descripcion 4")
+                .param("type", FileType.APUNTES.name())
+                .param("subjectId", String.valueOf(subjectId))
+                .header("Authorization", bearer(token)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.status").value("PENDING"));
 
-            mockMvc.perform(get("/vote/{id}/results", proposalId)
-                    .header("Authorization", bearer(voterToken)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.upvotes").value(1))
-                .andExpect(jsonPath("$.downvotes").value(0));
+        Assertions.assertNotNull(fileProposalRepository.findById(secondProposalId).orElseThrow());
+        Assertions.assertNotNull(fileProposalRepository.findById(thirdProposalId).orElseThrow());
+    }
 
-            MvcResult filesResult = mockMvc.perform(get("/files/all")
-                    .header("Authorization", bearer(voterToken)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].fileName").value("Tema 1"))
-                .andReturn();
+    @Test
+    void uploadProposalApproveAndPublishFileShouldWorkEndToEnd() throws Exception {
+        Long subjectId = createSubject();
 
-            JsonNode files = objectMapper.readTree(filesResult.getResponse().getContentAsString());
-            long fileId = files.get(0).get("id").asLong();
+        createEnabledUser("proposer1", "proposer1@rai.usc.es", "SecurePass1!", UserRole.USER);
+        createEnabledUser("voter1", "voter1@rai.usc.es", "SecurePass1!", UserRole.USER);
 
-            mockMvc.perform(get("/files/{id}", fileId)
-                    .header("Authorization", bearer(voterToken)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.fileName").value("Tema 1"));
+        String proposerToken = loginAndGetToken("proposer1", "SecurePass1!");
+        String voterToken = loginAndGetToken("voter1", "SecurePass1!");
 
-            mockMvc.perform(get("/files/{id}/download", fileId)
-                    .header("Authorization", bearer(voterToken)))
-                .andExpect(status().isOk());
+        long proposalId = uploadProposalAndGetId(proposerToken, subjectId, "tema1.pdf", "Tema 1", "Apuntes tema 1");
 
-            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete("/uploadProposal/{id}", proposalId)
-                    .header("Authorization", bearer(proposerToken)))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.errorCode").value("PROPOSAL_CLOSED"));
-            }
+        mockMvc.perform(get("/uploadProposal/{id}/download", proposalId)
+                .header("Authorization", bearer(proposerToken)))
+            .andExpect(status().isOk());
 
-            @Test
-            void pendingProposalShouldAllowDownvoteRetractAndDeleteByOwner() throws Exception {
-            voteConfigRepository.deleteAll();
-            voteConfigRepository.save(VoteConfig.builder()
-                .quorumRequired(2)
-                .approvalThreshold(0.5)
-                .build());
+        mockMvc.perform(post("/vote/{id}/{upvote}", proposalId, true)
+                .header("Authorization", bearer(voterToken)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.idVote").isNumber())
+            .andExpect(jsonPath("$.inFavor").value(true));
 
-            Long subjectId = createSubject();
+        mockMvc.perform(get("/vote/{id}/results", proposalId)
+                .header("Authorization", bearer(voterToken)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.upvotes").value(1))
+            .andExpect(jsonPath("$.downvotes").value(0));
 
-            createEnabledUser("proposer2", "proposer2@rai.usc.es", "SecurePass1!", UserRole.USER);
-            createEnabledUser("voter2", "voter2@rai.usc.es", "SecurePass1!", UserRole.USER);
+        MvcResult filesResult = mockMvc.perform(get("/files/all")
+                .header("Authorization", bearer(voterToken)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$[0].fileName").value("Tema 1"))
+            .andReturn();
 
-            String proposerToken = loginAndGetToken("proposer2", "SecurePass1!");
-            String voterToken = loginAndGetToken("voter2", "SecurePass1!");
+        JsonNode files = objectMapper.readTree(filesResult.getResponse().getContentAsString());
+        long fileId = files.get(0).get("id").asLong();
 
-            long proposalId = uploadProposalAndGetId(proposerToken, subjectId, "tema2.pdf", "Tema 2", "Apuntes tema 2");
+        mockMvc.perform(get("/files/{id}", fileId)
+                .header("Authorization", bearer(voterToken)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.fileName").value("Tema 1"));
 
-            mockMvc.perform(post("/vote/{id}/{upvote}", proposalId, false)
-                    .header("Authorization", bearer(voterToken)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.inFavor").value(false));
+        mockMvc.perform(get("/files/{id}/download", fileId)
+                .header("Authorization", bearer(voterToken)))
+            .andExpect(status().isOk());
 
-            mockMvc.perform(get("/vote/{id}/results", proposalId)
-                    .header("Authorization", bearer(voterToken)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.upvotes").value(0))
-                .andExpect(jsonPath("$.downvotes").value(1));
+        mockMvc.perform(MockMvcRequestBuilders.delete("/uploadProposal/{id}", proposalId)
+                .header("Authorization", bearer(proposerToken)))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.errorCode").value("PROPOSAL_CLOSED"));
+    }
 
-            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete("/vote/{id}", proposalId)
-                    .header("Authorization", bearer(voterToken)))
-                .andExpect(status().isOk());
+    @Test
+    void pendingProposalShouldAllowDownvoteRetractAndDeleteByOwner() throws Exception {
+        voteConfigService.reloadConfig();
+        voteConfigService.updateConfig(2, 0.5, 3);
 
-            mockMvc.perform(get("/vote/{id}/results", proposalId)
-                    .header("Authorization", bearer(voterToken)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.upvotes").value(0))
-                .andExpect(jsonPath("$.downvotes").value(0));
+        Long subjectId = createSubject();
 
-            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete("/uploadProposal/{id}", proposalId)
-                    .header("Authorization", bearer(proposerToken)))
-                .andExpect(status().isOk());
+        createEnabledUser("proposer2", "proposer2@rai.usc.es", "SecurePass1!", UserRole.USER);
+        createEnabledUser("voter2", "voter2@rai.usc.es", "SecurePass1!", UserRole.USER);
 
-            mockMvc.perform(get("/uploadProposal/{id}", proposalId)
-                    .header("Authorization", bearer(proposerToken)))
-                .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.errorCode").value("NOT_FOUND"));
-            }
+        String proposerToken = loginAndGetToken("proposer2", "SecurePass1!");
+        String voterToken = loginAndGetToken("voter2", "SecurePass1!");
 
-            @Test
-            void fileVoteShouldAllowChangeAndRetractFlow() throws Exception {
-            Long subjectId = createSubject();
+        long proposalId = uploadProposalAndGetId(proposerToken, subjectId, "tema2.pdf", "Tema 2", "Apuntes tema 2");
 
-            createEnabledUser("proposer3", "proposer3@rai.usc.es", "SecurePass1!", UserRole.USER);
-            createEnabledUser("approver3", "approver3@rai.usc.es", "SecurePass1!", UserRole.USER);
-            createEnabledUser("scorer3", "scorer3@rai.usc.es", "SecurePass1!", UserRole.USER);
+        mockMvc.perform(post("/vote/{id}/{upvote}", proposalId, false)
+                .header("Authorization", bearer(voterToken)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.inFavor").value(false));
 
-            String proposerToken = loginAndGetToken("proposer3", "SecurePass1!");
-            String approverToken = loginAndGetToken("approver3", "SecurePass1!");
-            String scorerToken = loginAndGetToken("scorer3", "SecurePass1!");
+        mockMvc.perform(get("/vote/{id}/results", proposalId)
+                .header("Authorization", bearer(voterToken)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.upvotes").value(0))
+            .andExpect(jsonPath("$.downvotes").value(1));
 
-            long proposalId = uploadProposalAndGetId(proposerToken, subjectId, "tema3.pdf", "Tema 3", "Apuntes tema 3");
+        mockMvc.perform(MockMvcRequestBuilders.delete("/vote/{id}", proposalId)
+                .header("Authorization", bearer(voterToken)))
+            .andExpect(status().isOk());
 
-            mockMvc.perform(post("/vote/{id}/{upvote}", proposalId, true)
-                    .header("Authorization", bearer(approverToken)))
-                .andExpect(status().isOk());
+        mockMvc.perform(get("/vote/{id}/results", proposalId)
+                .header("Authorization", bearer(voterToken)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.upvotes").value(0))
+            .andExpect(jsonPath("$.downvotes").value(0));
 
-            MvcResult filesResult = mockMvc.perform(get("/files/all")
-                    .header("Authorization", bearer(scorerToken)))
-                .andExpect(status().isOk())
-                .andReturn();
+        mockMvc.perform(MockMvcRequestBuilders.delete("/uploadProposal/{id}", proposalId)
+                .header("Authorization", bearer(proposerToken)))
+            .andExpect(status().isOk());
 
-            JsonNode files = objectMapper.readTree(filesResult.getResponse().getContentAsString());
-            long fileId = files.get(0).get("id").asLong();
+        mockMvc.perform(get("/uploadProposal/{id}", proposalId)
+                .header("Authorization", bearer(proposerToken)))
+            .andExpect(status().isNotFound())
+            .andExpect(jsonPath("$.errorCode").value("NOT_FOUND"));
+    }
 
-            mockMvc.perform(post("/files/{id}/vote/{upvote}", fileId, true)
-                    .header("Authorization", bearer(scorerToken)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.idVote").exists())
-                .andExpect(jsonPath("$.inFavor").value(true));
+    @Test
+    void fileVoteShouldAllowChangeAndRetractFlow() throws Exception {
+        Long subjectId = createSubject();
 
-            mockMvc.perform(post("/files/{id}/vote/{upvote}", fileId, false)
-                    .header("Authorization", bearer(scorerToken)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.inFavor").value(false));
+        createEnabledUser("proposer3", "proposer3@rai.usc.es", "SecurePass1!", UserRole.USER);
+        createEnabledUser("approver3", "approver3@rai.usc.es", "SecurePass1!", UserRole.USER);
+        createEnabledUser("scorer3", "scorer3@rai.usc.es", "SecurePass1!", UserRole.USER);
 
-            mockMvc.perform(get("/files/{id}", fileId)
-                    .header("Authorization", bearer(scorerToken)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.score").value(-1.0));
+        String proposerToken = loginAndGetToken("proposer3", "SecurePass1!");
+        String approverToken = loginAndGetToken("approver3", "SecurePass1!");
+        String scorerToken = loginAndGetToken("scorer3", "SecurePass1!");
 
-            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete("/files/{id}/vote", fileId)
-                    .header("Authorization", bearer(scorerToken)))
-                .andExpect(status().isOk());
+        long proposalId = uploadProposalAndGetId(proposerToken, subjectId, "tema3.pdf", "Tema 3", "Apuntes tema 3");
 
-            mockMvc.perform(get("/files/{id}", fileId)
-                    .header("Authorization", bearer(scorerToken)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.score").value(0.0));
-            }
+        mockMvc.perform(post("/vote/{id}/{upvote}", proposalId, true)
+                .header("Authorization", bearer(approverToken)))
+            .andExpect(status().isOk());
 
-            @Test
-            void guestShouldReadFilesWithoutSeeingUploaderIdentity() throws Exception {
-            Long subjectId = createSubject();
+        MvcResult filesResult = mockMvc.perform(get("/files/all")
+                .header("Authorization", bearer(scorerToken)))
+            .andExpect(status().isOk())
+            .andReturn();
 
-            createEnabledUser("guestsource", "guestsource@rai.usc.es", "SecurePass1!", UserRole.USER);
-            createEnabledUser("guestapprover", "guestapprover@rai.usc.es", "SecurePass1!", UserRole.USER);
+        JsonNode files = objectMapper.readTree(filesResult.getResponse().getContentAsString());
+        long fileId = files.get(0).get("id").asLong();
 
-            String sourceToken = loginAndGetToken("guestsource", "SecurePass1!");
-            String approverToken = loginAndGetToken("guestapprover", "SecurePass1!");
+        mockMvc.perform(post("/files/{id}/vote/{upvote}", fileId, true)
+                .header("Authorization", bearer(scorerToken)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.idVote").exists())
+            .andExpect(jsonPath("$.inFavor").value(true));
 
-            long proposalId = uploadProposalAndGetId(sourceToken, subjectId, "guest-visible.pdf", "Visible para invitados", "Descripcion visible");
+        mockMvc.perform(post("/files/{id}/vote/{upvote}", fileId, false)
+                .header("Authorization", bearer(scorerToken)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.inFavor").value(false));
 
-            mockMvc.perform(post("/vote/{id}/{upvote}", proposalId, true)
-                    .header("Authorization", bearer(approverToken)))
-                .andExpect(status().isOk());
+        mockMvc.perform(get("/files/{id}", fileId)
+                .header("Authorization", bearer(scorerToken)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.score").value(-1.0));
 
-            Long fileId = fileRepository.findAll().stream().findFirst().orElseThrow().getId();
+        mockMvc.perform(MockMvcRequestBuilders.delete("/files/{id}/vote", fileId)
+                .header("Authorization", bearer(scorerToken)))
+            .andExpect(status().isOk());
 
-            mockMvc.perform(get("/files/all"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].fileName").value("Visible para invitados"))
-                .andExpect(jsonPath("$[0].anonymous").value(false))
-                .andExpect(jsonPath("$[0].uploaderUsername").value("anonymous"));
+        mockMvc.perform(get("/files/{id}", fileId)
+                .header("Authorization", bearer(scorerToken)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.score").value(0.0));
+    }
 
-            mockMvc.perform(get("/files/{id}", fileId))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.fileName").value("Visible para invitados"))
-                .andExpect(jsonPath("$.anonymous").value(false))
-                .andExpect(jsonPath("$.uploaderUsername").value("anonymous"));
-            }
+    @Test
+    void guestShouldReadFilesWithoutSeeingUploaderIdentity() throws Exception {
+        Long subjectId = createSubject();
 
-            @Test
-            void anonymousUploadShouldHideIdentityFromOthersButRevealOwnerAndMaster() throws Exception {
-            Long subjectId = createSubject();
+        createEnabledUser("guestsource", "guestsource@rai.usc.es", "SecurePass1!", UserRole.USER);
+        createEnabledUser("guestapprover", "guestapprover@rai.usc.es", "SecurePass1!", UserRole.USER);
 
-            createEnabledUser("anonowner", "anonowner@rai.usc.es", "SecurePass1!", UserRole.USER);
-            createEnabledUser("anonpeer", "anonpeer@rai.usc.es", "SecurePass1!", UserRole.USER);
-            createEnabledUser("anonmaster", "anonmaster@rai.usc.es", "SecurePass1!", UserRole.MASTER);
+        String sourceToken = loginAndGetToken("guestsource", "SecurePass1!");
+        String approverToken = loginAndGetToken("guestapprover", "SecurePass1!");
 
-            String ownerToken = loginAndGetToken("anonowner", "SecurePass1!");
-            String peerToken = loginAndGetToken("anonpeer", "SecurePass1!");
-            String masterToken = loginAndGetToken("anonmaster", "SecurePass1!");
+        long proposalId = uploadProposalAndGetId(sourceToken, subjectId, "guest-visible.pdf", "Visible para invitados", "Descripcion visible");
 
-            long proposalId = uploadProposalAndGetId(ownerToken, subjectId, "anon.pdf", "Subida anonima", "Subida anonima", true);
+        mockMvc.perform(post("/vote/{id}/{upvote}", proposalId, true)
+                .header("Authorization", bearer(approverToken)))
+            .andExpect(status().isOk());
 
-            mockMvc.perform(post("/vote/{id}/{upvote}", proposalId, true)
-                    .header("Authorization", bearer(masterToken)))
-                .andExpect(status().isOk());
+        Long fileId = fileRepository.findAll().stream().findFirst().orElseThrow().getId();
 
-            Long fileId = fileRepository.findAll().stream().findFirst().orElseThrow().getId();
+        mockMvc.perform(get("/files/all"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$[0].fileName").value("Visible para invitados"))
+            .andExpect(jsonPath("$[0].anonymous").value(false))
+            .andExpect(jsonPath("$[0].uploaderUsername").value("anonymous"));
 
-            mockMvc.perform(get("/files/{id}", fileId)
-                    .header("Authorization", bearer(peerToken)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.anonymous").value(true))
-                .andExpect(jsonPath("$.uploaderUsername").value("anonymous"));
+        mockMvc.perform(get("/files/{id}", fileId))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.fileName").value("Visible para invitados"))
+            .andExpect(jsonPath("$.anonymous").value(false))
+            .andExpect(jsonPath("$.uploaderUsername").value("anonymous"));
+    }
 
-            mockMvc.perform(get("/files/{id}", fileId)
-                    .header("Authorization", bearer(ownerToken)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.anonymous").value(true))
-                .andExpect(jsonPath("$.uploaderUsername").value("anonowner"));
+    @Test
+    void anonymousUploadShouldHideIdentityFromOthersButRevealOwnerAndMaster() throws Exception {
+        Long subjectId = createSubject();
 
-            mockMvc.perform(get("/files/{id}", fileId)
-                    .header("Authorization", bearer(masterToken)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.anonymous").value(true))
-                .andExpect(jsonPath("$.uploaderUsername").value("anonowner"));
-            }
+        createEnabledUser("anonowner", "anonowner@rai.usc.es", "SecurePass1!", UserRole.USER);
+        createEnabledUser("anonpeer", "anonpeer@rai.usc.es", "SecurePass1!", UserRole.USER);
+        createEnabledUser("anonmaster", "anonmaster@rai.usc.es", "SecurePass1!", UserRole.MASTER);
+
+        String ownerToken = loginAndGetToken("anonowner", "SecurePass1!");
+        String peerToken = loginAndGetToken("anonpeer", "SecurePass1!");
+        String masterToken = loginAndGetToken("anonmaster", "SecurePass1!");
+
+        long proposalId = uploadProposalAndGetId(ownerToken, subjectId, "anon.pdf", "Subida anonima", "Subida anonima", true);
+
+        mockMvc.perform(post("/vote/{id}/{upvote}", proposalId, true)
+                .header("Authorization", bearer(masterToken)))
+            .andExpect(status().isOk());
+
+        Long fileId = fileRepository.findAll().stream().findFirst().orElseThrow().getId();
+
+        mockMvc.perform(get("/files/{id}", fileId)
+                .header("Authorization", bearer(peerToken)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.anonymous").value(true))
+            .andExpect(jsonPath("$.uploaderUsername").value("anonymous"));
+
+        mockMvc.perform(get("/files/{id}", fileId)
+                .header("Authorization", bearer(ownerToken)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.anonymous").value(true))
+            .andExpect(jsonPath("$.uploaderUsername").value("anonowner"));
+
+        mockMvc.perform(get("/files/{id}", fileId)
+                .header("Authorization", bearer(masterToken)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.anonymous").value(true))
+            .andExpect(jsonPath("$.uploaderUsername").value("anonowner"));
+    }
 
     private void createEnabledUser(String username, String email, String password, UserRole role) {
         User user = User.builder()

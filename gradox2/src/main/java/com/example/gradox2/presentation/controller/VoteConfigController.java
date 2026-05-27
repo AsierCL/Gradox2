@@ -8,9 +8,9 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.example.gradox2.persistence.entities.VoteConfig;
 import com.example.gradox2.presentation.dto.voteConfig.VoteConfigUpdateRequest;
-import com.example.gradox2.service.interfaces.IVoteConfigService;
+import com.example.gradox2.persistence.entities.GlobalConfig;
+import com.example.gradox2.service.interfaces.IGlobalConfigService;
 
 import jakarta.validation.Valid;
 
@@ -18,22 +18,22 @@ import jakarta.validation.Valid;
 @RequestMapping("/vote-config")
 public class VoteConfigController {
 
-    private final IVoteConfigService voteConfigService;
+    private final IGlobalConfigService voteConfigService;
 
-    public VoteConfigController(IVoteConfigService voteConfigService) {
+    public VoteConfigController(IGlobalConfigService voteConfigService) {
         this.voteConfigService = voteConfigService;
     }
 
     @PutMapping
     @PreAuthorize("hasRole('MASTER')")
-        public ResponseEntity<VoteConfig> updateConfig(@Valid @RequestBody VoteConfigUpdateRequest request) {
+        public ResponseEntity<GlobalConfig> updateConfig(@Valid @RequestBody VoteConfigUpdateRequest request) {
     return ResponseEntity.ok(
-            voteConfigService.updateConfig(request.getQuorumRequired(), request.getApprovalThreshold())
+            voteConfigService.updateConfig(request.getQuorumRequired(), request.getApprovalThreshold(), request.getMaxPendingUploads())
     );
     }
 
     @GetMapping
-    public ResponseEntity<VoteConfig> getConfig() {
+    public ResponseEntity<GlobalConfig> getConfig() {
         return ResponseEntity.ok(voteConfigService.getConfig());
     }
 }

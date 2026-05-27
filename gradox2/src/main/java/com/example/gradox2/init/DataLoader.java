@@ -1,7 +1,7 @@
 package com.example.gradox2.init;
 import com.example.gradox2.persistence.entities.Course;
+import com.example.gradox2.persistence.entities.GlobalConfig;
 import com.example.gradox2.persistence.entities.User;
-import com.example.gradox2.persistence.entities.VoteConfig;
 import com.example.gradox2.persistence.entities.enums.UserRole;
 import com.example.gradox2.persistence.repository.CourseRepository;
 import com.example.gradox2.persistence.repository.SubjectRepository;
@@ -352,9 +352,10 @@ public class DataLoader {
 
             if (voteConfigRepository.count() == 0) {
                 voteConfigRepository.save(
-                    VoteConfig.builder()
+                    GlobalConfig.builder()
                         .quorumRequired(5)       // valor por defecto
                         .approvalThreshold(0.6)  // 60% de votos positivos
+                        .maxPendingUploads(3)
                         .build()
                 );
                 System.out.println("✅ Configuración de votaciones inicial insertada en la base de datos.");

@@ -25,7 +25,7 @@ import com.example.gradox2.persistence.entities.Subject;
 import com.example.gradox2.persistence.entities.TempFile;
 import com.example.gradox2.persistence.entities.FileProposal;
 import com.example.gradox2.persistence.entities.User;
-import com.example.gradox2.persistence.entities.VoteConfig;
+import com.example.gradox2.persistence.entities.GlobalConfig;
 import com.example.gradox2.persistence.entities.Score;
 import com.example.gradox2.persistence.entities.enums.ActionType;
 import com.example.gradox2.persistence.entities.enums.ProposalStatus;
@@ -34,7 +34,7 @@ import com.example.gradox2.persistence.repository.SubjectRepository;
 import com.example.gradox2.persistence.repository.TempFileRepository;
 import com.example.gradox2.persistence.repository.ScoreRepository;
 import com.example.gradox2.persistence.repository.FileProposalRepository;
-import com.example.gradox2.service.interfaces.IVoteConfigService;
+import com.example.gradox2.service.interfaces.IGlobalConfigService;
 import com.example.gradox2.presentation.dto.fileProposal.UploadFileProposalRequest;
 import com.example.gradox2.presentation.dto.files.FileResponse;
 import com.example.gradox2.presentation.dto.vote.VoteResponse;
@@ -54,11 +54,11 @@ public class FileServiceImpl implements IFileService {
     private final FileProposalRepository uploadProposalRepository;
     private final SubjectRepository subjectRepository;
     private final ScoreRepository scoreRepository;
-    private final IVoteConfigService voteConfigService;
+    private final IGlobalConfigService voteConfigService;
 
     public FileServiceImpl(FileRepository fileRepository, TempFileRepository tempFileRepository,
             FileProposalRepository uploadProposalRepository, SubjectRepository subjectRepository,
-            IVoteConfigService voteConfigService, SecurityFilterChain filterChain, ScoreRepository scoreRepository) {
+            IGlobalConfigService voteConfigService, SecurityFilterChain filterChain, ScoreRepository scoreRepository) {
         this.fileRepository = fileRepository;
         this.tempFileRepository = tempFileRepository;
         this.uploadProposalRepository = uploadProposalRepository;
@@ -88,6 +88,8 @@ public class FileServiceImpl implements IFileService {
 
         // 2. Obtener usuario autenticado
         User uploader = GetAuthUser.getAuthUser();
+        GlobalConfig config = voteConfigService.getConfig();
+        ensurePendingUploadLimit(uploader, config.getMaxPendingUploads());
 
         try {
             // 3. Crear TempFile con el archivo subido
@@ -103,7 +105,6 @@ public class FileServiceImpl implements IFileService {
                     .build();
             tempFileRepository.save(tempFile);
 
-            VoteConfig config = voteConfigService.getConfig();
             // 4. Crear UploadProposal asociada al TempFile
             FileProposal proposal = new FileProposal();
             proposal.setProposer(uploader);
@@ -148,7 +149,7 @@ public class FileServiceImpl implements IFileService {
         }
 
         User requester = GetAuthUser.getAuthUser();
-        VoteConfig config = voteConfigService.getConfig();
+        GlobalConfig config = voteConfigService.getConfig();
 
         FileProposal proposal = new FileProposal();
         proposal.setProposer(requester);
@@ -247,5 +248,16 @@ public class FileServiceImpl implements IFileService {
             return null;
         }
         return user;
+    }
+
+    private void ensurePendingUploadLimit(User uploader, Integer maxPendingUploads) {
+        long pendingUploads = uploadProposalRepository.countByProposerAndStatusAndActionType(
+                uploader,
+                ProposalStatus.PENDING,
+                ActionType.UPLOAD);
+
+        if (maxPendingUploads != null && pendingUploads >= maxPendingUploads) {
+            throw new InvalidFileOperation("Maximum pending uploads reached");
+        }
     }
 }

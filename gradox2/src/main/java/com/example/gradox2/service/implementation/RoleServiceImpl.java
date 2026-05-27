@@ -11,7 +11,7 @@ import org.springframework.stereotype.Service;
 
 import com.example.gradox2.persistence.entities.PromotionProposal;
 import com.example.gradox2.persistence.entities.User;
-import com.example.gradox2.persistence.entities.VoteConfig;
+import com.example.gradox2.persistence.entities.GlobalConfig;
 import com.example.gradox2.persistence.entities.enums.ActionType;
 import com.example.gradox2.persistence.entities.enums.ProposalStatus;
 import com.example.gradox2.persistence.entities.enums.UserRole;
@@ -21,7 +21,7 @@ import com.example.gradox2.presentation.dto.promotionProposal.PromotionProposalR
 import com.example.gradox2.service.exceptions.InvalidRoleOperationException;
 import com.example.gradox2.service.exceptions.NotFoundException;
 import com.example.gradox2.service.interfaces.IRoleService;
-import com.example.gradox2.service.interfaces.IVoteConfigService;
+import com.example.gradox2.service.interfaces.IGlobalConfigService;
 import com.example.gradox2.utils.GetAuthUser;
 import com.example.gradox2.utils.SortUtils;
 import com.example.gradox2.utils.mapper.PromotionProposerMapper;
@@ -42,10 +42,10 @@ public class RoleServiceImpl implements IRoleService{
 
     private final UserRepository userRepository;
     private final PromotionProposalRepository promotionProposalRepository;
-    private final IVoteConfigService voteConfigService;
+    private final IGlobalConfigService voteConfigService;
 
     public RoleServiceImpl(UserRepository userRepository, PromotionProposalRepository promotionProposalRepository,
-            IVoteConfigService voteConfigService) {
+            IGlobalConfigService voteConfigService) {
         this.userRepository = userRepository;
         this.promotionProposalRepository = promotionProposalRepository;
         this.voteConfigService = voteConfigService;
@@ -59,7 +59,7 @@ public class RoleServiceImpl implements IRoleService{
             throw new InvalidRoleOperationException("El usuario ya es Master.");
         }
 
-        VoteConfig config = voteConfigService.getConfig();
+        GlobalConfig config = voteConfigService.getConfig();
         PromotionProposal proposal = new PromotionProposal();
         proposal.setProposer(user);
         proposal.setStatus(ProposalStatus.PENDING);
@@ -99,7 +99,7 @@ public class RoleServiceImpl implements IRoleService{
             throw new InvalidRoleOperationException("El usuario no es Master.");
         }
 
-        VoteConfig config = voteConfigService.getConfig();
+        GlobalConfig config = voteConfigService.getConfig();
         PromotionProposal proposal = new PromotionProposal();
         proposal.setProposer(authUser);
         proposal.setStatus(ProposalStatus.PENDING);

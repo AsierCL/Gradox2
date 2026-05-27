@@ -26,7 +26,6 @@ import com.example.gradox2.persistence.entities.Course;
 import com.example.gradox2.persistence.entities.Proposal;
 import com.example.gradox2.persistence.entities.Subject;
 import com.example.gradox2.persistence.entities.User;
-import com.example.gradox2.persistence.entities.VoteConfig;
 import com.example.gradox2.persistence.entities.enums.ActionType;
 import com.example.gradox2.persistence.entities.enums.FileType;
 import com.example.gradox2.persistence.entities.enums.UserRole;
@@ -43,6 +42,7 @@ import com.example.gradox2.persistence.repository.UserRepository;
 import com.example.gradox2.persistence.repository.VerificationTokenRepository;
 import com.example.gradox2.persistence.repository.VoteConfigRepository;
 import com.example.gradox2.persistence.repository.VoteRepository;
+import com.example.gradox2.service.interfaces.IGlobalConfigService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -101,6 +101,9 @@ class GovernanceRulesIntegrationTest {
     @Autowired
     private PasswordEncoder passwordEncoder;
 
+        @Autowired
+        private IGlobalConfigService voteConfigService;
+
     @BeforeEach
     void setUp() {
         scoreRepository.deleteAll();
@@ -120,7 +123,8 @@ class GovernanceRulesIntegrationTest {
 
     @Test
     void fileProposalShouldRemainPendingBelowQuorum() throws Exception {
-        voteConfigRepository.save(VoteConfig.builder().quorumRequired(3).approvalThreshold(0.67).build());
+        voteConfigService.reloadConfig();
+        voteConfigService.updateConfig(3, 0.67, 3);
 
         Long subjectId = createSubject();
         createEnabledUser("proposerA", "proposerA@rai.usc.es", "SecurePass1!", UserRole.USER);
@@ -150,7 +154,8 @@ class GovernanceRulesIntegrationTest {
 
     @Test
         void fileProposalShouldBeRejectedWhenApprovalRatioIsInsufficientAfterQuorum() throws Exception {
-        voteConfigRepository.save(VoteConfig.builder().quorumRequired(3).approvalThreshold(0.67).build());
+        voteConfigService.reloadConfig();
+        voteConfigService.updateConfig(3, 0.67, 3);
 
         Long subjectId = createSubject();
         createEnabledUser("proposerB", "proposerB@rai.usc.es", "SecurePass1!", UserRole.USER);
@@ -184,7 +189,8 @@ class GovernanceRulesIntegrationTest {
 
     @Test
     void fileProposalShouldApproveWhenQuorumAndThresholdAreMet() throws Exception {
-        voteConfigRepository.save(VoteConfig.builder().quorumRequired(3).approvalThreshold(0.67).build());
+        voteConfigService.reloadConfig();
+        voteConfigService.updateConfig(3, 0.67, 3);
 
         Long subjectId = createSubject();
         createEnabledUser("proposerC", "proposerC@rai.usc.es", "SecurePass1!", UserRole.USER);
@@ -217,7 +223,8 @@ class GovernanceRulesIntegrationTest {
 
     @Test
     void proposalShouldKeepSnapshotOfVoteConfigAtCreationTime() throws Exception {
-        voteConfigRepository.save(VoteConfig.builder().quorumRequired(2).approvalThreshold(0.5).build());
+        voteConfigService.reloadConfig();
+        voteConfigService.updateConfig(2, 0.5, 3);
 
         Long subjectId = createSubject();
         createEnabledUser("proposerD", "proposerD@rai.usc.es", "SecurePass1!", UserRole.USER);
@@ -226,7 +233,8 @@ class GovernanceRulesIntegrationTest {
         long firstProposalId = uploadProposalAndGetId(proposerToken, subjectId, "temaD1.pdf", "Tema D1", "Desc D1");
 
         voteConfigRepository.deleteAll();
-        voteConfigRepository.save(VoteConfig.builder().quorumRequired(5).approvalThreshold(0.9).build());
+        voteConfigService.reloadConfig();
+        voteConfigService.updateConfig(5, 0.9, 3);
 
         long secondProposalId = uploadProposalAndGetId(proposerToken, subjectId, "temaD2.pdf", "Tema D2", "Desc D2");
 
@@ -241,6 +249,8 @@ class GovernanceRulesIntegrationTest {
 
     @Test
     void uploadProposalShouldCreateDefaultVoteConfigWhenMissing() throws Exception {
+                voteConfigService.reloadConfig();
+
         Long subjectId = createSubject();
         createEnabledUser("proposerE", "proposerE@rai.usc.es", "SecurePass1!", UserRole.USER);
         String proposerToken = loginAndGetToken("proposerE", "SecurePass1!");
@@ -254,7 +264,8 @@ class GovernanceRulesIntegrationTest {
 
     @Test
     void demoteShouldCreateExpulsionProposalAndApplyRoleDowngradeWhenApproved() throws Exception {
-        voteConfigRepository.save(VoteConfig.builder().quorumRequired(2).approvalThreshold(0.5).build());
+        voteConfigService.reloadConfig();
+        voteConfigService.updateConfig(2, 0.5, 3);
 
         User candidate = createEnabledUser("masterCandidate", "masterCandidate@rai.usc.es", "SecurePass1!", UserRole.MASTER);
         createEnabledUser("requester", "requester@rai.usc.es", "SecurePass1!", UserRole.USER);
@@ -286,7 +297,8 @@ class GovernanceRulesIntegrationTest {
 
     @Test
     void demoteShouldRejectWhenCandidateIsNotMaster() throws Exception {
-        voteConfigRepository.save(VoteConfig.builder().quorumRequired(1).approvalThreshold(0.5).build());
+        voteConfigService.reloadConfig();
+        voteConfigService.updateConfig(1, 0.5, 3);
 
         User candidate = createEnabledUser("plainUser", "plainUser@rai.usc.es", "SecurePass1!", UserRole.USER);
         createEnabledUser("requester2", "requester2@rai.usc.es", "SecurePass1!", UserRole.USER);
@@ -300,7 +312,8 @@ class GovernanceRulesIntegrationTest {
 
     @Test
     void demoteShouldReturnNotFoundWhenCandidateDoesNotExist() throws Exception {
-        voteConfigRepository.save(VoteConfig.builder().quorumRequired(1).approvalThreshold(0.5).build());
+        voteConfigService.reloadConfig();
+        voteConfigService.updateConfig(1, 0.5, 3);
 
         createEnabledUser("requester3", "requester3@rai.usc.es", "SecurePass1!", UserRole.USER);
         String requesterToken = loginAndGetToken("requester3", "SecurePass1!");

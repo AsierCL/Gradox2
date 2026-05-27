@@ -1,7 +1,10 @@
 package com.example.gradox2.persistence.repository;
 
 import org.springframework.data.jpa.repository.JpaRepository;
-import com.example.gradox2.persistence.entities.VoteConfig;
+import java.util.Optional;
 
-public interface VoteConfigRepository extends JpaRepository<VoteConfig, Long> {
+import com.example.gradox2.persistence.entities.GlobalConfig;
+
+public interface VoteConfigRepository extends JpaRepository<GlobalConfig, Long> {
+	Optional<GlobalConfig> findFirstByOrderByIdAsc();
 }

@@ -27,7 +27,6 @@ import com.example.gradox2.persistence.entities.File;
 import com.example.gradox2.persistence.entities.FileProposal;
 import com.example.gradox2.persistence.entities.Subject;
 import com.example.gradox2.persistence.entities.User;
-import com.example.gradox2.persistence.entities.VoteConfig;
 import com.example.gradox2.persistence.entities.enums.FileType;
 import com.example.gradox2.persistence.entities.enums.ProposalStatus;
 import com.example.gradox2.persistence.entities.enums.UserRole;
@@ -44,6 +43,7 @@ import com.example.gradox2.persistence.repository.UserRepository;
 import com.example.gradox2.persistence.repository.VerificationTokenRepository;
 import com.example.gradox2.persistence.repository.VoteConfigRepository;
 import com.example.gradox2.persistence.repository.VoteRepository;
+import com.example.gradox2.service.interfaces.IGlobalConfigService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -101,6 +101,9 @@ class AdminAndFileDeletionIntegrationTest {
 
     @Autowired
     private PasswordEncoder passwordEncoder;
+
+        @Autowired
+        private IGlobalConfigService voteConfigService;
 
     @BeforeEach
     void setUp() {
@@ -241,7 +244,8 @@ class AdminAndFileDeletionIntegrationTest {
     }
 
     private void setupPublishedFile() throws Exception {
-        voteConfigRepository.save(VoteConfig.builder().quorumRequired(2).approvalThreshold(0.5).build());
+        voteConfigService.reloadConfig();
+        voteConfigService.updateConfig(2, 0.5, 3);
         Long subjectId = createSubject();
 
         createEnabledUser("deletionProposer", "deletionProposer@rai.usc.es", "SecurePass1!", UserRole.USER);
