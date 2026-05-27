@@ -1,14 +1,16 @@
 package com.example.gradox2.utils.mapper;
 
 import com.example.gradox2.persistence.entities.Vote;
+import com.example.gradox2.persistence.entities.User;
 import com.example.gradox2.presentation.dto.vote.VoteResponse;
+import com.example.gradox2.utils.IdentityVisibility;
 
 public class VoteMapper {
-    public static final VoteResponse toVoteResponse(Vote vote) {
+    public static final VoteResponse toVoteResponse(Vote vote, User viewer) {
         return VoteResponse.builder()
                 .idVote(vote.getId())
                 .proposalId(vote.getProposal().getId())
-                .voter(vote.getVoter().getUsername())
+                .voter(IdentityVisibility.resolveDisplayUsername(vote.getVoter(), viewer, false))
                 .inFavor(vote.getInFavor())
                 .votedAt(vote.getVotedAt())
                 .build();

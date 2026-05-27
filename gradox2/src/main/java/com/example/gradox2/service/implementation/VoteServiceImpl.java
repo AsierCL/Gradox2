@@ -74,7 +74,7 @@ public class VoteServiceImpl implements IVoteService {
 
         checkProposalStatus(proposal);
 
-        return VoteMapper.toVoteResponse(vote);
+        return VoteMapper.toVoteResponse(vote, auth);
     }
 
     private void checkProposalStatus(Proposal proposal) {
@@ -117,6 +117,7 @@ public class VoteServiceImpl implements IVoteService {
                         .fileHash(tempFile.getFileHash())
                         .uploader(tempFile.getUploader())
                         .subject(tempFile.getSubject())
+                    .anonymous(tempFile.isAnonymous())
                         .build();
 
                 fileProposal.setTempFile(null);
@@ -177,7 +178,7 @@ public class VoteServiceImpl implements IVoteService {
 
         Optional<Vote> vote = voteRepository.findByVoterAndProposal(auth, proposal);
         if (vote.isPresent()) {
-            return VoteMapper.toVoteResponse(vote.get());
+            return VoteMapper.toVoteResponse(vote.get(), auth);
         }
 
         throw new NotFoundException("You have not voted on this proposal.");

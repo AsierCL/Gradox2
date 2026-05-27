@@ -1,15 +1,17 @@
 package com.example.gradox2.utils.mapper;
 
 import com.example.gradox2.persistence.entities.PromotionProposal;
+import com.example.gradox2.persistence.entities.User;
 import com.example.gradox2.presentation.dto.promotionProposal.PromotionProposalResponse;
+import com.example.gradox2.utils.IdentityVisibility;
 
 public class PromotionProposerMapper {
 
-    public static final PromotionProposalResponse toPromotionProposalResponse(PromotionProposal promotionProposal) {
+    public static final PromotionProposalResponse toPromotionProposalResponse(PromotionProposal promotionProposal, User viewer) {
         return PromotionProposalResponse.builder()
                 .id(promotionProposal.getId())
-                .proposer(promotionProposal.getProposer() != null ? promotionProposal.getProposer().getUsername() : null)
-                .candidate(promotionProposal.getCandidate() != null ? promotionProposal.getCandidate().getUsername() : null)
+                .proposer(IdentityVisibility.resolveDisplayUsername(promotionProposal.getProposer(), viewer, false))
+                .candidate(IdentityVisibility.resolveDisplayUsername(promotionProposal.getCandidate(), viewer, false))
                 .status(promotionProposal.getStatus() != null ? promotionProposal.getStatus().toString() : null)
                 .createdAt(promotionProposal.getCreatedAt())
                 .endsAt(promotionProposal.getEndsAt())

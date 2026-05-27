@@ -12,6 +12,7 @@ import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -94,6 +95,7 @@ public class FileServiceImpl implements IFileService {
                     .fileHash(generateFileHash(dto.getFile().getBytes())) // Hash seguro
                     .subject(subject)
                     .uploader(uploader)
+                    .anonymous(dto.isAnonymous())
                     .build();
             tempFileRepository.save(tempFile);
 
@@ -117,15 +119,9 @@ public class FileServiceImpl implements IFileService {
     }
 
     public List<FileResponse> getAllFiles() {
+        User viewer = getCurrentViewerOrNull();
         return fileRepository.findAll(PageRequest.of(0, MAX_LIST_SIZE, Sort.by("id").descending())).getContent().stream()
-                .map(file -> FileResponse.builder()
-                        .id(file.getId())
-                        .fileName(file.getTitle())
-                        .description(file.getDescription())
-                        .fileType(file.getType())
-                        .subject(file.getSubject().getName())
-                        .uploaderUsername(file.getUploader().getUsername())
-                        .build())
+            .map(file -> FileMapper.toFileResponse(file, viewer))
                 .collect(Collectors.toList());
     }
 
@@ -134,7 +130,7 @@ public class FileServiceImpl implements IFileService {
         File file = fileRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("File not found"));
 
-        return FileMapper.toFileResponse(file);
+        return FileMapper.toFileResponse(file, getCurrentViewerOrNull());
     }
 
     @Transactional
@@ -158,7 +154,7 @@ public class FileServiceImpl implements IFileService {
         proposal.setApprovalThreshold(config.getApprovalThreshold());
 
         uploadProposalRepository.save(proposal);
-        return com.example.gradox2.utils.mapper.FileProposalMapper.toFileProposalResponse(proposal);
+        return com.example.gradox2.utils.mapper.FileProposalMapper.toFileProposalResponse(proposal, requester);
     }
 
     private String generateFileHash(byte[] data) {
@@ -199,7 +195,7 @@ public class FileServiceImpl implements IFileService {
             existingScore.setScore(upvote ? 1.0 : -1.0);
             scoreRepository.save(existingScore);
             fileRepository.save(file);
-            return new VoteResponse(id, existingScore.getId(), user.getUsername(), upvote, existingScore.getScoredAt());
+            return new VoteResponse(existingScore.getId(), id, user.getUsername(), upvote, existingScore.getScoredAt());
         }
 
         // Nuevo voto
@@ -213,7 +209,7 @@ public class FileServiceImpl implements IFileService {
         scoreRepository.save(score);
         fileRepository.save(file);
 
-        return new VoteResponse(id, score.getId(), user.getUsername(), upvote, score.getScoredAt());
+        return new VoteResponse(score.getId(), id, user.getUsername(), upvote, score.getScoredAt());
 }
 
 
@@ -237,6 +233,14 @@ public class FileServiceImpl implements IFileService {
         scoreRepository.delete(existingScore);
         fileRepository.save(file);
 
-        return new VoteResponse(id, existingScore.getId(), user.getUsername(), false, existingScore.getScoredAt());
+        return new VoteResponse(existingScore.getId(), id, user.getUsername(), false, existingScore.getScoredAt());
+    }
+
+    private User getCurrentViewerOrNull() {
+        Authentication authentication = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !(authentication.getPrincipal() instanceof User user)) {
+            return null;
+        }
+        return user;
     }
 }

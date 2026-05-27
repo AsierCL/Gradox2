@@ -60,7 +60,7 @@ public class RoleServiceImpl implements IRoleService{
 
         promotionProposalRepository.save(proposal);
 
-        return PromotionProposerMapper.toPromotionProposalResponse(proposal);
+        return PromotionProposerMapper.toPromotionProposalResponse(proposal, user);
     }
 
     @Override
@@ -74,7 +74,8 @@ public class RoleServiceImpl implements IRoleService{
         int safeSize = Math.min(Math.max(size, 1), MAX_PAGE_SIZE);
         Pageable pageable = PageRequest.of(safePage, safeSize, Sort.by(sortBy).descending());
         Page<PromotionProposal> proposalPage = promotionProposalRepository.findByStatus(ProposalStatus.PENDING, pageable);
-        return proposalPage.map(PromotionProposerMapper::toPromotionProposalResponse);
+        User viewer = GetAuthUser.getAuthUser();
+        return proposalPage.map(proposal -> PromotionProposerMapper.toPromotionProposalResponse(proposal, viewer));
     }
 
     @Override
@@ -98,7 +99,7 @@ public class RoleServiceImpl implements IRoleService{
 
         promotionProposalRepository.save(proposal);
 
-        return PromotionProposerMapper.toPromotionProposalResponse(proposal);
+        return PromotionProposerMapper.toPromotionProposalResponse(proposal, authUser);
     }
 
     @Override
@@ -110,8 +111,9 @@ public class RoleServiceImpl implements IRoleService{
 
     @Override
     public PromotionProposalResponse getPromoteProposalById(Long id) {
+        User viewer = GetAuthUser.getAuthUser();
         return PromotionProposerMapper.toPromotionProposalResponse(promotionProposalRepository.findById(id)
-            .orElseThrow(() -> new NotFoundException("Proposal not found")));
+            .orElseThrow(() -> new NotFoundException("Proposal not found")), viewer);
     }
 
 }

@@ -40,4 +40,8 @@ public class TempFile {
     @ManyToOne
     @JoinColumn(name = "subject_id", nullable = false)
     private Subject subject;
+
+    @Column(nullable = false)
+    @Builder.Default
+    private boolean anonymous = false;
 }

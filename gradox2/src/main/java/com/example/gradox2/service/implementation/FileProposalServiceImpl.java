@@ -69,6 +69,7 @@ public class FileProposalServiceImpl implements IFileProposalService {
                     .fileHash(generateFileHash(dto.getFile().getBytes())) // Hash seguro
                     .subject(subject)
                     .uploader(uploader)
+                    .anonymous(dto.isAnonymous())
                     .build();
             tempFileRepository.save(tempFile);
 
@@ -82,7 +83,7 @@ public class FileProposalServiceImpl implements IFileProposalService {
             proposal.setApprovalThreshold(config.getApprovalThreshold());
             fileProposalRepository.save(proposal);
 
-            return FileProposalMapper.toFileProposalResponse(proposal);
+            return FileProposalMapper.toFileProposalResponse(proposal, uploader);
 
         } catch (IOException e) {
             throw new InternalServerErrorException("Error processing file", e);
@@ -118,12 +119,13 @@ public class FileProposalServiceImpl implements IFileProposalService {
         int safeSize = Math.min(Math.max(size, 1), MAX_PAGE_SIZE);
         Pageable pageable = PageRequest.of(safePage, safeSize, Sort.by(sortBy).descending());
         Page<FileProposal> proposalPage = fileProposalRepository.findAll(pageable);
-        return proposalPage.map(FileProposalMapper::toFileProposalResponse);
+        User viewer = getCurrentViewerOrNull();
+        return proposalPage.map(proposal -> FileProposalMapper.toFileProposalResponse(proposal, viewer));
     }
 
     @Transactional
     public FileProposalResponse getFileProposalById(Long id) {
-        return FileProposalMapper.toFileProposalResponse(fileProposalRepository.findById(id).orElseThrow(() -> new NotFoundException("Proposal not found")));
+        return FileProposalMapper.toFileProposalResponse(fileProposalRepository.findById(id).orElseThrow(() -> new NotFoundException("Proposal not found")), getCurrentViewerOrNull());
     }
 
     public TempFile downloadFileFromProposal(Long id) {
@@ -154,5 +156,13 @@ public class FileProposalServiceImpl implements IFileProposalService {
         } catch (NoSuchAlgorithmException e) {
             throw new RuntimeException("Error generating file hash", e);
         }
+    }
+
+    private User getCurrentViewerOrNull() {
+        org.springframework.security.core.Authentication authentication = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !(authentication.getPrincipal() instanceof User user)) {
+            return null;
+        }
+        return user;
     }
 }

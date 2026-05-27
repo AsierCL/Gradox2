@@ -38,6 +38,8 @@ public class UploadFileProposalRequest {
     @NotNull(message = "File is required")
     private MultipartFile file;
 
+    private boolean anonymous;
+
     @AssertTrue(message = "File cannot be empty and must be <= 10MB")
     public boolean isValidFile() {
         return file != null && !file.isEmpty() && file.getSize() <= MAX_FILE_SIZE_BYTES;

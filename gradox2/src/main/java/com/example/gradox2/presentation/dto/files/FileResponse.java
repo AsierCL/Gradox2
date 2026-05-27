@@ -18,5 +18,6 @@ public class FileResponse {
     private FileType fileType;
     private String subject;
     private String uploaderUsername;
+    private boolean anonymous;
     private Double score;
 }

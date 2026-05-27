@@ -15,6 +15,7 @@ public class FileProposalResponse {
     private String title;
     private String description;
     private String proposer;
+    private boolean anonymous;
     private String subjectName;
     private String course;
     private String type;

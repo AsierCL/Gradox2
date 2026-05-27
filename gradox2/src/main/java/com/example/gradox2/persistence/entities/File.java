@@ -44,6 +44,10 @@ public class File {
     @JoinColumn(name = "subject_id", nullable = false)
     private Subject subject;
 
+    @Column(nullable = false)
+    @Builder.Default
+    private boolean anonymous = false;
+
     private Double score;
 
     @OneToMany(mappedBy = "file", cascade = CascadeType.ALL, orphanRemoval = true)

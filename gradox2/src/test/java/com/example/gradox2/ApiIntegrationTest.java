@@ -248,7 +248,7 @@ class ApiIntegrationTest {
             mockMvc.perform(post("/vote/{id}/{upvote}", proposalId, true)
                     .header("Authorization", bearer(voterToken)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.proposalId").value(proposalId))
+                .andExpect(jsonPath("$.idVote").isNumber())
                 .andExpect(jsonPath("$.inFavor").value(true));
 
             mockMvc.perform(get("/vote/{id}/results", proposalId)
@@ -353,7 +353,7 @@ class ApiIntegrationTest {
             mockMvc.perform(post("/files/{id}/vote/{upvote}", fileId, true)
                     .header("Authorization", bearer(scorerToken)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.proposalId").value(fileId))
+                .andExpect(jsonPath("$.idVote").exists())
                 .andExpect(jsonPath("$.inFavor").value(true));
 
             mockMvc.perform(post("/files/{id}/vote/{upvote}", fileId, false)
@@ -374,6 +374,76 @@ class ApiIntegrationTest {
                     .header("Authorization", bearer(scorerToken)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.score").value(0.0));
+            }
+
+            @Test
+            void guestShouldReadFilesWithoutSeeingUploaderIdentity() throws Exception {
+            Long subjectId = createSubject();
+
+            createEnabledUser("guestsource", "guestsource@rai.usc.es", "SecurePass1!", UserRole.USER);
+            createEnabledUser("guestapprover", "guestapprover@rai.usc.es", "SecurePass1!", UserRole.USER);
+
+            String sourceToken = loginAndGetToken("guestsource", "SecurePass1!");
+            String approverToken = loginAndGetToken("guestapprover", "SecurePass1!");
+
+            long proposalId = uploadProposalAndGetId(sourceToken, subjectId, "guest-visible.pdf", "Visible para invitados", "Descripcion visible");
+
+            mockMvc.perform(post("/vote/{id}/{upvote}", proposalId, true)
+                    .header("Authorization", bearer(approverToken)))
+                .andExpect(status().isOk());
+
+            Long fileId = fileRepository.findAll().stream().findFirst().orElseThrow().getId();
+
+            mockMvc.perform(get("/files/all"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].fileName").value("Visible para invitados"))
+                .andExpect(jsonPath("$[0].anonymous").value(false))
+                .andExpect(jsonPath("$[0].uploaderUsername").value("anonymous"));
+
+            mockMvc.perform(get("/files/{id}", fileId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.fileName").value("Visible para invitados"))
+                .andExpect(jsonPath("$.anonymous").value(false))
+                .andExpect(jsonPath("$.uploaderUsername").value("anonymous"));
+            }
+
+            @Test
+            void anonymousUploadShouldHideIdentityFromOthersButRevealOwnerAndMaster() throws Exception {
+            Long subjectId = createSubject();
+
+            createEnabledUser("anonowner", "anonowner@rai.usc.es", "SecurePass1!", UserRole.USER);
+            createEnabledUser("anonpeer", "anonpeer@rai.usc.es", "SecurePass1!", UserRole.USER);
+            createEnabledUser("anonmaster", "anonmaster@rai.usc.es", "SecurePass1!", UserRole.MASTER);
+
+            String ownerToken = loginAndGetToken("anonowner", "SecurePass1!");
+            String peerToken = loginAndGetToken("anonpeer", "SecurePass1!");
+            String masterToken = loginAndGetToken("anonmaster", "SecurePass1!");
+
+            long proposalId = uploadProposalAndGetId(ownerToken, subjectId, "anon.pdf", "Subida anonima", "Subida anonima", true);
+
+            mockMvc.perform(post("/vote/{id}/{upvote}", proposalId, true)
+                    .header("Authorization", bearer(masterToken)))
+                .andExpect(status().isOk());
+
+            Long fileId = fileRepository.findAll().stream().findFirst().orElseThrow().getId();
+
+            mockMvc.perform(get("/files/{id}", fileId)
+                    .header("Authorization", bearer(peerToken)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.anonymous").value(true))
+                .andExpect(jsonPath("$.uploaderUsername").value("anonymous"));
+
+            mockMvc.perform(get("/files/{id}", fileId)
+                    .header("Authorization", bearer(ownerToken)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.anonymous").value(true))
+                .andExpect(jsonPath("$.uploaderUsername").value("anonowner"));
+
+            mockMvc.perform(get("/files/{id}", fileId)
+                    .header("Authorization", bearer(masterToken)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.anonymous").value(true))
+                .andExpect(jsonPath("$.uploaderUsername").value("anonowner"));
             }
 
     private void createEnabledUser(String username, String email, String password, UserRole role) {
@@ -428,6 +498,11 @@ class ApiIntegrationTest {
 
         private long uploadProposalAndGetId(String token, Long subjectId, String originalFilename, String title, String description)
             throws Exception {
+        return uploadProposalAndGetId(token, subjectId, originalFilename, title, description, false);
+        }
+
+        private long uploadProposalAndGetId(String token, Long subjectId, String originalFilename, String title, String description, boolean anonymous)
+            throws Exception {
         MockMultipartFile multipartFile = new MockMultipartFile(
             "file",
             originalFilename,
@@ -440,6 +515,7 @@ class ApiIntegrationTest {
             .param("description", description)
             .param("type", FileType.APUNTES.name())
             .param("subjectId", String.valueOf(subjectId))
+            .param("anonymous", String.valueOf(anonymous))
             .header("Authorization", bearer(token));
 
         MvcResult result = mockMvc.perform(request)
