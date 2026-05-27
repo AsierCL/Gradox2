@@ -4,7 +4,6 @@ import com.example.gradox2.persistence.entities.User;
 import com.example.gradox2.persistence.entities.VoteConfig;
 import com.example.gradox2.persistence.entities.enums.UserRole;
 import com.example.gradox2.persistence.repository.CourseRepository;
-import com.example.gradox2.persistence.repository.FileRepository;
 import com.example.gradox2.persistence.repository.SubjectRepository;
 import com.example.gradox2.persistence.repository.UserRepository;
 import com.example.gradox2.persistence.repository.VoteConfigRepository;
@@ -27,12 +26,13 @@ public class DataLoader {
 
     @Bean
     CommandLineRunner initDatabase(UserRepository userRepository,
-                                    FileRepository fileRepository,
                                     SubjectRepository subjectRepository,
                                     CourseRepository courseRepository,
                                     VoteConfigRepository voteConfigRepository) {
         return args -> {
-            if (userRepository.count() < 3) { // Solo carga si non hai usuarios (deixo 3 de margen)
+            boolean demoSeedsEnabled = Boolean.parseBoolean(System.getenv().getOrDefault("ENABLE_DEMO_SEEDS", "false"));
+
+            if (demoSeedsEnabled && userRepository.count() < 3) { // Solo carga si non hai usuarios (deixo 3 de margen)
                 userRepository.save(User.builder()
                 .username("juan123")
                 .email("juan@example.com")
@@ -346,6 +346,8 @@ public class DataLoader {
                 ));
 
                 System.out.println("✅ Cursos de prueba insertados en la base de datos.");
+            } else if (!demoSeedsEnabled) {
+                System.out.println("ℹ️ Seed de desarrollo desactivado por defecto. Usa ENABLE_DEMO_SEEDS=true para cargar datos demo.");
             }
 
             if (voteConfigRepository.count() == 0) {

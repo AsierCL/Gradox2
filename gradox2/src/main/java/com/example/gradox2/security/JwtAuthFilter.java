@@ -11,6 +11,8 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import com.example.gradox2.persistence.entities.User;
 import com.example.gradox2.persistence.repository.UserRepository;
 
+import io.jsonwebtoken.JwtException;
+
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -40,20 +42,25 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         }
 
         final String token = authHeader.substring(7); // Remove "Bearer " prefix
-        final String username = jwtUtils.extractUsername(token);
-
-        if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+        try {
             if (jwtUtils.isTokenValid(token)) {
-                User user = userRepository.findByUsername(username).orElse(null);
+                final String username = jwtUtils.extractUsername(token);
 
-                if (user != null) {
-                    UsernamePasswordAuthenticationToken authToken =
-                        new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities());
+                if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+                    User user = userRepository.findByUsername(username).orElse(null);
 
-                    authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-                    SecurityContextHolder.getContext().setAuthentication(authToken);
+                    if (user != null) {
+                        UsernamePasswordAuthenticationToken authToken =
+                            new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities());
+
+                        authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                        SecurityContextHolder.getContext().setAuthentication(authToken);
+                    }
                 }
             }
+        } catch (JwtException | IllegalArgumentException ex) {
+            // Ignore malformed/expired tokens and continue unauthenticated.
+            SecurityContextHolder.clearContext();
         }
 
         filterChain.doFilter(request, response);
