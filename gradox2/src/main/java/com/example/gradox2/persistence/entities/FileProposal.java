@@ -9,7 +9,7 @@ import org.hibernate.annotations.OnDeleteAction;
 @Setter
 @NoArgsConstructor
 @Entity
-@DiscriminatorValue("UPLOAD")
+@DiscriminatorValue("1")
 public class FileProposal extends Proposal {
 
     @OneToOne(cascade = CascadeType.ALL, orphanRemoval = true)

@@ -9,7 +9,7 @@ import lombok.*;
 @AllArgsConstructor
 @Builder
 @Entity
-@DiscriminatorValue("PROMOTION")
+@DiscriminatorValue("2")
 public class PromotionProposal extends Proposal {
     @ManyToOne
     @JoinColumn(name = "candidate_id", nullable = false)

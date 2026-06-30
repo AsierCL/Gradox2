@@ -17,7 +17,7 @@ import lombok.*;
 @Entity
 @Table(name = "proposals")
 @Inheritance(strategy = InheritanceType.JOINED)
-@DiscriminatorColumn(name = "proposal_type", discriminatorType = DiscriminatorType.STRING)
+@DiscriminatorColumn(name = "proposal_type", discriminatorType = DiscriminatorType.INTEGER)
 public abstract class Proposal {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

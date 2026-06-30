@@ -19,6 +19,7 @@ import com.example.gradox2.persistence.repository.*;
 import com.example.gradox2.presentation.dto.vote.VoteResponse;
 import com.example.gradox2.presentation.dto.vote.VoteResultResponse;
 import com.example.gradox2.service.exceptions.AlreadyExistsException;
+import com.example.gradox2.service.exceptions.InvalidFileOperation;
 import com.example.gradox2.service.exceptions.NotFoundException;
 import com.example.gradox2.service.exceptions.ProposalClosedException;
 import com.example.gradox2.service.interfaces.IVoteService;
@@ -176,31 +177,35 @@ public class VoteServiceImpl implements IVoteService {
         fileProposal.setStatus(ProposalStatus.APPROVED);
         fileProposal.setClosedAt(Instant.now());
 
-        if (fileProposal.getActionType() == ActionType.DELETE && fileProposal.getFile() != null) {
-            File target = fileProposal.getFile();
-            fileProposal.setFile(null);
-            fileRepository.delete(target);
+        if (fileProposal.getActionType() == ActionType.DELETE) {
+            if (fileProposal.getFile() != null) {
+                File target = fileProposal.getFile();
+                fileProposal.setFile(null);
+                fileRepository.delete(target);
+            }
             return;
         }
 
         TempFile tempFile = fileProposal.getTempFile();
-        if (tempFile != null) {
-            File file = File.builder()
-                    .title(tempFile.getTitle())
-                    .description(tempFile.getDescription())
-                    .type(tempFile.getType())
-                    .fileData(tempFile.getFileData())
-                    .fileHash(tempFile.getFileHash())
-                    .uploader(tempFile.getUploader())
-                    .subject(tempFile.getSubject())
-                    .visibilityLevel(tempFile.getVisibilityLevel())
-                    .build();
-
-            fileProposal.setTempFile(null);
-            fileProposal.setFile(file);
-            fileRepository.save(file);
-            fileProposalRepository.save(fileProposal);
+        if (tempFile == null) {
+            throw new InvalidFileOperation("No temp file associated with this upload proposal");
         }
+
+        File file = File.builder()
+                .title(tempFile.getTitle())
+                .description(tempFile.getDescription())
+                .type(tempFile.getType())
+                .fileData(tempFile.getFileData())
+                .fileHash(tempFile.getFileHash())
+                .uploader(tempFile.getUploader())
+                .subject(tempFile.getSubject())
+                .visibilityLevel(tempFile.getVisibilityLevel())
+                .build();
+
+        fileProposal.setTempFile(null);
+        fileProposal.setFile(file);
+        fileRepository.save(file);
+        fileProposalRepository.save(fileProposal);
     }
 
     private void applyPromotionProposal(PromotionProposal promotionProposal) {

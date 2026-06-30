@@ -268,7 +268,7 @@ class GovernanceRulesIntegrationTest {
         voteConfigService.updateConfig(2, 0.5, 3);
 
         User candidate = createEnabledUser("masterCandidate", "masterCandidate@rai.usc.es", "SecurePass1!", UserRole.MASTER);
-        createEnabledUser("requester", "requester@rai.usc.es", "SecurePass1!", UserRole.USER);
+        createEnabledUser("requester", "requester@rai.usc.es", "SecurePass1!", UserRole.MASTER);
         createEnabledUser("demoter1", "demoter1@rai.usc.es", "SecurePass1!", UserRole.USER);
         createEnabledUser("demoter2", "demoter2@rai.usc.es", "SecurePass1!", UserRole.USER);
 
@@ -301,7 +301,7 @@ class GovernanceRulesIntegrationTest {
         voteConfigService.updateConfig(1, 0.5, 3);
 
         User candidate = createEnabledUser("plainUser", "plainUser@rai.usc.es", "SecurePass1!", UserRole.USER);
-        createEnabledUser("requester2", "requester2@rai.usc.es", "SecurePass1!", UserRole.USER);
+        createEnabledUser("requester2", "requester2@rai.usc.es", "SecurePass1!", UserRole.MASTER);
         String requesterToken = loginAndGetToken("requester2", "SecurePass1!");
 
         mockMvc.perform(post("/promoteProposal/demote/{id}", candidate.getId())
@@ -315,7 +315,7 @@ class GovernanceRulesIntegrationTest {
         voteConfigService.reloadConfig();
         voteConfigService.updateConfig(1, 0.5, 3);
 
-        createEnabledUser("requester3", "requester3@rai.usc.es", "SecurePass1!", UserRole.USER);
+        createEnabledUser("requester3", "requester3@rai.usc.es", "SecurePass1!", UserRole.MASTER);
         String requesterToken = loginAndGetToken("requester3", "SecurePass1!");
 
         mockMvc.perform(post("/promoteProposal/demote/{id}", 99999L)

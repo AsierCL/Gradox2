@@ -61,6 +61,8 @@ public class User implements UserDetails{
     @Builder.Default
     private Set<RefreshToken> refreshTokens = new HashSet<>();
 
+
+
     @OneToMany(mappedBy = "delegator")
     @Builder.Default
     private Set<Delegation> delegationsGiven = new HashSet<>();

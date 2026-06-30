@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.validation.annotation.Validated;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -61,6 +62,7 @@ public class RolesController {
     }
 
     @GetMapping("/pending")
+    @PreAuthorize("hasRole('MASTER')")
     @Operation(summary = "Promociones pendientes", description = "Lista todas las solicitudes de promoción pendientes, con paginación opcional")
     @ApiResponses({
         @ApiResponse(responseCode = "200", description = "Lista devuelta"),
@@ -82,6 +84,7 @@ public class RolesController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasRole('MASTER')")
     @Operation(summary = "Detalle de promoción", description = "Obtiene los datos de una solicitud de promoción por ID")
     @ApiResponses({
         @ApiResponse(responseCode = "200", description = "Datos devueltos"),
@@ -93,6 +96,7 @@ public class RolesController {
     }
 
     @PostMapping("/demote/{id}")
+    @PreAuthorize("hasRole('MASTER')")
     @Operation(summary = "Proponer expulsión", description = "Crea una propuesta de expulsión de un MASTER (solo MASTERs pueden ejecutar)")
     @ApiResponses({
         @ApiResponse(responseCode = "200", description = "Propuesta de expulsión creada"),

@@ -1,5 +1,7 @@
 package com.example.gradox2.utils.mapper;
 
+import java.util.Collections;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -42,8 +44,12 @@ public final class UserMapper {
     }
 
     private Set<String> mapBadges(User user) {
-        return user.getBadges()
-                .stream()
+        Set<com.example.gradox2.persistence.entities.Badge> badges = user.getBadges();
+        if (badges == null) {
+            return Collections.emptySet();
+        }
+        return badges.stream()
+                .filter(Objects::nonNull)
                 .map(badge -> badge.getName())
                 .collect(Collectors.toSet());
     }
