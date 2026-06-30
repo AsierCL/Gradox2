@@ -2,6 +2,8 @@ package com.example.gradox2.persistence.entities;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.OnDelete;
+import org.hibernate.annotations.OnDeleteAction;
 
 @Getter
 @Setter
@@ -10,13 +12,12 @@ import lombok.*;
 @DiscriminatorValue("UPLOAD")
 public class FileProposal extends Proposal {
 
-    // Archivo temporal asociado a la propuesta
     @OneToOne(cascade = CascadeType.ALL, orphanRemoval = true)
-    @JoinColumn(name = "temp_file_id", nullable = true)
+    @JoinColumn(name = "temp_file_id")
     private TempFile tempFile;
 
-    // Archivo definitivo, solo se llena cuando se aprueba
     @ManyToOne
     @JoinColumn(name = "file_id")
+    @OnDelete(action = OnDeleteAction.SET_NULL)
     private File file;
 }

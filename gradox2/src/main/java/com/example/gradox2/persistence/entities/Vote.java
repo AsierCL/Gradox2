@@ -11,7 +11,9 @@ import lombok.*;
 @AllArgsConstructor
 @NoArgsConstructor
 @Entity
-@Table(name = "votes")
+@Table(name = "votes", uniqueConstraints = {
+    @UniqueConstraint(name = "uk_votes_voter_proposal", columnNames = {"voter_id", "proposal_id"})
+})
 public class Vote {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -25,7 +27,8 @@ public class Vote {
     @JoinColumn(name = "proposal_id", nullable = false)
     private Proposal proposal;
 
-    private Double weight;
+    @Builder.Default
+    private Double weight = 1.0;
     private Boolean inFavor;
 
     @Builder.Default

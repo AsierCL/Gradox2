@@ -1,8 +1,10 @@
 package com.example.gradox2.presentation.controller;
 
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -98,6 +100,33 @@ public class GlobalExceptionHandler {
                 .errorCode("RATE_LIMIT_EXCEEDED")
                 .build();
         return new ResponseEntity<>(error, HttpStatus.TOO_MANY_REQUESTS);
+    }
+
+    @ExceptionHandler(ObjectOptimisticLockingFailureException.class)
+    public ResponseEntity<ErrorDTO> handleOptimisticLock(ObjectOptimisticLockingFailureException ex) {
+        ErrorDTO error = ErrorDTO.builder()
+                .errorMessage("Concurrent modification detected. Please retry.")
+                .errorCode("CONCURRENT_MODIFICATION")
+                .build();
+        return new ResponseEntity<>(error, HttpStatus.CONFLICT);
+    }
+
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<ErrorDTO> handleDataIntegrity(DataIntegrityViolationException ex) {
+        String message = ex.getMostSpecificCause().getMessage();
+        ErrorDTO error;
+        if (message != null && message.contains("uk_votes_voter_proposal")) {
+            error = ErrorDTO.builder()
+                    .errorMessage("Already voted on this proposal.")
+                    .errorCode("ALREADY_EXIST_ERROR")
+                    .build();
+        } else {
+            error = ErrorDTO.builder()
+                    .errorMessage("Data integrity violation. Please check your request.")
+                    .errorCode("DATA_INTEGRITY_ERROR")
+                    .build();
+        }
+        return new ResponseEntity<>(error, HttpStatus.CONFLICT);
     }
 
     @ExceptionHandler({MethodArgumentNotValidException.class, BindException.class,

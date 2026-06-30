@@ -45,4 +45,7 @@ public abstract class Proposal {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private ProposalStatus status = ProposalStatus.PENDING;
+
+    @Version
+    private Long version;
 }
