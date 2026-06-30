@@ -1,9 +1,14 @@
 package com.example.gradox2.init;
 import com.example.gradox2.persistence.entities.Course;
+import com.example.gradox2.persistence.entities.File;
 import com.example.gradox2.persistence.entities.GlobalConfig;
+import com.example.gradox2.persistence.entities.Subject;
 import com.example.gradox2.persistence.entities.User;
+import com.example.gradox2.persistence.entities.enums.FileType;
+import com.example.gradox2.persistence.entities.enums.FileVisibility;
 import com.example.gradox2.persistence.entities.enums.UserRole;
 import com.example.gradox2.persistence.repository.CourseRepository;
+import com.example.gradox2.persistence.repository.FileRepository;
 import com.example.gradox2.persistence.repository.SubjectRepository;
 import com.example.gradox2.persistence.repository.UserRepository;
 import com.example.gradox2.persistence.repository.VoteConfigRepository;
@@ -28,7 +33,8 @@ public class DataLoader {
     CommandLineRunner initDatabase(UserRepository userRepository,
                                     SubjectRepository subjectRepository,
                                     CourseRepository courseRepository,
-                                    VoteConfigRepository voteConfigRepository) {
+                                    VoteConfigRepository voteConfigRepository,
+                                    FileRepository fileRepository) {
         return args -> {
             boolean demoSeedsEnabled = Boolean.parseBoolean(System.getenv().getOrDefault("ENABLE_DEMO_SEEDS", "false"));
 
@@ -310,7 +316,8 @@ public class DataLoader {
                     .code("2")
                     .build());
 
-                subjectRepository.saveAll(java.util.List.of(
+                java.util.List<Subject> subjects = subjectRepository.saveAll(
+    java.util.List.of(
                     // Subjects for "Primer curso"
                     com.example.gradox2.persistence.entities.Subject.builder()
                         .name("Matemáticas I")
@@ -346,6 +353,44 @@ public class DataLoader {
                 ));
 
                 System.out.println("✅ Cursos de prueba insertados en la base de datos.");
+
+                User demoUploader = userRepository.findByUsername("juan123").orElseThrow();
+                Subject subject1 = subjects.get(0);
+
+                fileRepository.save(File.builder()
+                    .title("Apuntes Algebra PUBLIC")
+                    .description("Visibilidad pública")
+                    .type(FileType.APUNTES)
+                    .fileData("contenido algebra".getBytes())
+                    .fileHash("hash1")
+                    .subject(subject1)
+                    .uploader(demoUploader)
+                    .visibilityLevel(FileVisibility.PUBLIC)
+                    .build());
+
+                fileRepository.save(File.builder()
+                    .title("Ejercicio Lengua RESTRICTED")
+                    .description("Solo visible para USER y MASTER")
+                    .type(FileType.EJERCICIO)
+                    .fileData("contenido lengua".getBytes())
+                    .fileHash("hash2")
+                    .subject(subject1)
+                    .uploader(demoUploader)
+                    .visibilityLevel(FileVisibility.RESTRICTED)
+                    .build());
+
+                fileRepository.save(File.builder()
+                    .title("Examen Privado PRIVATE")
+                    .description("Solo visible para MASTER")
+                    .type(FileType.EXAMEN)
+                    .fileData("contenido examen".getBytes())
+                    .fileHash("hash3")
+                    .subject(subject1)
+                    .uploader(demoUploader)
+                    .visibilityLevel(FileVisibility.PRIVATE)
+                    .build());
+
+                System.out.println("✅ Archivos demo insertados con distintos niveles de visibilidad.");
             } else if (!demoSeedsEnabled) {
                 System.out.println("ℹ️ Seed de desarrollo desactivado por defecto. Usa ENABLE_DEMO_SEEDS=true para cargar datos demo.");
             }

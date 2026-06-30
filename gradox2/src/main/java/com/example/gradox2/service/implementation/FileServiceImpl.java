@@ -28,6 +28,7 @@ import com.example.gradox2.persistence.entities.User;
 import com.example.gradox2.persistence.entities.GlobalConfig;
 import com.example.gradox2.persistence.entities.Score;
 import com.example.gradox2.persistence.entities.enums.ActionType;
+import com.example.gradox2.persistence.entities.enums.FileVisibility;
 import com.example.gradox2.persistence.entities.enums.ProposalStatus;
 import com.example.gradox2.persistence.repository.FileRepository;
 import com.example.gradox2.persistence.repository.SubjectRepository;
@@ -42,6 +43,7 @@ import com.example.gradox2.service.exceptions.InvalidFileOperation;
 import com.example.gradox2.service.exceptions.NotFoundException;
 import com.example.gradox2.service.interfaces.IFileService;
 import com.example.gradox2.utils.GetAuthUser;
+import com.example.gradox2.utils.IdentityVisibility;
 import com.example.gradox2.utils.mapper.FileMapper;
 
 @Service
@@ -101,7 +103,7 @@ public class FileServiceImpl implements IFileService {
                     .fileHash(generateFileHash(dto.getFile().getBytes())) // Hash seguro
                     .subject(subject)
                     .uploader(uploader)
-                    .anonymous(dto.isAnonymous())
+                    .visibilityLevel(dto.getVisibilityLevel() != null ? dto.getVisibilityLevel() : FileVisibility.PUBLIC)
                     .build();
             tempFileRepository.save(tempFile);
 
@@ -240,6 +242,23 @@ public class FileServiceImpl implements IFileService {
         fileRepository.save(file);
 
         return new VoteResponse(existingScore.getId(), id, user.getUsername(), false, existingScore.getScoredAt());
+    }
+
+    @Transactional
+    public FileResponse updateFileVisibility(Long id, FileVisibility visibilityLevel) {
+        File file = fileRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("File not found"));
+
+        User requester = GetAuthUser.getAuthUser();
+
+        if (!IdentityVisibility.isSameUser(file.getUploader(), requester) && !IdentityVisibility.isMaster(requester)) {
+            throw new InvalidFileOperation("Only the uploader or a master can change visibility");
+        }
+
+        file.setVisibilityLevel(visibilityLevel);
+        fileRepository.save(file);
+
+        return FileMapper.toFileResponse(file, requester);
     }
 
     private User getCurrentViewerOrNull() {

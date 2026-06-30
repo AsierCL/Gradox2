@@ -3,6 +3,7 @@ package com.example.gradox2.presentation.dto.fileProposal;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.example.gradox2.persistence.entities.enums.FileType;
+import com.example.gradox2.persistence.entities.enums.FileVisibility;
 
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.NotBlank;
@@ -11,12 +12,14 @@ import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 
 import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
 @NoArgsConstructor
 @AllArgsConstructor
 @Data
+@Builder
 public class UploadFileProposalRequest {
     private static final long MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024;
 
@@ -38,7 +41,8 @@ public class UploadFileProposalRequest {
     @NotNull(message = "File is required")
     private MultipartFile file;
 
-    private boolean anonymous;
+    @Builder.Default
+    private FileVisibility visibilityLevel = FileVisibility.PUBLIC;
 
     @AssertTrue(message = "File cannot be empty and must be <= 10MB")
     public boolean isValidFile() {

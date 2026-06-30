@@ -5,6 +5,7 @@ import java.util.List;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.ResponseEntity;
 
+import com.example.gradox2.persistence.entities.enums.FileVisibility;
 import com.example.gradox2.presentation.dto.fileProposal.UploadFileProposalRequest;
 import com.example.gradox2.presentation.dto.fileProposal.FileProposalResponse;
 import com.example.gradox2.presentation.dto.files.FileResponse;
@@ -19,4 +20,5 @@ public interface IFileService {
     ResponseEntity<ByteArrayResource> downloadFile(Long id);
     VoteResponse voteFile(Long id, boolean upvote);
     VoteResponse retractVote(Long id);
+    FileResponse updateFileVisibility(Long id, FileVisibility visibilityLevel);
 }

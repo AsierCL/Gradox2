@@ -1,6 +1,7 @@
 package com.example.gradox2.presentation.dto.files;
 
 import com.example.gradox2.persistence.entities.enums.FileType;
+import com.example.gradox2.persistence.entities.enums.FileVisibility;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -18,6 +19,6 @@ public class FileResponse {
     private FileType fileType;
     private String subject;
     private String uploaderUsername;
-    private boolean anonymous;
+    private FileVisibility visibilityLevel;
     private Double score;
 }

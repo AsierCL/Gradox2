@@ -118,7 +118,7 @@ public class VoteServiceImpl implements IVoteService {
                         .fileHash(tempFile.getFileHash())
                         .uploader(tempFile.getUploader())
                         .subject(tempFile.getSubject())
-                    .anonymous(tempFile.isAnonymous())
+                    .visibilityLevel(tempFile.getVisibilityLevel())
                         .build();
 
                 fileProposal.setTempFile(null);

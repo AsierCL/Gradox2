@@ -21,8 +21,9 @@ public class FileMapper {
             .description(file.getDescription())
             .fileType(file.getType())
             .subject(file.getSubject() != null ? file.getSubject().getName() : null)
-            .uploaderUsername(IdentityVisibility.resolveDisplayUsername(file.getUploader(), viewer, file.isAnonymous()))
-            .anonymous(file.isAnonymous())
+            .uploaderUsername(IdentityVisibility.resolveDisplayUsername(
+                    file.getUploader(), viewer, file.getVisibilityLevel()))
+            .visibilityLevel(file.getVisibilityLevel())
             .score(file.calculateTotalScore())
             .build();
     }

@@ -20,6 +20,7 @@ import com.example.gradox2.persistence.entities.FileProposal;
 import com.example.gradox2.persistence.entities.User;
 import com.example.gradox2.persistence.entities.GlobalConfig;
 import com.example.gradox2.persistence.entities.enums.ActionType;
+import com.example.gradox2.persistence.entities.enums.FileVisibility;
 import com.example.gradox2.persistence.entities.enums.ProposalStatus;
 import com.example.gradox2.persistence.repository.SubjectRepository;
 import com.example.gradox2.persistence.repository.TempFileRepository;
@@ -81,7 +82,7 @@ public class FileProposalServiceImpl implements IFileProposalService {
                     .fileHash(generateFileHash(dto.getFile().getBytes())) // Hash seguro
                     .subject(subject)
                     .uploader(uploader)
-                    .anonymous(dto.isAnonymous())
+                    .visibilityLevel(dto.getVisibilityLevel() != null ? dto.getVisibilityLevel() : FileVisibility.PUBLIC)
                     .build();
             tempFileRepository.save(tempFile);
 

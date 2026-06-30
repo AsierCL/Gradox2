@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.example.gradox2.persistence.entities.enums.FileType;
+import com.example.gradox2.persistence.entities.enums.FileVisibility;
 
 import jakarta.persistence.*;
 import lombok.*;
@@ -44,9 +45,10 @@ public class File {
     @JoinColumn(name = "subject_id", nullable = false)
     private Subject subject;
 
-    @Column(nullable = false)
+    @Enumerated(EnumType.STRING)
+    @Column(name = "visibility_level", nullable = false)
     @Builder.Default
-    private boolean anonymous = false;
+    private FileVisibility visibilityLevel = FileVisibility.PUBLIC;
 
     private Double score;
 

@@ -4,6 +4,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.validation.annotation.Validated;
 
+import com.example.gradox2.persistence.entities.enums.FileVisibility;
 import com.example.gradox2.presentation.dto.fileProposal.UploadFileProposalRequest;
 import com.example.gradox2.presentation.dto.fileProposal.FileProposalResponse;
 import com.example.gradox2.presentation.dto.files.FileResponse;
@@ -19,8 +20,11 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 
 
@@ -68,6 +72,13 @@ public class FileController {
     @DeleteMapping("/{id}/vote")
     public ResponseEntity<VoteResponse> retractVote(@PathVariable @Positive Long id) {
         return ResponseEntity.ok(fileService.retractVote(id));
+    }
+
+    @PutMapping("/{id}/visibility")
+    public ResponseEntity<FileResponse> updateFileVisibility(
+            @PathVariable @Positive Long id,
+            @RequestBody @NotNull FileVisibility visibilityLevel) {
+        return ResponseEntity.ok(fileService.updateFileVisibility(id, visibilityLevel));
     }
 
 }

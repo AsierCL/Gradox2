@@ -30,6 +30,7 @@ import com.example.gradox2.persistence.entities.Course;
 import com.example.gradox2.persistence.entities.Subject;
 import com.example.gradox2.persistence.entities.User;
 import com.example.gradox2.persistence.entities.enums.FileType;
+import com.example.gradox2.persistence.entities.enums.FileVisibility;
 import com.example.gradox2.persistence.entities.enums.UserRole;
 import com.example.gradox2.persistence.repository.CourseRepository;
 import com.example.gradox2.persistence.repository.FileProposalRepository;
@@ -465,16 +466,16 @@ class ApiIntegrationTest {
     }
 
     @Test
-    void guestShouldReadFilesWithoutSeeingUploaderIdentity() throws Exception {
+    void guestShouldReadFilesWithoutSeeingUploaderIdentityForRestricted() throws Exception {
         Long subjectId = createSubject();
 
-        createEnabledUser("guestsource", "guestsource@rai.usc.es", "SecurePass1!", UserRole.USER);
-        createEnabledUser("guestapprover", "guestapprover@rai.usc.es", "SecurePass1!", UserRole.USER);
+        createEnabledUser("restrictedsource", "restrictedsource@rai.usc.es", "SecurePass1!", UserRole.USER);
+        createEnabledUser("restrictedapprover", "restrictedapprover@rai.usc.es", "SecurePass1!", UserRole.USER);
 
-        String sourceToken = loginAndGetToken("guestsource", "SecurePass1!");
-        String approverToken = loginAndGetToken("guestapprover", "SecurePass1!");
+        String sourceToken = loginAndGetToken("restrictedsource", "SecurePass1!");
+        String approverToken = loginAndGetToken("restrictedapprover", "SecurePass1!");
 
-        long proposalId = uploadProposalAndGetId(sourceToken, subjectId, "guest-visible.pdf", "Visible para invitados", "Descripcion visible");
+        long proposalId = uploadProposalAndGetId(sourceToken, subjectId, "restricted-guest.pdf", "Restricted guest", "Desc", FileVisibility.RESTRICTED);
 
         mockMvc.perform(post("/vote/{id}/{upvote}", proposalId, true)
                 .header("Authorization", bearer(approverToken)))
@@ -484,30 +485,201 @@ class ApiIntegrationTest {
 
         mockMvc.perform(get("/files/all"))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$[0].fileName").value("Visible para invitados"))
-            .andExpect(jsonPath("$[0].anonymous").value(false))
+            .andExpect(jsonPath("$[0].fileName").value("Restricted guest"))
             .andExpect(jsonPath("$[0].uploaderUsername").value("anonymous"));
 
         mockMvc.perform(get("/files/{id}", fileId))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$.fileName").value("Visible para invitados"))
-            .andExpect(jsonPath("$.anonymous").value(false))
+            .andExpect(jsonPath("$.fileName").value("Restricted guest"))
             .andExpect(jsonPath("$.uploaderUsername").value("anonymous"));
     }
 
     @Test
-    void anonymousUploadShouldHideIdentityFromOthersButRevealOwnerAndMaster() throws Exception {
+    void uploadWithRestrictedVisibilityShouldHideUploaderFromGuest() throws Exception {
         Long subjectId = createSubject();
 
-        createEnabledUser("anonowner", "anonowner@rai.usc.es", "SecurePass1!", UserRole.USER);
-        createEnabledUser("anonpeer", "anonpeer@rai.usc.es", "SecurePass1!", UserRole.USER);
-        createEnabledUser("anonmaster", "anonmaster@rai.usc.es", "SecurePass1!", UserRole.MASTER);
+        createEnabledUser("restrictedowner", "restrictedowner@rai.usc.es", "SecurePass1!", UserRole.USER);
+        createEnabledUser("restrictedpeer", "restrictedpeer@rai.usc.es", "SecurePass1!", UserRole.USER);
+        createEnabledUser("restrictedmaster", "restrictedmaster@rai.usc.es", "SecurePass1!", UserRole.MASTER);
 
-        String ownerToken = loginAndGetToken("anonowner", "SecurePass1!");
-        String peerToken = loginAndGetToken("anonpeer", "SecurePass1!");
-        String masterToken = loginAndGetToken("anonmaster", "SecurePass1!");
+        String ownerToken = loginAndGetToken("restrictedowner", "SecurePass1!");
+        String peerToken = loginAndGetToken("restrictedpeer", "SecurePass1!");
+        String masterToken = loginAndGetToken("restrictedmaster", "SecurePass1!");
 
-        long proposalId = uploadProposalAndGetId(ownerToken, subjectId, "anon.pdf", "Subida anonima", "Subida anonima", true);
+        long proposalId = uploadProposalAndGetId(ownerToken, subjectId, "restricted.pdf", "Restricted file", "Restricted desc", FileVisibility.RESTRICTED);
+
+        mockMvc.perform(post("/vote/{id}/{upvote}", proposalId, true)
+                .header("Authorization", bearer(masterToken)))
+            .andExpect(status().isOk());
+
+        Long fileId = fileRepository.findAll().stream().findFirst().orElseThrow().getId();
+
+        mockMvc.perform(get("/files/{id}", fileId))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.uploaderUsername").value("anonymous"))
+            .andExpect(jsonPath("$.visibilityLevel").value("RESTRICTED"));
+
+        mockMvc.perform(get("/files/{id}", fileId)
+                .header("Authorization", bearer(peerToken)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.uploaderUsername").value("restrictedowner"))
+            .andExpect(jsonPath("$.visibilityLevel").value("RESTRICTED"));
+
+        mockMvc.perform(get("/files/{id}", fileId)
+                .header("Authorization", bearer(masterToken)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.uploaderUsername").value("restrictedowner"))
+            .andExpect(jsonPath("$.visibilityLevel").value("RESTRICTED"));
+    }
+
+    @Test
+    void uploadWithPrivateVisibilityShouldHideUploaderFromUserAndGuest() throws Exception {
+        Long subjectId = createSubject();
+
+        createEnabledUser("privateowner", "privateowner@rai.usc.es", "SecurePass1!", UserRole.USER);
+        createEnabledUser("privatepeer", "privatepeer@rai.usc.es", "SecurePass1!", UserRole.USER);
+        createEnabledUser("privatemaster", "privatemaster@rai.usc.es", "SecurePass1!", UserRole.MASTER);
+
+        String ownerToken = loginAndGetToken("privateowner", "SecurePass1!");
+        String peerToken = loginAndGetToken("privatepeer", "SecurePass1!");
+        String masterToken = loginAndGetToken("privatemaster", "SecurePass1!");
+
+        long proposalId = uploadProposalAndGetId(ownerToken, subjectId, "private.pdf", "Private file", "Private desc", FileVisibility.PRIVATE);
+
+        mockMvc.perform(post("/vote/{id}/{upvote}", proposalId, true)
+                .header("Authorization", bearer(masterToken)))
+            .andExpect(status().isOk());
+
+        Long fileId = fileRepository.findAll().stream().findFirst().orElseThrow().getId();
+
+        mockMvc.perform(get("/files/{id}", fileId))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.uploaderUsername").value("anonymous"))
+            .andExpect(jsonPath("$.visibilityLevel").value("PRIVATE"));
+
+        mockMvc.perform(get("/files/{id}", fileId)
+                .header("Authorization", bearer(peerToken)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.uploaderUsername").value("anonymous"))
+            .andExpect(jsonPath("$.visibilityLevel").value("PRIVATE"));
+
+        mockMvc.perform(get("/files/{id}", fileId)
+                .header("Authorization", bearer(ownerToken)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.uploaderUsername").value("privateowner"))
+            .andExpect(jsonPath("$.visibilityLevel").value("PRIVATE"));
+
+        mockMvc.perform(get("/files/{id}", fileId)
+                .header("Authorization", bearer(masterToken)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.uploaderUsername").value("privateowner"))
+            .andExpect(jsonPath("$.visibilityLevel").value("PRIVATE"));
+    }
+
+    @Test
+    void ownerCanChangeFileVisibility() throws Exception {
+        Long subjectId = createSubject();
+
+        createEnabledUser("visowner", "visowner@rai.usc.es", "SecurePass1!", UserRole.USER);
+        createEnabledUser("vispeer", "vispeer@rai.usc.es", "SecurePass1!", UserRole.USER);
+
+        String ownerToken = loginAndGetToken("visowner", "SecurePass1!");
+        String peerToken = loginAndGetToken("vispeer", "SecurePass1!");
+
+        long proposalId = uploadProposalAndGetId(ownerToken, subjectId, "vis.pdf", "Visibility test", "Desc");
+
+        mockMvc.perform(post("/vote/{id}/{upvote}", proposalId, true)
+                .header("Authorization", bearer(peerToken)))
+            .andExpect(status().isOk());
+
+        Long fileId = fileRepository.findAll().stream().findFirst().orElseThrow().getId();
+
+        mockMvc.perform(get("/files/{id}", fileId)
+                .header("Authorization", bearer(peerToken)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.visibilityLevel").value("PUBLIC"))
+            .andExpect(jsonPath("$.uploaderUsername").value("visowner"));
+
+        mockMvc.perform(put("/files/{id}/visibility", fileId)
+                .header("Authorization", bearer(ownerToken))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("\"PRIVATE\""))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.visibilityLevel").value("PRIVATE"))
+            .andExpect(jsonPath("$.uploaderUsername").value("visowner"));
+
+        mockMvc.perform(get("/files/{id}", fileId)
+                .header("Authorization", bearer(peerToken)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.visibilityLevel").value("PRIVATE"))
+            .andExpect(jsonPath("$.uploaderUsername").value("anonymous"));
+    }
+
+    @Test
+    void masterCanChangeFileVisibility() throws Exception {
+        Long subjectId = createSubject();
+
+        createEnabledUser("mvisowner", "mvisowner@rai.usc.es", "SecurePass1!", UserRole.USER);
+        createEnabledUser("madmin", "madmin@rai.usc.es", "SecurePass1!", UserRole.MASTER);
+
+        String ownerToken = loginAndGetToken("mvisowner", "SecurePass1!");
+        String masterToken = loginAndGetToken("madmin", "SecurePass1!");
+
+        long proposalId = uploadProposalAndGetId(ownerToken, subjectId, "mvis.pdf", "Master vis test", "Desc");
+
+        mockMvc.perform(post("/vote/{id}/{upvote}", proposalId, true)
+                .header("Authorization", bearer(masterToken)))
+            .andExpect(status().isOk());
+
+        Long fileId = fileRepository.findAll().stream().findFirst().orElseThrow().getId();
+
+        mockMvc.perform(put("/files/{id}/visibility", fileId)
+                .header("Authorization", bearer(masterToken))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("\"RESTRICTED\""))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.visibilityLevel").value("RESTRICTED"));
+    }
+
+    @Test
+    void nonOwnerCannotChangeFileVisibility() throws Exception {
+        Long subjectId = createSubject();
+
+        createEnabledUser("targetowner", "targetowner@rai.usc.es", "SecurePass1!", UserRole.USER);
+        createEnabledUser("intruder", "intruder@rai.usc.es", "SecurePass1!", UserRole.USER);
+
+        String ownerToken = loginAndGetToken("targetowner", "SecurePass1!");
+        String intruderToken = loginAndGetToken("intruder", "SecurePass1!");
+
+        long proposalId = uploadProposalAndGetId(ownerToken, subjectId, "target.pdf", "Target file", "Desc");
+
+        mockMvc.perform(post("/vote/{id}/{upvote}", proposalId, true)
+                .header("Authorization", bearer(intruderToken)))
+            .andExpect(status().isOk());
+
+        Long fileId = fileRepository.findAll().stream().findFirst().orElseThrow().getId();
+
+        mockMvc.perform(put("/files/{id}/visibility", fileId)
+                .header("Authorization", bearer(intruderToken))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("\"PRIVATE\""))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.errorCode").value("INVALID_FILE_OPERATION"));
+    }
+
+    @Test
+    void privateVisibilityShouldHideIdentityFromOthersButRevealOwnerAndMaster() throws Exception {
+        Long subjectId = createSubject();
+
+        createEnabledUser("privowner", "privowner@rai.usc.es", "SecurePass1!", UserRole.USER);
+        createEnabledUser("privpeer", "privpeer@rai.usc.es", "SecurePass1!", UserRole.USER);
+        createEnabledUser("privmaster", "privmaster@rai.usc.es", "SecurePass1!", UserRole.MASTER);
+
+        String ownerToken = loginAndGetToken("privowner", "SecurePass1!");
+        String peerToken = loginAndGetToken("privpeer", "SecurePass1!");
+        String masterToken = loginAndGetToken("privmaster", "SecurePass1!");
+
+        long proposalId = uploadProposalAndGetId(ownerToken, subjectId, "priv.pdf", "Subida privada", "Subida privada", FileVisibility.PRIVATE);
 
         mockMvc.perform(post("/vote/{id}/{upvote}", proposalId, true)
                 .header("Authorization", bearer(masterToken)))
@@ -518,20 +690,20 @@ class ApiIntegrationTest {
         mockMvc.perform(get("/files/{id}", fileId)
                 .header("Authorization", bearer(peerToken)))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$.anonymous").value(true))
+            .andExpect(jsonPath("$.visibilityLevel").value("PRIVATE"))
             .andExpect(jsonPath("$.uploaderUsername").value("anonymous"));
 
         mockMvc.perform(get("/files/{id}", fileId)
                 .header("Authorization", bearer(ownerToken)))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$.anonymous").value(true))
-            .andExpect(jsonPath("$.uploaderUsername").value("anonowner"));
+            .andExpect(jsonPath("$.visibilityLevel").value("PRIVATE"))
+            .andExpect(jsonPath("$.uploaderUsername").value("privowner"));
 
         mockMvc.perform(get("/files/{id}", fileId)
                 .header("Authorization", bearer(masterToken)))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$.anonymous").value(true))
-            .andExpect(jsonPath("$.uploaderUsername").value("anonowner"));
+            .andExpect(jsonPath("$.visibilityLevel").value("PRIVATE"))
+            .andExpect(jsonPath("$.uploaderUsername").value("privowner"));
     }
 
     private void createEnabledUser(String username, String email, String password, UserRole role) {
@@ -589,10 +761,10 @@ class ApiIntegrationTest {
 
         private long uploadProposalAndGetId(String token, Long subjectId, String originalFilename, String title, String description)
             throws Exception {
-        return uploadProposalAndGetId(token, subjectId, originalFilename, title, description, false);
+        return uploadProposalAndGetId(token, subjectId, originalFilename, title, description, FileVisibility.PUBLIC);
         }
 
-        private long uploadProposalAndGetId(String token, Long subjectId, String originalFilename, String title, String description, boolean anonymous)
+        private long uploadProposalAndGetId(String token, Long subjectId, String originalFilename, String title, String description, FileVisibility visibilityLevel)
             throws Exception {
         MockMultipartFile multipartFile = new MockMultipartFile(
             "file",
@@ -606,7 +778,7 @@ class ApiIntegrationTest {
             .param("description", description)
             .param("type", FileType.APUNTES.name())
             .param("subjectId", String.valueOf(subjectId))
-            .param("anonymous", String.valueOf(anonymous))
+            .param("visibilityLevel", visibilityLevel.name())
             .header("Authorization", bearer(token));
 
         MvcResult result = mockMvc.perform(request)
