@@ -46,13 +46,13 @@ RolesController
 ## 📃 4. Propuestas de archivos
 FileProposalController
 
-| Método | Endpoint                        | Descripción                        | ✔️  | MVP |
-| ------ | ------------------------------- | ---------------------------------- | --- | --- |
-| POST   | `/uploadProposal/upload`        | Proponer nuevo archivo             | ✅   | ☑️  |
-| GET    | `/uploadProposal/all`           | Listar archivos todos los archivos | ✅   | ☑️  |
-| GET    | `/uploadProposal/{id}`          | Ver datos del archivo              | ✅   | ☑️  |
-| GET    | `/uploadProposal/{id}/download` | Descargar archivo propuesto        | ✅   | ☑️  |
-| DELETE | `/uploadProposal/{id}`          | Borrar propuesta de archivo        | ✅   | ☑️  |
+| Método | Endpoint                        | Descripción                                        | ✔️  | MVP |
+| ------ | ------------------------------- | -------------------------------------------------- | --- | --- |
+| POST   | `/uploadProposal/upload`        | Proponer nuevo archivo (con visibilityLevel)       | ✅   | ☑️  |
+| GET    | `/uploadProposal`               | Listar propuestas (?paged, ?page, ?size, ?sortBy)  | ✅   | ☑️  |
+| GET    | `/uploadProposal/{id}`          | Ver datos de la propuesta (incluye visibilityLevel)| ✅   | ☑️  |
+| GET    | `/uploadProposal/{id}/download` | Descargar archivo propuesto                        | ✅   | ☑️  |
+| DELETE | `/uploadProposal/{id}`          | Borrar propuesta de archivo                        | ✅   | ☑️  |
 
 ---
 ## 📁 5. Archivos
@@ -64,7 +64,7 @@ FileController
 | GET    | `/files/{id}`               | Ver datos del archivo                    | ✅   | ☑️  |
 | GET    | `/files/{id}/download`      | Descargar archivo                        | ✅   | ☑️  |
 | DELETE | `/files/{id}`               | Proponer eliminación con votación        | ✅   | ☑️  |
-| POST   | `/files/upload`             | Proponer nuevo archivo                   | ✅   | ☑️  |
+| POST   | `/files/upload`             | Subir archivo (legacy, preferir /uploadProposal/upload) | ✅   | ☑️  |
 | POST   | `/files/{id}/vote/{upvote}` | Votar para puntuar un archivo            | ✅   | ☑️  |
 | DELETE | `/files/{id}/vote`          | Quitar votacion de un archivo            | ✅   | ☑️  |
 | PUT    | `/files/{id}/visibility`    | Cambiar visibilidad del uploader del archivo | ✅   | ☑️  |
