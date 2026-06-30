@@ -96,8 +96,12 @@ La plataforma original ha servido como repositorio colaborativo de **apuntes, ex
 - Autenticación vía correo institucional `@rai.usc.es`.
 - Verificación mediante **código único por email**.
 
-### 6.2 Anonimato y Visibilidad
-- Invitados: no ven la identidad de quien sube o comenta.
+### 6.2 Visibilidad del Uploader
+- Los archivos tienen un nivel de visibilidad configurable por el uploader mediante `FileVisibility`:
+  - **PUBLIC**: todos los usuarios ven el nickname del uploader.
+  - **RESTRICTED**: solo USER y MASTER ven el nickname; GUEST e invitados ven "anonymous".
+  - **PRIVATE**: solo el propietario y MASTER ven el nickname; cualquier otro rol ve "anonymous".
+- Los MASTER y el propietario del archivo siempre ven el nombre real, independientemente del nivel de visibilidad.
 - Internamente: se guarda un **registro completo** de actividad para trazabilidad.
 
 ### 6.3 Sistema de baneo a usuarios

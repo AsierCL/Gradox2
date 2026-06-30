@@ -19,7 +19,7 @@ Qué hace internamente:
 
 Notas:
 - Los tests de integración usan `@ActiveProfiles("test")`, por lo que se ejecutan contra la configuración de test.
-- La ejecución más reciente de Maven reporta: **40 tests, 0 fallos, 0 errores**.
+- La ejecución más reciente de Maven reporta: **52 tests, 0 fallos, 0 errores**.
 - El conjunto de suites incluye ahora cobertura explícita para sesión de auth, administración de usuarios y eliminación de archivos mediante propuesta.
 
 ## Suite actual

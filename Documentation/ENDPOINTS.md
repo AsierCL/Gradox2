@@ -67,6 +67,7 @@ FileController
 | POST   | `/files/upload`             | Proponer nuevo archivo                   | ✅   | ☑️  |
 | POST   | `/files/{id}/vote/{upvote}` | Votar para puntuar un archivo            | ✅   | ☑️  |
 | DELETE | `/files/{id}/vote`          | Quitar votacion de un archivo            | ✅   | ☑️  |
+| PUT    | `/files/{id}/visibility`    | Cambiar visibilidad del uploader del archivo | ✅   | ☑️  |
 
 
 ---
@@ -142,7 +143,26 @@ FileController
 | GET    | `/health` | Responde 200 OK si la app esta funcionando | ✅   | ☑️  |
 
 ---
-## ⏳ 14. Funcionalidades todavía no implementadas
+---
+## 🔒 14. Visibilidad del Uploader (FileVisibility)
+
+Los archivos tienen un nivel de visibilidad que controla quién puede ver el nickname del usuario que lo subió. Se define mediante el enum `FileVisibility`:
+
+| Valor       | Efecto                                                                 |
+|-------------|------------------------------------------------------------------------|
+| `PUBLIC`    | Cualquier usuario (incluyendo no autenticados y GUEST) ve el nickname  |
+| `RESTRICTED`| Solo USER y MASTER ven el nickname; GUEST y no autenticados ven "anonymous" |
+| `PRIVATE`   | Solo el propietario y MASTER ven el nickname; el resto (incluyendo USER) ven "anonymous" |
+
+- El propietario del archivo y los MASTER siempre ven el nombre real, independientemente del nivel.
+- Al subir un archivo, se puede especificar `visibilityLevel` en el `UploadFileProposalRequest`.
+- Las propuestas devuelven el campo `visibilityLevel` (String) en la respuesta.
+- Los archivos ya publicados pueden cambiar su visibilidad mediante `PUT /files/{id}/visibility`.
+- El campo `visibilityLevel` también se incluye en `FileResponse`.
+
+---
+
+## ⏳ 15. Funcionalidades todavía no implementadas
 
 Estas capacidades siguen en la documentación de producto, pero todavía no existen en los controladores actuales:
 
