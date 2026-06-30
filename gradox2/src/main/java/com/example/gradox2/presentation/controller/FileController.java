@@ -5,7 +5,6 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.validation.annotation.Validated;
 
 import com.example.gradox2.persistence.entities.enums.FileVisibility;
-import com.example.gradox2.presentation.dto.fileProposal.UploadFileProposalRequest;
 import com.example.gradox2.presentation.dto.fileProposal.FileProposalResponse;
 import com.example.gradox2.presentation.dto.files.FileResponse;
 import com.example.gradox2.presentation.dto.vote.VoteResponse;
@@ -17,7 +16,6 @@ import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -30,7 +28,6 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
-import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 
@@ -74,16 +71,6 @@ public class FileController {
     public ResponseEntity<ByteArrayResource> downloadFile(
             @Parameter(description = "ID del archivo") @PathVariable @Positive Long id) {
         return fileService.downloadFile(id);
-    }
-
-    @PostMapping("/upload")
-    @Operation(summary = "Subir archivo (legacy)", description = "Crea directamente una propuesta de subida. Preferir /uploadProposal/upload que devuelve respuesta estructurada.")
-    @ApiResponses({
-        @ApiResponse(responseCode = "200", description = "Archivo enviado para revisión"),
-        @ApiResponse(responseCode = "400", description = "Datos inválidos", content = @Content)
-    })
-    public ResponseEntity<String> uploadFile(@Valid @ModelAttribute UploadFileProposalRequest uploadFileRequest){
-        return fileService.uploadFile(uploadFileRequest);
     }
 
     @DeleteMapping("/{id}")

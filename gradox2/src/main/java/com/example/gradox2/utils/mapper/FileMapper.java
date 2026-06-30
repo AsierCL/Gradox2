@@ -1,14 +1,14 @@
 package com.example.gradox2.utils.mapper;
 
-import org.springframework.stereotype.Component;
-
 import com.example.gradox2.persistence.entities.File;
 import com.example.gradox2.persistence.entities.User;
 import com.example.gradox2.presentation.dto.files.FileResponse;
 import com.example.gradox2.utils.IdentityVisibility;
 
-@Component
-public class FileMapper {
+public final class FileMapper {
+
+    private FileMapper() {
+    }
 
     public static final FileResponse toFileResponse(File file, User viewer) {
         if (file == null) {

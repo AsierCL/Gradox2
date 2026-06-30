@@ -1,13 +1,7 @@
 package com.example.gradox2.service.implementation;
 
-import java.io.IOException;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.util.List;
 import java.util.stream.Collectors;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -16,13 +10,10 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.example.gradox2.persistence.entities.File;
-import com.example.gradox2.persistence.entities.Subject;
-import com.example.gradox2.persistence.entities.TempFile;
 import com.example.gradox2.persistence.entities.FileProposal;
 import com.example.gradox2.persistence.entities.User;
 import com.example.gradox2.persistence.entities.GlobalConfig;
@@ -31,12 +22,9 @@ import com.example.gradox2.persistence.entities.enums.ActionType;
 import com.example.gradox2.persistence.entities.enums.FileVisibility;
 import com.example.gradox2.persistence.entities.enums.ProposalStatus;
 import com.example.gradox2.persistence.repository.FileRepository;
-import com.example.gradox2.persistence.repository.SubjectRepository;
-import com.example.gradox2.persistence.repository.TempFileRepository;
 import com.example.gradox2.persistence.repository.ScoreRepository;
 import com.example.gradox2.persistence.repository.FileProposalRepository;
 import com.example.gradox2.service.interfaces.IGlobalConfigService;
-import com.example.gradox2.presentation.dto.fileProposal.UploadFileProposalRequest;
 import com.example.gradox2.presentation.dto.files.FileResponse;
 import com.example.gradox2.presentation.dto.vote.VoteResponse;
 import com.example.gradox2.service.exceptions.InvalidFileOperation;
@@ -49,22 +37,17 @@ import com.example.gradox2.utils.mapper.FileMapper;
 @Service
 public class FileServiceImpl implements IFileService {
     private static final int MAX_LIST_SIZE = 100;
-    private static final Logger logger = LoggerFactory.getLogger(FileServiceImpl.class);
 
     private final FileRepository fileRepository;
-    private final TempFileRepository tempFileRepository;
     private final FileProposalRepository uploadProposalRepository;
-    private final SubjectRepository subjectRepository;
     private final ScoreRepository scoreRepository;
     private final IGlobalConfigService voteConfigService;
 
-    public FileServiceImpl(FileRepository fileRepository, TempFileRepository tempFileRepository,
-            FileProposalRepository uploadProposalRepository, SubjectRepository subjectRepository,
-            IGlobalConfigService voteConfigService, SecurityFilterChain filterChain, ScoreRepository scoreRepository) {
+    public FileServiceImpl(FileRepository fileRepository,
+            FileProposalRepository uploadProposalRepository,
+            IGlobalConfigService voteConfigService, ScoreRepository scoreRepository) {
         this.fileRepository = fileRepository;
-        this.tempFileRepository = tempFileRepository;
         this.uploadProposalRepository = uploadProposalRepository;
-        this.subjectRepository = subjectRepository;
         this.scoreRepository = scoreRepository;
         this.voteConfigService = voteConfigService;
     }
@@ -80,50 +63,6 @@ public class FileServiceImpl implements IFileService {
                 .contentType(MediaType.APPLICATION_OCTET_STREAM)
                 .contentLength(file.getFileData().length)
                 .body(resource);
-    }
-
-    @Transactional
-    public ResponseEntity<String> uploadFile(UploadFileProposalRequest dto) {
-        // 1. Buscar la materia
-        Subject subject = subjectRepository.findById(dto.getSubjectId())
-                .orElseThrow(() -> new NotFoundException("Subject not found"));
-
-        // 2. Obtener usuario autenticado
-        User uploader = GetAuthUser.getAuthUser();
-        GlobalConfig config = voteConfigService.getConfig();
-        ensurePendingUploadLimit(uploader, config.getMaxPendingUploads());
-
-        try {
-            // 3. Crear TempFile con el archivo subido
-            TempFile tempFile = TempFile.builder()
-                    .title(dto.getTitle())
-                    .description(dto.getDescription())
-                    .type(dto.getType())
-                    .fileData(dto.getFile().getBytes())
-                    .fileHash(generateFileHash(dto.getFile().getBytes())) // Hash seguro
-                    .subject(subject)
-                    .uploader(uploader)
-                    .visibilityLevel(dto.getVisibilityLevel() != null ? dto.getVisibilityLevel() : FileVisibility.PUBLIC)
-                    .build();
-            tempFileRepository.save(tempFile);
-
-            // 4. Crear UploadProposal asociada al TempFile
-            FileProposal proposal = new FileProposal();
-            proposal.setProposer(uploader);
-            proposal.setTempFile(tempFile);
-            proposal.setStatus(ProposalStatus.PENDING);
-            proposal.setActionType(ActionType.UPLOAD);
-            proposal.setQuorumRequired(config.getQuorumRequired());
-            proposal.setApprovalThreshold(config.getApprovalThreshold());
-            uploadProposalRepository.save(proposal);
-
-            // 5. Devolver respuesta
-            return ResponseEntity.ok("Archivo enviado para revisión. ID de propuesta: " + proposal.getId());
-
-        } catch (IOException e) {
-            logger.error("File upload failed for subjectId={} title={}", dto.getSubjectId(), dto.getTitle(), e);
-            return ResponseEntity.status(500).body("An unexpected error occurred while processing the file.");
-        }
     }
 
     public List<FileResponse> getAllFiles() {
@@ -165,23 +104,6 @@ public class FileServiceImpl implements IFileService {
         return com.example.gradox2.utils.mapper.FileProposalMapper.toFileProposalResponse(proposal, requester);
     }
 
-    private String generateFileHash(byte[] data) {
-        try {
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            byte[] hashBytes = digest.digest(data);
-            StringBuilder hexString = new StringBuilder();
-            for (byte b : hashBytes) {
-                String hex = Integer.toHexString(0xff & b);
-                if (hex.length() == 1)
-                    hexString.append('0');
-                hexString.append(hex);
-            }
-            return hexString.toString();
-        } catch (NoSuchAlgorithmException e) {
-            throw new RuntimeException("Error generating file hash", e);
-        }
-    }
-
     @Transactional
     public VoteResponse voteFile(Long id, boolean upvote) {
         File file = fileRepository.findById(id)
@@ -218,7 +140,7 @@ public class FileServiceImpl implements IFileService {
         fileRepository.save(file);
 
         return new VoteResponse(score.getId(), id, user.getUsername(), upvote, score.getScoredAt());
-}
+    }
 
 
     @Transactional
@@ -267,16 +189,5 @@ public class FileServiceImpl implements IFileService {
             return null;
         }
         return user;
-    }
-
-    private void ensurePendingUploadLimit(User uploader, Integer maxPendingUploads) {
-        long pendingUploads = uploadProposalRepository.countByProposerAndStatusAndActionType(
-                uploader,
-                ProposalStatus.PENDING,
-                ActionType.UPLOAD);
-
-        if (maxPendingUploads != null && pendingUploads >= maxPendingUploads) {
-            throw new InvalidFileOperation("Maximum pending uploads reached");
-        }
     }
 }
