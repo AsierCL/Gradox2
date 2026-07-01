@@ -11,7 +11,7 @@ import lombok.NoArgsConstructor;
 @Schema(description = "Resultado del recuento de votos de una propuesta")
 public class VoteResultResponse {
     @Schema(description = "ID de la propuesta", example = "1")
-    private Long fileId;
+    private Long proposalId;
 
     @Schema(description = "Votos a favor", example = "5")
     private Long upvotes;

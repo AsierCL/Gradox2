@@ -33,6 +33,10 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.UUID;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.nio.charset.StandardCharsets;
+import java.util.Base64;
 
 @Service
 public class AuthServiceImpl implements IAuthService {
@@ -88,7 +92,7 @@ public class AuthServiceImpl implements IAuthService {
     @Override
     @Transactional
     public AuthResponse refreshToken(TokenRequest request) {
-        RefreshToken storedToken = refreshTokenRepository.findByToken(request.getRefreshToken())
+        RefreshToken storedToken = refreshTokenRepository.findByToken(hashToken(request.getRefreshToken()))
                 .orElseThrow(() -> new UnauthenticatedAccessException("Refresh token inválido"));
 
         if (storedToken.isRevoked() || storedToken.isExpired()) {
@@ -110,7 +114,7 @@ public class AuthServiceImpl implements IAuthService {
     @Override
     @Transactional
     public void logout(TokenRequest request) {
-        RefreshToken storedToken = refreshTokenRepository.findByToken(request.getRefreshToken())
+        RefreshToken storedToken = refreshTokenRepository.findByToken(hashToken(request.getRefreshToken()))
                 .orElseThrow(() -> new UnauthenticatedAccessException("Refresh token inválido"));
 
         storedToken.revoke();
@@ -151,8 +155,8 @@ public class AuthServiceImpl implements IAuthService {
 
         User user = resetToken.getUser();
         user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
+        user.getRefreshTokens().clear();
         userRepository.save(user);
-        refreshTokenRepository.deleteByUser(user);
         passwordResetTokenRepository.delete(resetToken);
     }
 
@@ -224,14 +228,25 @@ public class AuthServiceImpl implements IAuthService {
     }
 
     private String createRefreshToken(User user) {
+        String rawToken = UUID.randomUUID().toString();
         RefreshToken refreshToken = RefreshToken.builder()
-                .token(UUID.randomUUID().toString())
+                .token(hashToken(rawToken))
                 .user(user)
             .expiryDate(LocalDateTime.now().plus(refreshExpirationMs, ChronoUnit.MILLIS))
                 .revoked(false)
                 .build();
 
         refreshTokenRepository.save(refreshToken);
-        return refreshToken.getToken();
+        return rawToken;
+    }
+
+    private String hashToken(String token) {
+        try {
+            MessageDigest md = MessageDigest.getInstance("SHA-256");
+            byte[] hash = md.digest(token.getBytes(StandardCharsets.UTF_8));
+            return Base64.getEncoder().encodeToString(hash);
+        } catch (NoSuchAlgorithmException e) {
+            throw new RuntimeException("SHA-256 not available", e);
+        }
     }
 }

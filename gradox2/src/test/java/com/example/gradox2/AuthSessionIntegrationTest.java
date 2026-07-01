@@ -11,8 +11,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentMatchers;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -40,6 +42,10 @@ import com.example.gradox2.persistence.repository.TempFileRepository;
 import com.example.gradox2.utils.EmailService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.nio.charset.StandardCharsets;
+import java.util.Base64;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -118,9 +124,9 @@ class AuthSessionIntegrationTest {
         JsonNode response = objectMapper.readTree(result.getResponse().getContentAsString());
         String refreshToken = response.get("refreshToken").asText();
 
-        RefreshToken storedToken = refreshTokenRepository.findByToken(refreshToken).orElseThrow();
-        org.junit.jupiter.api.Assertions.assertFalse(storedToken.isRevoked());
-        org.junit.jupiter.api.Assertions.assertEquals("sessionuser", storedToken.getUser().getUsername());
+        RefreshToken storedToken = refreshTokenRepository.findByToken(hashToken(refreshToken)).orElseThrow();
+        Assertions.assertFalse(storedToken.isRevoked());
+        Assertions.assertEquals("sessionuser", storedToken.getUser().getUsername());
     }
 
     @Test
@@ -142,9 +148,9 @@ class AuthSessionIntegrationTest {
         JsonNode refreshed = objectMapper.readTree(result.getResponse().getContentAsString());
         String newRefreshToken = refreshed.get("refreshToken").asText();
 
-        org.junit.jupiter.api.Assertions.assertNotEquals(oldRefreshToken, newRefreshToken);
-        org.junit.jupiter.api.Assertions.assertTrue(refreshTokenRepository.findByToken(oldRefreshToken).orElseThrow().isRevoked());
-        org.junit.jupiter.api.Assertions.assertFalse(refreshTokenRepository.findByToken(newRefreshToken).orElseThrow().isRevoked());
+        Assertions.assertNotEquals(oldRefreshToken, newRefreshToken);
+        Assertions.assertTrue(refreshTokenRepository.findByToken(hashToken(oldRefreshToken)).orElseThrow().isRevoked());
+        Assertions.assertFalse(refreshTokenRepository.findByToken(hashToken(newRefreshToken)).orElseThrow().isRevoked());
 
         mockMvc.perform(post("/api/auth/token/refresh")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -163,7 +169,7 @@ class AuthSessionIntegrationTest {
                         .content(json(Map.of("refreshToken", refreshToken))))
                 .andExpect(status().isNoContent());
 
-        org.junit.jupiter.api.Assertions.assertTrue(refreshTokenRepository.findByToken(refreshToken).orElseThrow().isRevoked());
+        Assertions.assertTrue(refreshTokenRepository.findByToken(hashToken(refreshToken)).orElseThrow().isRevoked());
 
         mockMvc.perform(post("/api/auth/token/refresh")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -183,12 +189,12 @@ class AuthSessionIntegrationTest {
                 .andExpect(jsonPath("$").value("Si el correo existe, se enviará un enlace de restablecimiento"));
 
         PasswordResetToken token = passwordResetTokenRepository.findAll().stream().findFirst().orElseThrow();
-        org.junit.jupiter.api.Assertions.assertEquals("resetuser", token.getUser().getUsername());
+        Assertions.assertEquals("resetuser", token.getUser().getUsername());
 
         verify(emailService).sendEmail(
                 eq("reset@rai.usc.es"),
                 anyString(),
-                org.mockito.ArgumentMatchers.contains("https://gradox.test/api/auth/password/reset?token="));
+                ArgumentMatchers.contains("https://gradox.test/api/auth/password/reset?token="));
     }
 
     @Test
@@ -198,7 +204,7 @@ class AuthSessionIntegrationTest {
                         .content(json(Map.of("email", "missing@rai.usc.es"))))
                 .andExpect(status().isOk());
 
-        org.junit.jupiter.api.Assertions.assertTrue(passwordResetTokenRepository.findAll().isEmpty());
+        Assertions.assertTrue(passwordResetTokenRepository.findAll().isEmpty());
         verifyNoInteractions(emailService);
     }
 
@@ -221,9 +227,9 @@ class AuthSessionIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$").value("Contraseña actualizada correctamente"));
 
-        org.junit.jupiter.api.Assertions.assertTrue(passwordResetTokenRepository.findByToken(resetToken).isEmpty());
+        Assertions.assertTrue(passwordResetTokenRepository.findByToken(resetToken).isEmpty());
         User updatedUser = userRepository.findByUsername("changeme").orElseThrow();
-        org.junit.jupiter.api.Assertions.assertTrue(refreshTokenRepository.findAllByUser(updatedUser).isEmpty());
+        Assertions.assertTrue(refreshTokenRepository.findAllByUser(updatedUser).isEmpty());
 
         mockMvc.perform(post("/api/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -286,5 +292,15 @@ class AuthSessionIntegrationTest {
 
     private String nextTestIp() {
         return "198.51.100." + IP_COUNTER.incrementAndGet();
+    }
+
+    private static String hashToken(String token) {
+        try {
+            MessageDigest md = MessageDigest.getInstance("SHA-256");
+            byte[] hash = md.digest(token.getBytes(StandardCharsets.UTF_8));
+            return Base64.getEncoder().encodeToString(hash);
+        } catch (NoSuchAlgorithmException e) {
+            throw new RuntimeException(e);
+        }
     }
 }

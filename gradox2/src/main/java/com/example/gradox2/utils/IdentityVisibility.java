@@ -18,16 +18,10 @@ public final class IdentityVisibility {
             return owner.getUsername();
         }
 
-        if (isMaster(viewer)) {
-            return owner.getUsername();
-        }
-
         return switch (visibility) {
             case PUBLIC -> owner.getUsername();
-            case RESTRICTED -> (viewer != null && viewer.getRole() == UserRole.USER)
-                    ? owner.getUsername()
-                    : "anonymous";
-            case PRIVATE -> "anonymous";
+            case RESTRICTED -> viewer != null ? owner.getUsername() : "anonymous";
+            case PRIVATE -> isMaster(viewer) ? owner.getUsername() : "anonymous";
         };
     }
 
