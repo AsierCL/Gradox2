@@ -116,7 +116,7 @@ public class RoleServiceImpl implements IRoleService{
     @Override
     @Transactional
     public String deleteMyPromoteRequest() {
-        promotionProposalRepository.deleteByProposer(GetAuthUser.getAuthUser());
+        promotionProposalRepository.deleteByProposerAndStatus(GetAuthUser.getAuthUser(), ProposalStatus.PENDING);
         return "Promotion request deleted successfully";
     }
 

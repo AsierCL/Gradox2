@@ -46,8 +46,12 @@ public class GlobalConfigService implements IGlobalConfigService {
     @Transactional
     public GlobalConfig updateConfig(Integer quorumRequired, Double approvalThreshold, Integer maxPendingUploads) {
         GlobalConfig config = getConfig();
-        config.setQuorumRequired(quorumRequired);
-        config.setApprovalThreshold(approvalThreshold);
+        if (quorumRequired != null) {
+            config.setQuorumRequired(quorumRequired);
+        }
+        if (approvalThreshold != null) {
+            config.setApprovalThreshold(approvalThreshold);
+        }
         if (maxPendingUploads != null) {
             config.setMaxPendingUploads(maxPendingUploads);
         }
