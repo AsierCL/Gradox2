@@ -1,12 +1,14 @@
 package com.example.gradox2.service.implementation;
 
 import java.time.Instant;
+import java.util.List;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.example.gradox2.persistence.entities.File;
 import com.example.gradox2.persistence.entities.FileProposal;
+import com.example.gradox2.persistence.entities.GlobalConfig;
 import com.example.gradox2.persistence.entities.PromotionProposal;
 import com.example.gradox2.persistence.entities.Proposal;
 import com.example.gradox2.persistence.entities.TempFile;
@@ -22,6 +24,7 @@ import com.example.gradox2.service.exceptions.AlreadyExistsException;
 import com.example.gradox2.service.exceptions.InvalidFileOperation;
 import com.example.gradox2.service.exceptions.NotFoundException;
 import com.example.gradox2.service.exceptions.ProposalClosedException;
+import com.example.gradox2.service.interfaces.IGlobalConfigService;
 import com.example.gradox2.service.interfaces.IVoteService;
 import com.example.gradox2.utils.GetAuthUser;
 import com.example.gradox2.utils.mapper.VoteMapper;
@@ -36,17 +39,19 @@ public class VoteServiceImpl implements IVoteService {
     private final ProposalRepository proposalRepository;
     private final FileProposalRepository fileProposalRepository;
     private final PromotionProposalRepository promotionProposalRepository;
+    private final IGlobalConfigService globalConfigService;
 
     public VoteServiceImpl(VoteRepository voteRepository, ProposalRepository proposalRepository,
             FileProposalRepository fileProposalRepository,
             PromotionProposalRepository promotionProposalRepository, UserRepository userRepository,
-            FileRepository fileRepository) {
+            FileRepository fileRepository, IGlobalConfigService globalConfigService) {
         this.voteRepository = voteRepository;
         this.proposalRepository = proposalRepository;
         this.fileProposalRepository = fileProposalRepository;
         this.promotionProposalRepository = promotionProposalRepository;
         this.userRepository = userRepository;
         this.fileRepository = fileRepository;
+        this.globalConfigService = globalConfigService;
     }
 
     @Override
@@ -75,6 +80,7 @@ public class VoteServiceImpl implements IVoteService {
                 .build();
 
         voteRepository.save(vote);
+        addReputation(auth, 1.0);
         checkProposalStatus(proposal);
 
         return VoteMapper.toVoteResponse(vote, auth);
@@ -129,6 +135,12 @@ public class VoteServiceImpl implements IVoteService {
     // Internal helpers
     // ──────────────────────────────────────────────
 
+    private void addReputation(User user, double amount) {
+        double newRep = Math.max(0, user.getReputation() + amount);
+        user.setReputation(newRep);
+        userRepository.save(user);
+    }
+
     private boolean isExpired(Proposal proposal) {
         return proposal.getEndsAt() != null && Instant.now().isAfter(proposal.getEndsAt());
     }
@@ -138,15 +150,27 @@ public class VoteServiceImpl implements IVoteService {
             return;
         }
 
-        long upvotes = voteRepository.countByProposalAndInFavor(proposal, true);
-        long downvotes = voteRepository.countByProposalAndInFavor(proposal, false);
-        int totalVotes = (int) (upvotes + downvotes);
+        List<Vote> votes = voteRepository.findByProposalId(proposal.getId());
+        GlobalConfig config = globalConfigService.getConfig();
 
-        if (totalVotes < proposal.getQuorumRequired()) {
+        double weightedInFavor = 0;
+        double weightedTotal = 0;
+
+        for (Vote vote : votes) {
+            double weight = vote.getVoter().getRole() == UserRole.MASTER
+                    ? config.getMasterVoteWeight()
+                    : config.getUserVoteWeight();
+            if (Boolean.TRUE.equals(vote.getInFavor())) {
+                weightedInFavor += weight;
+            }
+            weightedTotal += weight;
+        }
+
+        if (votes.size() < proposal.getQuorumRequired()) {
             return;
         }
 
-        double approvalRatio = (double) upvotes / totalVotes;
+        double approvalRatio = weightedTotal > 0 ? weightedInFavor / weightedTotal : 0;
         if (approvalRatio < proposal.getApprovalThreshold()) {
             rejectProposal(proposal);
         } else {
@@ -161,6 +185,9 @@ public class VoteServiceImpl implements IVoteService {
     }
 
     private void rejectProposal(Proposal proposal) {
+        if (proposal instanceof FileProposal fp && fp.getTempFile() != null) {
+            addReputation(fp.getTempFile().getUploader(), -5.0);
+        }
         closeProposal(proposal, ProposalStatus.REJECTED);
     }
 
@@ -206,6 +233,8 @@ public class VoteServiceImpl implements IVoteService {
         fileProposal.setFile(file);
         fileRepository.save(file);
         fileProposalRepository.save(fileProposal);
+
+        addReputation(tempFile.getUploader(), 10.0);
     }
 
     private void applyPromotionProposal(PromotionProposal promotionProposal) {

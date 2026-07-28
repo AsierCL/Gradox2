@@ -24,6 +24,7 @@ import com.example.gradox2.persistence.entities.enums.ProposalStatus;
 import com.example.gradox2.persistence.repository.FileRepository;
 import com.example.gradox2.persistence.repository.ScoreRepository;
 import com.example.gradox2.persistence.repository.FileProposalRepository;
+import com.example.gradox2.persistence.repository.UserRepository;
 import com.example.gradox2.service.interfaces.IGlobalConfigService;
 import com.example.gradox2.presentation.dto.files.FileResponse;
 import com.example.gradox2.presentation.dto.vote.VoteResponse;
@@ -41,14 +42,17 @@ public class FileServiceImpl implements IFileService {
     private final FileRepository fileRepository;
     private final FileProposalRepository uploadProposalRepository;
     private final ScoreRepository scoreRepository;
+    private final UserRepository userRepository;
     private final IGlobalConfigService voteConfigService;
 
     public FileServiceImpl(FileRepository fileRepository,
             FileProposalRepository uploadProposalRepository,
-            IGlobalConfigService voteConfigService, ScoreRepository scoreRepository) {
+            IGlobalConfigService voteConfigService, ScoreRepository scoreRepository,
+            UserRepository userRepository) {
         this.fileRepository = fileRepository;
         this.uploadProposalRepository = uploadProposalRepository;
         this.scoreRepository = scoreRepository;
+        this.userRepository = userRepository;
         this.voteConfigService = voteConfigService;
     }
 
@@ -138,6 +142,9 @@ public class FileServiceImpl implements IFileService {
         file.addScore(score);
         scoreRepository.save(score);
         fileRepository.save(file);
+
+        user.setReputation(Math.max(0, user.getReputation() + 1.0));
+        userRepository.save(user);
 
         return new VoteResponse(score.getId(), id, user.getUsername(), upvote, score.getScoredAt());
     }

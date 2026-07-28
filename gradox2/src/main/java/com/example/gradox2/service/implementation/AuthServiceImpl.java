@@ -30,6 +30,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.UUID;
@@ -74,6 +75,7 @@ public class AuthServiceImpl implements IAuthService {
     }
 
     @Override
+    @Transactional
     public AuthResponse login(LoginRequest request) {
         User user = userRepository.findByUsername(request.username)
                 .orElseThrow(() -> new NotFoundException("Usuario no encontrado"));
@@ -85,6 +87,9 @@ public class AuthServiceImpl implements IAuthService {
         if (!user.isEnabled()) {
             throw new UnauthenticatedAccessException("Usuario no verificado");
         }
+
+        user.setLastLogin(Instant.now());
+        userRepository.save(user);
 
         return buildAuthResponse(user);
     }

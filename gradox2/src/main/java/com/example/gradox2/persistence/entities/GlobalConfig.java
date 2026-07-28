@@ -24,4 +24,12 @@ public class GlobalConfig {
 
     @Column(nullable = false)
     private Integer maxPendingUploads;
+
+    @Column(name = "master_vote_weight", nullable = false)
+    @Builder.Default
+    private Double masterVoteWeight = 2.0;
+
+    @Column(name = "user_vote_weight", nullable = false)
+    @Builder.Default
+    private Double userVoteWeight = 1.0;
 }
