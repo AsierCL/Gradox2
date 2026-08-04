@@ -706,6 +706,87 @@ class ApiIntegrationTest {
             .andExpect(jsonPath("$.uploaderUsername").value("privowner"));
     }
 
+    @Test
+    void anonymousCannotDownloadPrivateFile() throws Exception {
+        Long fileId = createVotedFile("dlpvtowner", "dlpvtowner@rai.usc.es", FileVisibility.PRIVATE);
+
+        mockMvc.perform(get("/files/{id}/download", fileId))
+            .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void anonymousCannotDownloadRestrictedFile() throws Exception {
+        Long fileId = createVotedFile("dlrstrcowner", "dlrstrcowner@rai.usc.es", FileVisibility.RESTRICTED);
+
+        mockMvc.perform(get("/files/{id}/download", fileId))
+            .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void anonymousCanDownloadPublicFile() throws Exception {
+        Long fileId = createVotedFile("dlpubowner", "dlpubowner@rai.usc.es", FileVisibility.PUBLIC);
+
+        mockMvc.perform(get("/files/{id}/download", fileId))
+            .andExpect(status().isOk());
+    }
+
+    @Test
+    void otherUserCannotDownloadPrivateFile() throws Exception {
+        Long fileId = createVotedFile("dlpeerowner", "dlpeerowner@rai.usc.es", FileVisibility.PRIVATE);
+        createEnabledUser("dlpeer", "dlpeer@rai.usc.es", "SecurePass1!", UserRole.USER);
+        String peerToken = loginAndGetToken("dlpeer", "SecurePass1!");
+
+        mockMvc.perform(get("/files/{id}/download", fileId)
+                .header("Authorization", bearer(peerToken)))
+            .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void uploaderCanDownloadOwnPrivateFile() throws Exception {
+        Long fileId = createVotedFile("dlselfowner", "dlselfowner@rai.usc.es", FileVisibility.PRIVATE);
+        String ownerToken = loginAndGetToken("dlselfowner", "SecurePass1!");
+
+        mockMvc.perform(get("/files/{id}/download", fileId)
+                .header("Authorization", bearer(ownerToken)))
+            .andExpect(status().isOk());
+    }
+
+    @Test
+    void masterCanDownloadPrivateFileOfOthers() throws Exception {
+        Long fileId = createVotedFile("dlmstrowner", "dlmstrowner@rai.usc.es", FileVisibility.PRIVATE);
+        createEnabledUser("dlmstr", "dlmstr@rai.usc.es", "SecurePass1!", UserRole.MASTER);
+        String masterToken = loginAndGetToken("dlmstr", "SecurePass1!");
+
+        mockMvc.perform(get("/files/{id}/download", fileId)
+                .header("Authorization", bearer(masterToken)))
+            .andExpect(status().isOk());
+    }
+
+    @Test
+    void authenticatedUserCanDownloadRestrictedFile() throws Exception {
+        Long fileId = createVotedFile("dlruserowner", "dlruserowner@rai.usc.es", FileVisibility.RESTRICTED);
+        createEnabledUser("dlruser", "dlruser@rai.usc.es", "SecurePass1!", UserRole.USER);
+        String userToken = loginAndGetToken("dlruser", "SecurePass1!");
+
+        mockMvc.perform(get("/files/{id}/download", fileId)
+                .header("Authorization", bearer(userToken)))
+            .andExpect(status().isOk());
+    }
+
+    private Long createVotedFile(String ownerUsername, String ownerEmail, FileVisibility visibility) throws Exception {
+        Long subjectId = createSubject();
+        createEnabledUser(ownerUsername, ownerEmail, "SecurePass1!", UserRole.USER);
+        String ownerToken = loginAndGetToken(ownerUsername, "SecurePass1!");
+
+        long proposalId = uploadProposalAndGetId(ownerToken, subjectId, "dl.pdf", "Download test", "Desc", visibility);
+
+        mockMvc.perform(post("/vote/{id}/{upvote}", proposalId, true)
+                .header("Authorization", bearer(ownerToken)))
+            .andExpect(status().isOk());
+
+        return fileRepository.findAll().stream().findFirst().orElseThrow().getId();
+    }
+
     private void createEnabledUser(String username, String email, String password, UserRole role) {
         User user = User.builder()
                 .username(username)

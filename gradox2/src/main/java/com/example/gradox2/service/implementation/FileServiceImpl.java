@@ -60,6 +60,12 @@ public class FileServiceImpl implements IFileService {
         File file = fileRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("File not found"));
 
+        User viewer = getCurrentViewerOrNull();
+        if (!canViewContent(file, viewer)) {
+            // No revelar la existencia del archivo a quien no puede acceder a él.
+            throw new NotFoundException("File not found");
+        }
+
         ByteArrayResource resource = new ByteArrayResource(file.getFileData());
 
         return ResponseEntity.ok()
@@ -67,6 +73,19 @@ public class FileServiceImpl implements IFileService {
                 .contentType(MediaType.APPLICATION_OCTET_STREAM)
                 .contentLength(file.getFileData().length)
                 .body(resource);
+    }
+
+    private boolean canViewContent(File file, User viewer) {
+        FileVisibility visibility = file.getVisibilityLevel();
+        if (visibility == null) {
+            return false;
+        }
+        return switch (visibility) {
+            case PUBLIC -> true;
+            case RESTRICTED -> viewer != null;
+            case PRIVATE -> IdentityVisibility.isSameUser(file.getUploader(), viewer)
+                    || IdentityVisibility.isMaster(viewer);
+        };
     }
 
     public List<FileResponse> getAllFiles() {

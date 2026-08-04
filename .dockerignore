@@ -1,0 +1,29 @@
+# Git
+.git/
+.gitignore
+
+# IDEs
+.idea/
+.vscode/
+
+# Documentación
+Documentation/
+*.md
+
+# Build artifacts (Maven)
+**/target/
+**/out/
+**/mvnw.cmd
+
+# Entorno y secretos (docker-compose los lee del FS, no deben ir en la imagen)
+gradox2/.env
+Docker/.env
+Docker/.env.example
+
+# Logs
+**/*.log
+*.log
+
+# Sistema
+.DS_Store
+Thumbs.db

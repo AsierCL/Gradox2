@@ -25,10 +25,16 @@ import org.springframework.test.web.servlet.MockMvc;
 import com.example.gradox2.persistence.entities.User;
 import com.example.gradox2.persistence.entities.VerificationToken;
 import com.example.gradox2.persistence.entities.enums.UserRole;
+import com.example.gradox2.persistence.repository.FileProposalRepository;
+import com.example.gradox2.persistence.repository.FileRepository;
 import com.example.gradox2.persistence.repository.PasswordResetTokenRepository;
+import com.example.gradox2.persistence.repository.ProposalRepository;
 import com.example.gradox2.persistence.repository.RefreshTokenRepository;
+import com.example.gradox2.persistence.repository.ScoreRepository;
+import com.example.gradox2.persistence.repository.TempFileRepository;
 import com.example.gradox2.persistence.repository.UserRepository;
 import com.example.gradox2.persistence.repository.VerificationTokenRepository;
+import com.example.gradox2.persistence.repository.VoteRepository;
 import com.example.gradox2.utils.EmailService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -56,11 +62,37 @@ class AuthRegistrationIntegrationTest {
         @Autowired
         private PasswordResetTokenRepository passwordResetTokenRepository;
 
+        @Autowired
+        private ScoreRepository scoreRepository;
+
+        @Autowired
+        private VoteRepository voteRepository;
+
+        @Autowired
+        private FileRepository fileRepository;
+
+        @Autowired
+        private TempFileRepository tempFileRepository;
+
+        @Autowired
+        private FileProposalRepository fileProposalRepository;
+
+        @Autowired
+        private ProposalRepository proposalRepository;
+
         @MockitoBean
     private EmailService emailService;
 
     @BeforeEach
     void setUp() {
+        // La BD H2 se comparte entre clases de test; borrar en orden FK-safe
+        // (hijos antes que padres) para no romper users por la FK de files.
+        scoreRepository.deleteAll();
+        voteRepository.deleteAll();
+        fileRepository.deleteAll();
+        fileProposalRepository.deleteAll();
+        proposalRepository.deleteAll();
+        tempFileRepository.deleteAll();
                 passwordResetTokenRepository.deleteAll();
                 refreshTokenRepository.deleteAll();
         verificationTokenRepository.deleteAll();
