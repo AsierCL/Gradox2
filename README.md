@@ -1,6 +1,6 @@
-# Gradox 2.0
+# Gradox 2
 
-**Gradox 2.0** es la modernización de la antigua plataforma *Gradox*, un proyecto colaborativo que permite compartir apuntes, ejemplos de ejercicios, exámenes y material de estudio entre estudiantes.
+**Gradox 2** es la modernización de la antigua plataforma *Gradox*, un proyecto colaborativo que permite compartir apuntes, ejemplos de ejercicios, exámenes y material de estudio entre estudiantes.
 
 El objetivo es crear una red **colaborativa, segura y democrática**, con un sistema de **votaciones, reputación y gobernanza distribuida** que garantice la calidad del contenido y la transparencia en la gestión, y que permita su mantenimiento en el tiempo.
 
@@ -17,7 +17,8 @@ Backend **Spring Boot (Java 21)** con **PostgreSQL gestionado (Supabase)** y alm
 - [Endpoints de la API](./Documentation/ENDPOINTS.md)
 - [Sistema de reputación y votaciones](./Documentation/REPUTACION.md)
 - [Testing](./Documentation/TESTING.md)
-- [Guía de contribución](./Documentation/CONTRIBUTING.md) _(pendiente)_
+- [Guía de contribución](./Documentation/CONTRIBUTING.md)
+- [Fallos de seguridad](./Documentation/SECURITY.md)
 - [Licencia GPL-3.0](LICENSE)
 
 ---

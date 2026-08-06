@@ -24,5 +24,8 @@ Usamos [Conventional Commits](https://www.conventionalcommits.org/). El formato 
 4. Si la PR soluciona un Issue abierto, incluye la palabra clave (ej. `Closes #5`) en la descripción.
 5. Espera a la revisión (Code Review). Todo código debe ser revisado antes del merge.
 
+> [!CAUTION]
+> Nunca abras una PR con un fix de seguridad de un problema existente. Sigue los pasos indicados para [fallos de seguridad](./SECURITY.md)
+
 ## 🛠️ Entorno de Desarrollo
 Consulta el [Manual de Instalación](INSTALL.md) para levantar el stack con Docker (Supabase + MinIO) antes de codificar.
