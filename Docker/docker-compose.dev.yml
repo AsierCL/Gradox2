@@ -61,6 +61,7 @@ services:
       SPRING_MAIL_USERNAME: ""
       SPRING_MAIL_PASSWORD: ""
       SPRING_PROFILES_ACTIVE: local
+      ENABLE_DEMO_SEEDS: "true"
     command: ["bash", "-lc", "chmod +x mvnw && ./mvnw spring-boot:run -Dspring-boot.run.profiles=local"]
     volumes:
       - ../gradox2:/workspace/gradox2
