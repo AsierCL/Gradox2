@@ -40,11 +40,13 @@ public class VoteServiceImpl implements IVoteService {
     private final FileProposalRepository fileProposalRepository;
     private final PromotionProposalRepository promotionProposalRepository;
     private final IGlobalConfigService globalConfigService;
+    private final S3StorageService s3StorageService;
 
     public VoteServiceImpl(VoteRepository voteRepository, ProposalRepository proposalRepository,
             FileProposalRepository fileProposalRepository,
             PromotionProposalRepository promotionProposalRepository, UserRepository userRepository,
-            FileRepository fileRepository, IGlobalConfigService globalConfigService) {
+            FileRepository fileRepository, IGlobalConfigService globalConfigService,
+            S3StorageService s3StorageService) {
         this.voteRepository = voteRepository;
         this.proposalRepository = proposalRepository;
         this.fileProposalRepository = fileProposalRepository;
@@ -52,6 +54,7 @@ public class VoteServiceImpl implements IVoteService {
         this.userRepository = userRepository;
         this.fileRepository = fileRepository;
         this.globalConfigService = globalConfigService;
+        this.s3StorageService = s3StorageService;
     }
 
     @Override
@@ -207,6 +210,7 @@ public class VoteServiceImpl implements IVoteService {
         if (fileProposal.getActionType() == ActionType.DELETE) {
             if (fileProposal.getFile() != null) {
                 File target = fileProposal.getFile();
+                s3StorageService.delete(target.getObjectKey());
                 fileProposal.setFile(null);
                 fileRepository.delete(target);
             }
@@ -222,7 +226,7 @@ public class VoteServiceImpl implements IVoteService {
                 .title(tempFile.getTitle())
                 .description(tempFile.getDescription())
                 .type(tempFile.getType())
-                .fileData(tempFile.getFileData())
+                .objectKey(tempFile.getObjectKey())
                 .fileHash(tempFile.getFileHash())
                 .uploader(tempFile.getUploader())
                 .subject(tempFile.getSubject())

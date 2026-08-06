@@ -17,6 +17,25 @@ services:
       timeout: 5s
       retries: 5
 
+  minio:
+    image: minio/minio:latest
+    container_name: minio_Gradox2_dev
+    restart: unless-stopped
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    command: server /data --console-address ":9001"
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio-data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   app:
     image: eclipse-temurin:21-jdk
     container_name: gradox2_app_dev
@@ -24,11 +43,17 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      minio:
+        condition: service_healthy
     restart: unless-stopped
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/gradoxdb
       SPRING_DATASOURCE_USERNAME: gradox
       SPRING_DATASOURCE_PASSWORD: gradox-local-password
+      S3_ENDPOINT: http://minio:9000
+      S3_ACCESS_KEY: minioadmin
+      S3_SECRET_KEY: minioadmin
+      S3_BUCKET_NAME: gradox2-files
       JWT_SECRET: local-dev-jwt-secret-min-32-bytes-long
       JWT_EXPIRATION: 86400000
       SPRING_MAIL_HOST: localhost
@@ -46,3 +71,4 @@ services:
 volumes:
   pgdata-dev:
   m2-cache:
+  minio-data:

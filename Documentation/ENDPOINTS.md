@@ -51,7 +51,7 @@ FileProposalController
 | POST   | `/uploadProposal/upload`        | Proponer nuevo archivo (con visibilityLevel)       | ✅   | ☑️  |
 | GET    | `/uploadProposal`               | Listar propuestas (?paged, ?page, ?size, ?sortBy)  | ✅   | ☑️  |
 | GET    | `/uploadProposal/{id}`          | Ver datos de la propuesta (incluye visibilityLevel)| ✅   | ☑️  |
-| GET    | `/uploadProposal/{id}/download` | Descargar archivo propuesto                        | ✅   | ☑️  |
+| GET    | `/uploadProposal/{id}/download` | Descargar archivo propuesto (servido desde S3)     | ✅   | ☑️  |
 | DELETE | `/uploadProposal/{id}`          | Borrar propuesta de archivo                        | ✅   | ☑️  |
 
 ---
@@ -62,9 +62,8 @@ FileController
 | ------ | --------------------------- | ---------------------------------------- | --- | --- |
 | GET    | `/files/all`                | Listar archivos todos los archivos       | ✅   | ☑️  |
 | GET    | `/files/{id}`               | Ver datos del archivo                    | ✅   | ☑️  |
-| GET    | `/files/{id}/download`      | Descargar archivo                        | ✅   | ☑️  |
+| GET    | `/files/{id}/download`      | Descargar archivo (servido desde S3)     | ✅   | ☑️  |
 | DELETE | `/files/{id}`               | Proponer eliminación con votación        | ✅   | ☑️  |
-| POST   | `/files/upload`             | Subir archivo (legacy, preferir /uploadProposal/upload) | ✅   | ☑️  |
 | POST   | `/files/{id}/vote/{upvote}` | Votar para puntuar un archivo            | ✅   | ☑️  |
 | DELETE | `/files/{id}/vote`          | Quitar votacion de un archivo            | ✅   | ☑️  |
 | PUT    | `/files/{id}/visibility`    | Cambiar visibilidad del uploader del archivo | ✅   | ☑️  |
@@ -171,3 +170,18 @@ Estas capacidades siguen en la documentación de producto, pero todavía no exis
 - Notificaciones (`/notifications/*`)
 - Métricas y estadísticas (`/stats/*`)
 - Administración avanzada (`/admin/logs` y `/admin/config`)
+
+---
+
+## 📦 16. Almacenamiento de archivos (S3)
+
+Los **documentos** (el contenido de los ficheros subidos y descargados) **no se
+guardan en la base de datos**: se almacenan en un bucket **S3 compatible**
+(`S3StorageService`) y en BD solo se persiste la **`object_key`**.
+
+- **Producción:** Cloudflare **R2**.
+- **Desarrollo:** **MinIO** (se levanta con `./run.sh dev`).
+- **Tests:** fake `S3Client` en memoria (`TestS3Config`).
+
+> En máquinas locales o CI **sin MinIO/R2**, los endpoints de subida/descarga
+> devolverán error S3 aunque el resto de la API funcione.

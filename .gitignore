@@ -1,3 +1,5 @@
 Docker/.env
 .vscode
 .vscode/**
+.VSCodeCounter
+.VSCodeCounter/**

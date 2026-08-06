@@ -12,6 +12,7 @@ import com.example.gradox2.persistence.repository.FileRepository;
 import com.example.gradox2.persistence.repository.SubjectRepository;
 import com.example.gradox2.persistence.repository.UserRepository;
 import com.example.gradox2.persistence.repository.VoteConfigRepository;
+import com.example.gradox2.service.implementation.S3StorageService;
 
 import lombok.RequiredArgsConstructor;
 
@@ -34,7 +35,8 @@ public class DataLoader {
                                     SubjectRepository subjectRepository,
                                     CourseRepository courseRepository,
                                     VoteConfigRepository voteConfigRepository,
-                                    FileRepository fileRepository) {
+                                    FileRepository fileRepository,
+                                    S3StorageService s3StorageService) {
         return args -> {
             boolean demoSeedsEnabled = Boolean.parseBoolean(System.getenv().getOrDefault("ENABLE_DEMO_SEEDS", "false"));
 
@@ -361,7 +363,7 @@ public class DataLoader {
                     .title("Apuntes Algebra PUBLIC")
                     .description("Visibilidad pública")
                     .type(FileType.APUNTES)
-                    .fileData("contenido algebra".getBytes())
+                    .objectKey(s3StorageService.put("contenido algebra".getBytes()))
                     .fileHash("hash1")
                     .subject(subject1)
                     .uploader(demoUploader)
@@ -372,7 +374,7 @@ public class DataLoader {
                     .title("Ejercicio Lengua RESTRICTED")
                     .description("Solo visible para USER y MASTER")
                     .type(FileType.EJERCICIO)
-                    .fileData("contenido lengua".getBytes())
+                    .objectKey(s3StorageService.put("contenido lengua".getBytes()))
                     .fileHash("hash2")
                     .subject(subject1)
                     .uploader(demoUploader)
@@ -383,7 +385,7 @@ public class DataLoader {
                     .title("Examen Privado PRIVATE")
                     .description("Solo visible para MASTER")
                     .type(FileType.EXAMEN)
-                    .fileData("contenido examen".getBytes())
+                    .objectKey(s3StorageService.put("contenido examen".getBytes()))
                     .fileHash("hash3")
                     .subject(subject1)
                     .uploader(demoUploader)

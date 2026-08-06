@@ -1,114 +1,117 @@
-# 🛠️ Instalación de Gradox 2.0
+# 🛠️ Instalación de Gradox 2.0 (desarrollo)
 
 Este documento describe cómo instalar y ejecutar **Gradox 2.0** en un entorno local de desarrollo.
+
+> Para **producción/VPS** (Supabase + Cloudflare R2) consulta
+> [DEVOPS.md](./DEVOPS.md).
 
 ---
 
 ## 1. Requisitos Previos
 
-Antes de comenzar, asegúrate de tener instalado lo siguiente:
-
-- **Java 21**
-  Se recomienda usar **OpenJDK 21**.
+- **Java 21** (OpenJDK recomendado):
   ```bash
-  java -version
+  java -version   # openjdk version "21..."
   ```
-  Debe mostrar algo similar a:
-  ```bash
-  openjdk version "21.0.1"
-  ```
-
-- **Docker & Docker Compose**
-  Para levantar la base de datos PostgreSQL.
+- **Docker & Docker Compose v2** (para PostgreSQL + MinIO):
   ```bash
   docker --version
-  docker-compose --version
+  docker compose version
   ```
-
-- **Git**
-  Para clonar el repositorio.
+- **Git**:
   ```bash
   git --version
   ```
 
 ## 2. Clonar el Proyecto
 
-Clona este repositorio de GitHub:
 ```bash
 git clone https://github.com/AsierCL/Gradox2.git
 cd Gradox2
 ```
-## 3. Configuración de la Base de Datos
 
-Gradox 2.0 usa PostgreSQL y está preparada para usar Docker.
+## 3. Entorno de desarrollo (recomendado)
 
-Si solo quieres desarrollar en local con Docker, no necesitas preparar `.env` todavía: el comando `./run.sh dev` usa valores locales por defecto.
+El script `run.sh` vive en `gradox2/`. Levanta **PostgreSQL + MinIO + la app**
+con hot-reload en un stack Docker:
 
-Si quieres levantar el stack orientado a VPS o producción, sigue estos pasos:
-
-- Ve al directorio Docker
 ```bash
-cd Docker
-```
-- Copia la plantilla de entorno y ajusta los valores reales:
-```bash
-cp .env.example .env
-```
-- Antes de levantar la app, revisa que `.env` tenga los datos correctos:
-```
-# Base de datos
-POSTGRES_USER=xxxxxxxx
-POSTGRES_PASSWORD=xxxxxxxx
-POSTGRES_DB=xxxxxxxx
-
-# Spring DataSource
-SPRING_DATASOURCE_URL=jdbc:postgresql://xxxxxxxx
-SPRING_DATASOURCE_USERNAME=xxxxxxxx
-SPRING_DATASOURCE_PASSWORD=xxxxxxxx
-
-# Mail
-SPRING_MAIL_HOST=smtp.gmail.com
-SPRING_MAIL_PORT=587
-SPRING_MAIL_USERNAME=xxxxxxxx
-SPRING_MAIL_PASSWORD=xxxxxxxx
-
-# Spring profile
-SPRING_PROFILES_ACTIVE=docker
+cd gradox2
+./run.sh dev        # levanta app + Postgres + MinIO
+./run.sh dev-down   # detiene el entorno de desarrollo
 ```
 
-> Nota: `JWT_SECRET` debe tener al menos 32 bytes para HS256.
-
-- Levanta el contenedor con Docker Compose
-```bash
-docker compose --env-file .env --profile full up --build
-```
-- La aplicación está disponible en:
-```bash
-http://localhost:8080
-```
+Con esto la app queda disponible en `http://localhost:8080` y la consola de
+**MinIO** en `http://localhost:9001` (usuario `minioadmin` / `minioadmin`). El
+bucket usado en desarrollo es `gradox2-files` (se auto-crea al arrancar).
 
 ## 4. Ejecución local sin Docker
 
-Si prefieres arrancar la aplicación desde el proyecto Maven, usa el script incluido:
+Si prefieres arrancar la app directamente desde Maven contra una BD y un MinIO ya
+levantados:
+
 ```bash
-./run.sh run
+cd gradox2
+./run.sh run        # usa mvnw spring-boot:run con el perfil local
+./run.sh test       # ejecuta la suite de tests (H2 + fake S3)
 ```
 
-Para ejecutar la suite de pruebas:
+> `run` requiere PostgreSQL en `localhost:5432` y un **MinIO** accesible en
+> `localhost:9000`; en caso contrario usa `./run.sh dev` para levantarlos.
+
+## 5. Configuración manual (sin el script)
+
+### 5.1 Postgres y MinIO con Docker
+
 ```bash
-./run.sh test
+cd Docker
+docker compose -f docker-compose.dev.yml up --build
 ```
 
-## 5. Ejecución local con Docker
+Esto levanta:
+- **PostgreSQL** en `localhost:5432` (usuario `gradox` / `gradox-local-password`, BD `gradoxdb`).
+- **MinIO** en `localhost:9000` (S3) y consola en `localhost:9001` (usuario `minioadmin`).
+- **La app** (Java 21, volúmenes del código fuente) en `http://localhost:8080`.
 
-Si quieres desarrollar con la base de datos en contenedor y la app montada desde el código fuente:
+### 5.2 Variables de entorno
+
+El perfil `local` lee esas variables desde el entorno. Para desarrollo los valores
+que usan por defecto (sin necesidad de `.env`) son:
+
+| Variable | Uso | Default en dev |
+|---|---|---|
+| `SPRING_DATASOURCE_URL` | JDBC | `jdbc:postgresql://db:5432/gradoxdb` (ver 5.1) |
+| `SPRING_DATASOURCE_USERNAME` / `PASSWORD` | credenciales PG | `gradox` / `gradox-local-password` |
+| `S3_ENDPOINT` | endpoint S3 | `http://minio:9000` |
+| `S3_ACCESS_KEY` / `S3_SECRET_KEY` | credenciales | `minioadmin` |
+| `S3_BUCKET_NAME` | bucket | `gradox2-files` |
+| `SPRING_MAIL_HOST` / `PORT` | SMTP | `localhost` / `1025` (mailcatcher/smtp local) |
+| `JWT_SECRET` | firma HS256 | `local-dev-jwt-secret-min-32-bytes-long` |
+
+## 6. Perfiles
+
+| Perfil | Uso |
+|---|---|
+| `local` | desarrollo (Postgres local + MinIO, Swagger activo) |
+| `test` | tests de integración (H2 + fake S3, Flyway off) |
+| `prod` | producción (Supabase + R2, Swagger off) |
+
+No existe un perfil `docker`: el entorno dev usa el perfil `local`.
+
+## 7. Tests
+
 ```bash
-./run.sh
+cd gradox2
+./mvnw test   # 59 tests
 ```
 
-Este modo levanta la base de datos y la aplicación en un stack único para desarrollo.
+Más detalle en [TESTING.md](./TESTING.md).
 
-Para producción o VPS, usa el stack de Docker con `.env`:
-```bash
-./run.sh docker-up
-```
+## 8. Swagger (local)
+
+En los perfiles de desarrollo (`local`) Swagger/OpenAPI está disponible en:
+
+- UI: `http://localhost:8080/swagger-ui.html` (o `/swagger-ui/index.html`)
+- JSON: `http://localhost:8080/v3/api-docs`
+
+> En `prod` está desactivado a propósito.

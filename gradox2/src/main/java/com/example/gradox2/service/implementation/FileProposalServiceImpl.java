@@ -54,14 +54,16 @@ public class FileProposalServiceImpl implements IFileProposalService {
     private final FileProposalRepository fileProposalRepository;
     private final SubjectRepository subjectRepository;
     private final IGlobalConfigService voteConfigService;
+    private final S3StorageService s3StorageService;
 
     public FileProposalServiceImpl(TempFileRepository tempFileRepository,
             FileProposalRepository fileProposalRepository, SubjectRepository subjectRepository,
-            IGlobalConfigService voteConfigService) {
+            IGlobalConfigService voteConfigService, S3StorageService s3StorageService) {
         this.tempFileRepository = tempFileRepository;
         this.fileProposalRepository = fileProposalRepository;
         this.subjectRepository = subjectRepository;
         this.voteConfigService = voteConfigService;
+        this.s3StorageService = s3StorageService;
     }
 
     @Transactional
@@ -74,12 +76,14 @@ public class FileProposalServiceImpl implements IFileProposalService {
         ensurePendingUploadLimit(uploader, config.getMaxPendingUploads());
 
         try {
+            byte[] fileData = dto.getFile().getBytes();
+            String objectKey = s3StorageService.put(fileData);
             TempFile tempFile = TempFile.builder()
                     .title(dto.getTitle())
                     .description(dto.getDescription())
                     .type(dto.getType())
-                    .fileData(dto.getFile().getBytes())
-                    .fileHash(generateFileHash(dto.getFile().getBytes())) // Hash seguro
+                    .objectKey(objectKey)
+                    .fileHash(generateFileHash(fileData)) // Hash seguro
                     .subject(subject)
                     .uploader(uploader)
                     .visibilityLevel(dto.getVisibilityLevel() != null ? dto.getVisibilityLevel() : FileVisibility.PUBLIC)
@@ -114,6 +118,11 @@ public class FileProposalServiceImpl implements IFileProposalService {
 
         if (!Objects.equals(proposal.getProposer().getId(), authUser.getId())) {
             throw new InvalidFileOperation("Only the proposer can delete this proposal");
+        }
+
+        TempFile tempFile = proposal.getTempFile();
+        if (tempFile != null) {
+            s3StorageService.delete(tempFile.getObjectKey());
         }
 
         // Let JPA cascading/orphan removal handle TempFile cleanup safely.

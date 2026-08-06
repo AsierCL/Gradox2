@@ -7,6 +7,7 @@ import org.springframework.validation.annotation.Validated;
 import com.example.gradox2.persistence.entities.TempFile;
 import com.example.gradox2.presentation.dto.fileProposal.FileProposalResponse;
 import com.example.gradox2.presentation.dto.fileProposal.UploadFileProposalRequest;
+import com.example.gradox2.service.implementation.S3StorageService;
 import com.example.gradox2.service.interfaces.IFileProposalService;
 
 import java.util.List;
@@ -43,9 +44,11 @@ import jakarta.validation.constraints.Positive;
 public class FileProposalController {
 
     private final IFileProposalService fileProposalService;
+    private final S3StorageService s3StorageService;
 
-    public FileProposalController(IFileProposalService fileProposalService) {
+    public FileProposalController(IFileProposalService fileProposalService, S3StorageService s3StorageService) {
         this.fileProposalService = fileProposalService;
+        this.s3StorageService = s3StorageService;
     }
 
     @PostMapping("/upload")
@@ -99,12 +102,13 @@ public class FileProposalController {
     public ResponseEntity<ByteArrayResource> downloadProposalFile(
             @Parameter(description = "ID de la propuesta") @PathVariable @Positive Long id) {
         TempFile file = fileProposalService.downloadFileFromProposal(id);
-        ByteArrayResource resource = new ByteArrayResource(file.getFileData());
+        byte[] fileData = s3StorageService.get(file.getObjectKey());
+        ByteArrayResource resource = new ByteArrayResource(fileData);
 
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment;filename=" + file.getTitle())
                 .contentType(MediaType.APPLICATION_OCTET_STREAM)
-                .contentLength(file.getFileData().length)
+                .contentLength(fileData.length)
                 .body(resource);
     }
 

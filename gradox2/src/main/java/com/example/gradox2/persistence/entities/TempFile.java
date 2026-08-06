@@ -26,9 +26,8 @@ public class TempFile {
     @Enumerated(EnumType.STRING)
     private FileType type;
 
-    @Lob
-    @Column(name = "file_data", nullable = false)
-    private byte[] fileData;
+    @Column(name = "object_key", nullable = false)
+    private String objectKey;
     private String fileHash;
 
     @Builder.Default

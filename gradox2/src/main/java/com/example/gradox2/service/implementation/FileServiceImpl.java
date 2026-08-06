@@ -44,16 +44,18 @@ public class FileServiceImpl implements IFileService {
     private final ScoreRepository scoreRepository;
     private final UserRepository userRepository;
     private final IGlobalConfigService voteConfigService;
+    private final S3StorageService s3StorageService;
 
     public FileServiceImpl(FileRepository fileRepository,
             FileProposalRepository uploadProposalRepository,
             IGlobalConfigService voteConfigService, ScoreRepository scoreRepository,
-            UserRepository userRepository) {
+            UserRepository userRepository, S3StorageService s3StorageService) {
         this.fileRepository = fileRepository;
         this.uploadProposalRepository = uploadProposalRepository;
         this.scoreRepository = scoreRepository;
         this.userRepository = userRepository;
         this.voteConfigService = voteConfigService;
+        this.s3StorageService = s3StorageService;
     }
 
     public ResponseEntity<ByteArrayResource> downloadFile(Long id) {
@@ -66,12 +68,13 @@ public class FileServiceImpl implements IFileService {
             throw new NotFoundException("File not found");
         }
 
-        ByteArrayResource resource = new ByteArrayResource(file.getFileData());
+        byte[] fileData = s3StorageService.get(file.getObjectKey());
+        ByteArrayResource resource = new ByteArrayResource(fileData);
 
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + file.getTitle() + "\"")
                 .contentType(MediaType.APPLICATION_OCTET_STREAM)
-                .contentLength(file.getFileData().length)
+                .contentLength(fileData.length)
                 .body(resource);
     }
 
