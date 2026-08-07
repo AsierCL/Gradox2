@@ -8,4 +8,5 @@ public interface IVoteService {
     VoteResultResponse getVoteCount(Long id);
     VoteResponse voteProposal(Long proposalId, boolean upvote);
     String retractVote(Long proposalId);
+    int closeExpiredProposals();
 }

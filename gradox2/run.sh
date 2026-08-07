@@ -19,6 +19,7 @@ case "${1:-dev}" in
     exec "$PROJECT_ROOT/mvnw" test
     ;;
   dev)
+    export APP_UID="$(id -u)" APP_GID="$(id -g)"
     cd "$PROJECT_ROOT/../Docker"
     exec docker compose -f docker-compose.dev.yml up --build
     ;;
