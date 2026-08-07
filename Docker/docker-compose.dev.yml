@@ -40,6 +40,7 @@ services:
     image: eclipse-temurin:21-jdk
     container_name: gradox2_app_dev
     working_dir: /workspace/gradox2
+    user: "${APP_UID:-1000}:${APP_GID:-1000}"
     depends_on:
       db:
         condition: service_healthy
@@ -62,14 +63,15 @@ services:
       SPRING_MAIL_PASSWORD: ""
       SPRING_PROFILES_ACTIVE: local
       ENABLE_DEMO_SEEDS: "true"
+      HOME: /workspace
+      MAVEN_OPTS: -Dmaven.repo.local=/workspace/.m2/repository
     command: ["bash", "-lc", "chmod +x mvnw && ./mvnw spring-boot:run -Dspring-boot.run.profiles=local"]
     volumes:
       - ../gradox2:/workspace/gradox2
-      - m2-cache:/root/.m2
+      - ${HOME}/.m2:/workspace/.m2
     ports:
       - "8080:8080"
 
 volumes:
   pgdata-dev:
-  m2-cache:
   minio-data:
