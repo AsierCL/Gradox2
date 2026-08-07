@@ -24,15 +24,18 @@ import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilde
 
 import com.example.gradox2.persistence.entities.Course;
 import com.example.gradox2.persistence.entities.Proposal;
+import com.example.gradox2.persistence.entities.PromotionProposal;
 import com.example.gradox2.persistence.entities.Subject;
 import com.example.gradox2.persistence.entities.User;
 import com.example.gradox2.persistence.entities.enums.ActionType;
 import com.example.gradox2.persistence.entities.enums.FileType;
+import com.example.gradox2.persistence.entities.enums.ProposalStatus;
 import com.example.gradox2.persistence.entities.enums.UserRole;
 import com.example.gradox2.persistence.repository.CourseRepository;
 import com.example.gradox2.persistence.repository.FileProposalRepository;
 import com.example.gradox2.persistence.repository.FileRepository;
 import com.example.gradox2.persistence.repository.PasswordResetTokenRepository;
+import com.example.gradox2.persistence.repository.PromotionProposalRepository;
 import com.example.gradox2.persistence.repository.ProposalRepository;
 import com.example.gradox2.persistence.repository.RefreshTokenRepository;
 import com.example.gradox2.persistence.repository.ScoreRepository;
@@ -43,6 +46,7 @@ import com.example.gradox2.persistence.repository.VerificationTokenRepository;
 import com.example.gradox2.persistence.repository.VoteConfigRepository;
 import com.example.gradox2.persistence.repository.VoteRepository;
 import com.example.gradox2.service.interfaces.IGlobalConfigService;
+import com.example.gradox2.service.interfaces.IVoteService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -104,10 +108,17 @@ class GovernanceRulesIntegrationTest {
         @Autowired
         private IGlobalConfigService voteConfigService;
 
+    @Autowired
+    private IVoteService voteService;
+
+    @Autowired
+    private PromotionProposalRepository promotionProposalRepository;
+
     @BeforeEach
     void setUp() {
         scoreRepository.deleteAll();
         voteRepository.deleteAll();
+        promotionProposalRepository.deleteAll();
         fileProposalRepository.deleteAll();
         proposalRepository.deleteAll();
         fileRepository.deleteAll();
@@ -324,6 +335,164 @@ class GovernanceRulesIntegrationTest {
                 .andExpect(jsonPath("$.errorCode").value("NOT_FOUND"));
     }
 
+    @Test
+    void closeExpiredProposalsShouldRejectPendingProposalsPastEndsAt() {
+        voteConfigService.reloadConfig();
+        voteConfigService.updateConfig(1, 0.5, 3);
+
+        Long subjectId = createSubject();
+        createEnabledUser("expirer", "expirer@rai.usc.es", "SecurePass1!", UserRole.USER);
+        String token = loginAndGetTokenQuietly("expirer", "SecurePass1!");
+
+        long proposalId = uploadProposalAndGetIdQuietly(token, subjectId, "tema.pdf", "Tema", "Desc");
+
+        Proposal proposal = proposalRepository.findById(proposalId).orElseThrow();
+        proposal.setEndsAt(java.time.Instant.now().minusSeconds(60));
+        proposalRepository.save(proposal);
+
+        int closed = voteService.closeExpiredProposals();
+
+        org.junit.jupiter.api.Assertions.assertEquals(1, closed);
+        Proposal refreshed = proposalRepository.findById(proposalId).orElseThrow();
+        org.junit.jupiter.api.Assertions.assertEquals(ProposalStatus.REJECTED, refreshed.getStatus());
+        org.junit.jupiter.api.Assertions.assertNotNull(refreshed.getClosedAt());
+    }
+
+    @Test
+    void closeExpiredProposalsShouldLeavePendingProposalsNotYetEnded() {
+        voteConfigService.reloadConfig();
+        voteConfigService.updateConfig(1, 0.5, 3);
+
+        Long subjectId = createSubject();
+        createEnabledUser("futurist", "futurist@rai.usc.es", "SecurePass1!", UserRole.USER);
+        String token = loginAndGetTokenQuietly("futurist", "SecurePass1!");
+
+        long proposalId = uploadProposalAndGetIdQuietly(token, subjectId, "tema.pdf", "Tema", "Desc");
+
+        Proposal proposal = proposalRepository.findById(proposalId).orElseThrow();
+        proposal.setEndsAt(java.time.Instant.now().plusSeconds(3600));
+        proposalRepository.save(proposal);
+
+        int closed = voteService.closeExpiredProposals();
+
+        org.junit.jupiter.api.Assertions.assertEquals(0, closed);
+        Proposal refreshed = proposalRepository.findById(proposalId).orElseThrow();
+        org.junit.jupiter.api.Assertions.assertEquals(ProposalStatus.PENDING, refreshed.getStatus());
+    }
+
+    @Test
+    void closeExpiredProposalsShouldOnlyRejectPendingProposals() {
+        voteConfigService.reloadConfig();
+        voteConfigService.updateConfig(1, 0.5, 3);
+
+        Long subjectId = createSubject();
+        User proposer = createEnabledUser("mixproposer", "mixproposer@rai.usc.es", "SecurePass1!", UserRole.USER);
+        String token = loginAndGetTokenQuietly("mixproposer", "SecurePass1!");
+
+        long expiredPendingId = uploadProposalAndGetIdQuietly(token, subjectId, "a.pdf", "A", "A");
+        long futurePendingId = uploadProposalAndGetIdQuietly(token, subjectId, "b.pdf", "B", "B");
+
+        Proposal expiredPending = proposalRepository.findById(expiredPendingId).orElseThrow();
+        expiredPending.setEndsAt(java.time.Instant.now().minusSeconds(60));
+        proposalRepository.save(expiredPending);
+
+        Proposal futurePending = proposalRepository.findById(futurePendingId).orElseThrow();
+        futurePending.setEndsAt(java.time.Instant.now().plusSeconds(3600));
+        proposalRepository.save(futurePending);
+
+        int closed = voteService.closeExpiredProposals();
+
+        org.junit.jupiter.api.Assertions.assertEquals(1, closed);
+        org.junit.jupiter.api.Assertions.assertEquals(ProposalStatus.REJECTED,
+                proposalRepository.findById(expiredPendingId).orElseThrow().getStatus());
+        org.junit.jupiter.api.Assertions.assertEquals(ProposalStatus.PENDING,
+                proposalRepository.findById(futurePendingId).orElseThrow().getStatus());
+    }
+
+    @Test
+    void closeExpiredProposalsShouldNotTouchApprovedProposals() throws Exception {
+        voteConfigService.reloadConfig();
+        voteConfigService.updateConfig(2, 0.5, 3);
+
+        Long subjectId = createSubject();
+        createEnabledUser("approver", "approver@rai.usc.es", "SecurePass1!", UserRole.USER);
+        createEnabledUser("voterX1", "voterX1@rai.usc.es", "SecurePass1!", UserRole.USER);
+        createEnabledUser("voterX2", "voterX2@rai.usc.es", "SecurePass1!", UserRole.USER);
+
+        String proposerToken = loginAndGetToken("approver", "SecurePass1!");
+        String voter1 = loginAndGetToken("voterX1", "SecurePass1!");
+        String voter2 = loginAndGetToken("voterX2", "SecurePass1!");
+
+        long proposalId = uploadProposalAndGetId(proposerToken, subjectId, "aprobada.pdf", "Aprobada", "Desc");
+        mockMvc.perform(post("/vote/{id}/{upvote}", proposalId, true).header("Authorization", bearer(voter1)))
+                .andExpect(status().isOk());
+        mockMvc.perform(post("/vote/{id}/{upvote}", proposalId, true).header("Authorization", bearer(voter2)))
+                .andExpect(status().isOk());
+
+        Proposal approved = proposalRepository.findById(proposalId).orElseThrow();
+        org.junit.jupiter.api.Assertions.assertEquals(ProposalStatus.APPROVED, approved.getStatus());
+        approved.setEndsAt(java.time.Instant.now().minusSeconds(60));
+        proposalRepository.save(approved);
+
+        int closed = voteService.closeExpiredProposals();
+
+        org.junit.jupiter.api.Assertions.assertEquals(0, closed);
+        org.junit.jupiter.api.Assertions.assertEquals(ProposalStatus.APPROVED,
+                proposalRepository.findById(proposalId).orElseThrow().getStatus());
+    }
+
+    @Test
+    void closeExpiredProposalsShouldRejectExpiredPromotionProposal() {
+        voteConfigService.reloadConfig();
+        voteConfigService.updateConfig(1, 0.5, 3);
+
+        User proposer = createEnabledUser("promproposer", "promproposer@rai.usc.es", "SecurePass1!", UserRole.MASTER);
+        User candidate = createEnabledUser("promcandidate", "promcandidate@rai.usc.es", "SecurePass1!", UserRole.USER);
+
+        PromotionProposal promotionProposal = new PromotionProposal();
+        promotionProposal.setProposer(proposer);
+        promotionProposal.setCandidate(candidate);
+        promotionProposal.setActionType(ActionType.PROMOTION);
+        promotionProposal.setQuorumRequired(1);
+        promotionProposal.setApprovalThreshold(0.5);
+        promotionProposal.setEndsAt(java.time.Instant.now().minusSeconds(60));
+        promotionProposalRepository.save(promotionProposal);
+
+        int closed = voteService.closeExpiredProposals();
+
+        org.junit.jupiter.api.Assertions.assertEquals(1, closed);
+        PromotionProposal refreshed = promotionProposalRepository.findById(promotionProposal.getId()).orElseThrow();
+        org.junit.jupiter.api.Assertions.assertEquals(ProposalStatus.REJECTED, refreshed.getStatus());
+        org.junit.jupiter.api.Assertions.assertNotNull(refreshed.getClosedAt());
+        org.junit.jupiter.api.Assertions.assertEquals(UserRole.USER,
+                userRepository.findById(candidate.getId()).orElseThrow().getRole());
+    }
+
+    @Test
+    void closeExpiredProposalsShouldPenalizeUploaderReputation() {
+        voteConfigService.reloadConfig();
+        voteConfigService.updateConfig(1, 0.5, 3);
+
+        Long subjectId = createSubject();
+        createEnabledUser("penalized", "penalized@rai.usc.es", "SecurePass1!", UserRole.USER);
+        String token = loginAndGetTokenQuietly("penalized", "SecurePass1!");
+
+        long proposalId = uploadProposalAndGetIdQuietly(token, subjectId, "penalizada.pdf", "Penalizada", "Desc");
+
+        User uploader = userRepository.findByUsername("penalized").orElseThrow();
+        double reputationBefore = uploader.getReputation();
+
+        Proposal proposal = proposalRepository.findById(proposalId).orElseThrow();
+        proposal.setEndsAt(java.time.Instant.now().minusSeconds(60));
+        proposalRepository.save(proposal);
+
+        int closed = voteService.closeExpiredProposals();
+
+        org.junit.jupiter.api.Assertions.assertEquals(1, closed);
+        User refreshed = userRepository.findById(uploader.getId()).orElseThrow();
+        org.junit.jupiter.api.Assertions.assertEquals(reputationBefore - 5.0, refreshed.getReputation(), 0.001);
+    }
+
     private User createEnabledUser(String username, String email, String password, UserRole role) {
         User user = User.builder()
                 .username(username)
@@ -396,6 +565,22 @@ class GovernanceRulesIntegrationTest {
 
     private String bearer(String token) {
         return "Bearer " + token;
+    }
+
+    private String loginAndGetTokenQuietly(String username, String password) {
+        try {
+            return loginAndGetToken(username, password);
+        } catch (Exception e) {
+            throw new RuntimeException("No se pudo iniciar sesión en el test", e);
+        }
+    }
+
+    private long uploadProposalAndGetIdQuietly(String token, Long subjectId, String originalFilename, String title, String description) {
+        try {
+            return uploadProposalAndGetId(token, subjectId, originalFilename, title, description);
+        } catch (Exception e) {
+            throw new RuntimeException("No se pudo subir la propuesta en el test", e);
+        }
     }
 
     private String json(Object value) throws Exception {

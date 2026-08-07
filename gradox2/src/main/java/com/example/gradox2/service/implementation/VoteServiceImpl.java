@@ -134,6 +134,18 @@ public class VoteServiceImpl implements IVoteService {
                 .orElseThrow(() -> new NotFoundException("You have not voted on this proposal."));
     }
 
+    @Override
+    public int closeExpiredProposals() {
+        List<Proposal> expired = proposalRepository.findByStatusAndEndsAtBefore(
+                ProposalStatus.PENDING, Instant.now());
+
+        for (Proposal proposal : expired) {
+            rejectProposal(proposal);
+        }
+
+        return expired.size();
+    }
+
     // ──────────────────────────────────────────────
     // Internal helpers
     // ──────────────────────────────────────────────
