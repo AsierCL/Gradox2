@@ -39,13 +39,15 @@ public class VoteServiceImpl implements IVoteService {
     private final ProposalRepository proposalRepository;
     private final FileProposalRepository fileProposalRepository;
     private final PromotionProposalRepository promotionProposalRepository;
+    private final ForumThreadRepository forumThreadRepository;
     private final IGlobalConfigService globalConfigService;
     private final S3StorageService s3StorageService;
 
     public VoteServiceImpl(VoteRepository voteRepository, ProposalRepository proposalRepository,
             FileProposalRepository fileProposalRepository,
             PromotionProposalRepository promotionProposalRepository, UserRepository userRepository,
-            FileRepository fileRepository, IGlobalConfigService globalConfigService,
+            FileRepository fileRepository, ForumThreadRepository forumThreadRepository,
+            IGlobalConfigService globalConfigService,
             S3StorageService s3StorageService) {
         this.voteRepository = voteRepository;
         this.proposalRepository = proposalRepository;
@@ -53,6 +55,7 @@ public class VoteServiceImpl implements IVoteService {
         this.promotionProposalRepository = promotionProposalRepository;
         this.userRepository = userRepository;
         this.fileRepository = fileRepository;
+        this.forumThreadRepository = forumThreadRepository;
         this.globalConfigService = globalConfigService;
         this.s3StorageService = s3StorageService;
     }
@@ -223,6 +226,7 @@ public class VoteServiceImpl implements IVoteService {
             if (fileProposal.getFile() != null) {
                 File target = fileProposal.getFile();
                 s3StorageService.delete(target.getObjectKey());
+                forumThreadRepository.deleteByFileId(target.getId());
                 fileProposal.setFile(null);
                 fileRepository.delete(target);
             }
