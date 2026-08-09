@@ -33,7 +33,7 @@ import jakarta.validation.constraints.Positive;
 @RestController
 @RequestMapping("/users")
 @Validated
-@Tag(name = "02. Usuarios", description = "Perfil propio, perfiles públicos y listado de usuarios")
+@Tag(name = "Usuarios", description = "Perfil propio, perfiles públicos y listado de usuarios")
 public class UserController {
 
     private final IUserService userService;

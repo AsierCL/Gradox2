@@ -33,7 +33,7 @@ import jakarta.validation.constraints.Positive;
 @RestController
 @RequestMapping("/promoteProposal")
 @Validated
-@Tag(name = "03. Roles y Promociones", description = "Solicitudes de ascenso a MASTER y propuestas de expulsión")
+@Tag(name = "Roles y Promociones", description = "Solicitudes de ascenso a MASTER y propuestas de expulsión")
 public class RolesController {
     private final IRoleService roleService;
 

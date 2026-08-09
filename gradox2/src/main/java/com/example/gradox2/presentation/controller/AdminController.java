@@ -20,7 +20,7 @@ import jakarta.validation.constraints.Positive;
 
 @RestController
 @RequestMapping("/admin/users")
-@Tag(name = "08. Administración", description = "Gestión de usuarios por MASTER (baneo y rehabilitación)")
+@Tag(name = "Administración", description = "Gestión de usuarios por MASTER (baneo y rehabilitación)")
 public class AdminController {
 
     private final IUserService userService;

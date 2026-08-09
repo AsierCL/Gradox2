@@ -28,7 +28,7 @@ import jakarta.validation.constraints.Positive;
 @RestController
 @RequestMapping("/vote")
 @Validated
-@Tag(name = "06. Votaciones", description = "Votación sobre propuestas de subida/borrado y promociones")
+@Tag(name = "Votaciones", description = "Votación sobre propuestas de subida/borrado y promociones")
 public class VoteController {
 
     private final IVoteService voteService;

@@ -36,7 +36,7 @@ import jakarta.validation.constraints.Positive;
 @RestController
 @RequestMapping("/files")
 @Validated
-@Tag(name = "05. Archivos", description = "Gestión de archivos publicados: consulta, descarga, votación, visibilidad y propuestas de borrado")
+@Tag(name = "Archivos", description = "Gestión de archivos publicados: consulta, descarga, votación, visibilidad y propuestas de borrado")
 public class FileController {
     private final IFileService fileService;
 

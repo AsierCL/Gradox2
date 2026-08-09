@@ -22,7 +22,7 @@ import jakarta.validation.Valid;
 
 @RestController
 @RequestMapping("/vote-config")
-@Tag(name = "07. Configuración de Votaciones", description = "Ajustes globales de quórum y umbral de aprobación (solo MASTER)")
+@Tag(name = "Configuración de Votaciones", description = "Ajustes globales de quórum y umbral de aprobación (solo MASTER)")
 public class VoteConfigController {
 
     private final IGlobalConfigService voteConfigService;
