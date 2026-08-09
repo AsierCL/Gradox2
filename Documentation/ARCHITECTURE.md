@@ -159,17 +159,31 @@ gradox2/
 ### `S3StorageService` (`service/implementation/S3StorageService.java`)
 - Inyecta `S3Client` + `s3.bucket-name`.
 - `put(byte[]) → String`: sube un objeto con key `UUID.randomUUID()` y devuelve la key.
-- `get(String) → byte[]`: descarga el objeto por key.
 - `delete(String)`: elimina el objeto (no-op si key nula/vacía).
 - `ensureBucketExists()` (`@PostConstruct`): en arranque, comprueba el bucket con
   `headBucket` y lo crea si falta (**best-effort**: si el bucket no es accesible,
   no aborta el arranque; en R2 el bucket debe existir previamente).
 - Lanza `InternalServerErrorException` ante errores de S3.
 
+### `FileUrlSigner` (`service/interfaces/FileUrlSigner.java`) y `S3FileUrlSigner` (`service/implementation/S3FileUrlSigner.java`)
+- Firmar **PreSigned URLs** de descarga permite que el navegador obtenga los bytes
+  directamente del storage (R2/MinIO) sin que el tráfico pase por el contenedor de la API.
+- `S3FileUrlSigner` construye un `S3Presigner` apuntando a `s3.public-endpoint`
+  (el endpoint que el **navegador** puede resolver; en dev con MinIO es
+  `http://localhost:9000`, no el hostname interno del contenedor).
+- `presignedGetUrl(key, contentDisposition)` genera un GET firmado (TTL `s3.presign.ttl-seconds`,
+  por defecto 120s) con `response-content-disposition` forzado (nombre saneado por
+  `ContentDisposition.attachmentOf`, util en `utils/ContentDisposition.java`).
+- Bean definido en `S3Config` con `@Profile("!test")`; en tests lo sustituye el fake
+  de `TestS3Config`.
+
 ### Flujo de los documentos
 1. **Propuesta**: `FileProposalServiceImpl.uploadFileProposal()` sube los bytes a S3 y guarda la `objectKey` en `TempFile`.
 2. **Aprobación**: `VoteServiceImpl.applyFileProposal()` copia la `objectKey` del `TempFile` al `File` (no se re-suben bytes).
-3. **Descarga**: `FileServiceImpl.downloadFile()` y `FileProposalController.downloadProposalFile()` leen desde S3 con `get(objectKey)`.
+3. **Descarga**: `FileServiceImpl.downloadFile()` (y `FileProposalServiceImpl.getFileDownloadLink()`)
+   validan el acceso igual que antes y devuelven un JSON `{"url": "<PreSigned URL>"}`
+   (DTO `FileDownloadResponse`) generado con `FileUrlSigner`; el navegador descarga luego
+   desde el bucket con esa URL (TTL 120s).
 4. **Borrado**: tanto al rechazar una propuesta como al eliminar un archivo aprobado, se borra el objeto de S3 antes del borrado lógico/JPA.
 
 ### Tests

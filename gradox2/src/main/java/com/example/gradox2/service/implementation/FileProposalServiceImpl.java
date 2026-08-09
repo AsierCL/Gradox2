@@ -31,11 +31,14 @@ import com.example.gradox2.service.exceptions.InternalServerErrorException;
 import com.example.gradox2.service.exceptions.InvalidFileOperation;
 import com.example.gradox2.service.exceptions.NotFoundException;
 import com.example.gradox2.service.exceptions.ProposalClosedException;
+import com.example.gradox2.service.interfaces.FileUrlSigner;
 import com.example.gradox2.service.interfaces.IFileProposalService;
 import com.example.gradox2.service.interfaces.IGlobalConfigService;
+import com.example.gradox2.utils.ContentDisposition;
 import com.example.gradox2.utils.GetAuthUser;
 import com.example.gradox2.utils.SortUtils;
 import com.example.gradox2.utils.mapper.FileProposalMapper;
+import com.example.gradox2.presentation.dto.files.FileDownloadResponse;
 
 @Service
 public class FileProposalServiceImpl implements IFileProposalService {
@@ -55,15 +58,18 @@ public class FileProposalServiceImpl implements IFileProposalService {
     private final SubjectRepository subjectRepository;
     private final IGlobalConfigService voteConfigService;
     private final S3StorageService s3StorageService;
+    private final FileUrlSigner fileUrlSigner;
 
     public FileProposalServiceImpl(TempFileRepository tempFileRepository,
             FileProposalRepository fileProposalRepository, SubjectRepository subjectRepository,
-            IGlobalConfigService voteConfigService, S3StorageService s3StorageService) {
+            IGlobalConfigService voteConfigService, S3StorageService s3StorageService,
+            FileUrlSigner fileUrlSigner) {
         this.tempFileRepository = tempFileRepository;
         this.fileProposalRepository = fileProposalRepository;
         this.subjectRepository = subjectRepository;
         this.voteConfigService = voteConfigService;
         this.s3StorageService = s3StorageService;
+        this.fileUrlSigner = fileUrlSigner;
     }
 
     @Transactional
@@ -164,6 +170,13 @@ public class FileProposalServiceImpl implements IFileProposalService {
         }
 
         return tempFile;
+    }
+
+    public FileDownloadResponse getFileDownloadLink(Long id) {
+        TempFile tempFile = downloadFileFromProposal(id);
+        String url = fileUrlSigner.presignedGetUrl(tempFile.getObjectKey(),
+                ContentDisposition.attachmentOf(tempFile.getTitle()));
+        return FileDownloadResponse.builder().url(url).build();
     }
 
     private String generateFileHash(byte[] fileData) {

@@ -51,7 +51,7 @@ FileProposalController
 | POST   | `/uploadProposal/upload`        | Proponer nuevo archivo (con visibilityLevel)       | ✅   | ☑️  |
 | GET    | `/uploadProposal`               | Listar propuestas (?paged, ?page, ?size, ?sortBy)  | ✅   | ☑️  |
 | GET    | `/uploadProposal/{id}`          | Ver datos de la propuesta (incluye visibilityLevel)| ✅   | ☑️  |
-| GET    | `/uploadProposal/{id}/download` | Descargar archivo propuesto (servido desde S3)     | ✅   | ☑️  |
+| GET    | `/uploadProposal/{id}/download` | URL firmada de descarga del archivo propuesto (JSON `{"url"}`) | ✅   | ☑️  |
 | DELETE | `/uploadProposal/{id}`          | Borrar propuesta de archivo                        | ✅   | ☑️  |
 
 ---
@@ -62,7 +62,7 @@ FileController
 | ------ | --------------------------- | ---------------------------------------- | --- | --- |
 | GET    | `/files/all`                | Listar archivos todos los archivos       | ✅   | ☑️  |
 | GET    | `/files/{id}`               | Ver datos del archivo                    | ✅   | ☑️  |
-| GET    | `/files/{id}/download`      | Descargar archivo (servido desde S3)     | ✅   | ☑️  |
+| GET    | `/files/{id}/download`      | URL firmada de descarga del archivo (JSON `{"url"}`) | ✅   | ☑️  |
 | DELETE | `/files/{id}`               | Proponer eliminación con votación        | ✅   | ☑️  |
 | POST   | `/files/{id}/vote/{upvote}` | Votar para puntuar un archivo            | ✅   | ☑️  |
 | DELETE | `/files/{id}/vote`          | Quitar votacion de un archivo            | ✅   | ☑️  |

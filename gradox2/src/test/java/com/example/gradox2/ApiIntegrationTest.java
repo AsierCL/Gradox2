@@ -329,7 +329,8 @@ class ApiIntegrationTest {
 
         mockMvc.perform(get("/uploadProposal/{id}/download", proposalId)
                 .header("Authorization", bearer(proposerToken)))
-            .andExpect(status().isOk());
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.url").exists());
 
         mockMvc.perform(post("/vote/{id}/{upvote}", proposalId, true)
                 .header("Authorization", bearer(voterToken)))
@@ -359,7 +360,8 @@ class ApiIntegrationTest {
 
         mockMvc.perform(get("/files/{id}/download", fileId)
                 .header("Authorization", bearer(voterToken)))
-            .andExpect(status().isOk());
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.url").exists());
 
         mockMvc.perform(MockMvcRequestBuilders.delete("/uploadProposal/{id}", proposalId)
                 .header("Authorization", bearer(proposerToken)))
@@ -727,7 +729,8 @@ class ApiIntegrationTest {
         Long fileId = createVotedFile("dlpubowner", "dlpubowner@rai.usc.es", FileVisibility.PUBLIC);
 
         mockMvc.perform(get("/files/{id}/download", fileId))
-            .andExpect(status().isOk());
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.url").exists());
     }
 
     @Test
@@ -748,7 +751,8 @@ class ApiIntegrationTest {
 
         mockMvc.perform(get("/files/{id}/download", fileId)
                 .header("Authorization", bearer(ownerToken)))
-            .andExpect(status().isOk());
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.url").exists());
     }
 
     @Test
@@ -759,7 +763,8 @@ class ApiIntegrationTest {
 
         mockMvc.perform(get("/files/{id}/download", fileId)
                 .header("Authorization", bearer(masterToken)))
-            .andExpect(status().isOk());
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.url").exists());
     }
 
     @Test
@@ -770,7 +775,8 @@ class ApiIntegrationTest {
 
         mockMvc.perform(get("/files/{id}/download", fileId)
                 .header("Authorization", bearer(userToken)))
-            .andExpect(status().isOk());
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.url").exists());
     }
 
     private Long createVotedFile(String ownerUsername, String ownerEmail, FileVisibility visibility) throws Exception {
