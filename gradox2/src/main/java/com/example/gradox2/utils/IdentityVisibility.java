@@ -1,5 +1,6 @@
 package com.example.gradox2.utils;
 
+import com.example.gradox2.persistence.entities.File;
 import com.example.gradox2.persistence.entities.User;
 import com.example.gradox2.persistence.entities.enums.FileVisibility;
 import com.example.gradox2.persistence.entities.enums.UserRole;
@@ -7,6 +8,18 @@ import com.example.gradox2.persistence.entities.enums.UserRole;
 public final class IdentityVisibility {
 
     private IdentityVisibility() {
+    }
+
+    public static boolean canViewContent(File file, User viewer) {
+        FileVisibility visibility = file.getVisibilityLevel();
+        if (visibility == null) {
+            return false;
+        }
+        return switch (visibility) {
+            case PUBLIC -> true;
+            case RESTRICTED -> viewer != null;
+            case PRIVATE -> isSameUser(file.getUploader(), viewer) || isMaster(viewer);
+        };
     }
 
     public static String resolveDisplayUsername(User owner, User viewer, FileVisibility visibility) {

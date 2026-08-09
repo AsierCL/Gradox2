@@ -1,0 +1,73 @@
+services:
+  db:
+    image: postgres:16
+    container_name: postgresDB_Gradox2_dev
+    restart: unless-stopped
+    network_mode: host
+    environment:
+      POSTGRES_USER: gradox
+      POSTGRES_PASSWORD: gradox-local-password
+      POSTGRES_DB: gradoxdb
+    volumes:
+      - pgdata-dev:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  minio:
+    image: minio/minio:latest
+    container_name: minio_Gradox2_dev_host
+    restart: unless-stopped
+    network_mode: host
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    command: server /data --console-address ":9001"
+    volumes:
+      - minio-data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  app:
+    image: eclipse-temurin:21-jdk
+    container_name: gradox2_app_dev_host
+    working_dir: /workspace/gradox2
+    user: "${APP_UID:-1000}:${APP_GID:-1000}"
+    network_mode: host
+    depends_on:
+      db:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    restart: unless-stopped
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/gradoxdb
+      SPRING_DATASOURCE_USERNAME: gradox
+      SPRING_DATASOURCE_PASSWORD: gradox-local-password
+      S3_ENDPOINT: http://localhost:9000
+      S3_ACCESS_KEY: minioadmin
+      S3_SECRET_KEY: minioadmin
+      S3_BUCKET_NAME: gradox2-files
+      JWT_SECRET: local-dev-jwt-secret-min-32-bytes-long
+      JWT_EXPIRATION: 86400000
+      SPRING_MAIL_HOST: localhost
+      SPRING_MAIL_PORT: 1025
+      SPRING_MAIL_USERNAME: ""
+      SPRING_MAIL_PASSWORD: ""
+      SPRING_PROFILES_ACTIVE: local
+      ENABLE_DEMO_SEEDS: "true"
+      HOME: /workspace
+      MAVEN_OPTS: -Dmaven.repo.local=/workspace/.m2/repository
+    command: ["bash", "-lc", "chmod +x mvnw && ./mvnw spring-boot:run -Dspring-boot.run.profiles=local"]
+    volumes:
+      - ../gradox2:/workspace/gradox2
+      - ${HOME}/.m2:/workspace/.m2
+
+volumes:
+  pgdata-dev:
+  minio-data:

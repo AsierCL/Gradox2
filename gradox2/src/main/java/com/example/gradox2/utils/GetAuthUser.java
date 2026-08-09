@@ -18,4 +18,12 @@ public final class GetAuthUser {
         }
         return uploader;
     }
+
+    public static User getCurrentUserOrNull() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !(authentication.getPrincipal() instanceof User user)) {
+            return null;
+        }
+        return user;
+    }
 }

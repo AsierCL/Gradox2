@@ -9,7 +9,6 @@ import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -62,8 +61,8 @@ public class FileServiceImpl implements IFileService {
         File file = fileRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("File not found"));
 
-        User viewer = getCurrentViewerOrNull();
-        if (!canViewContent(file, viewer)) {
+        User viewer = GetAuthUser.getCurrentUserOrNull();
+        if (!IdentityVisibility.canViewContent(file, viewer)) {
             // No revelar la existencia del archivo a quien no puede acceder a él.
             throw new NotFoundException("File not found");
         }
@@ -78,21 +77,8 @@ public class FileServiceImpl implements IFileService {
                 .body(resource);
     }
 
-    private boolean canViewContent(File file, User viewer) {
-        FileVisibility visibility = file.getVisibilityLevel();
-        if (visibility == null) {
-            return false;
-        }
-        return switch (visibility) {
-            case PUBLIC -> true;
-            case RESTRICTED -> viewer != null;
-            case PRIVATE -> IdentityVisibility.isSameUser(file.getUploader(), viewer)
-                    || IdentityVisibility.isMaster(viewer);
-        };
-    }
-
     public List<FileResponse> getAllFiles() {
-        User viewer = getCurrentViewerOrNull();
+        User viewer = GetAuthUser.getCurrentUserOrNull();
         return fileRepository.findAll(PageRequest.of(0, MAX_LIST_SIZE, Sort.by("id").descending())).getContent().stream()
             .map(file -> FileMapper.toFileResponse(file, viewer))
                 .collect(Collectors.toList());
@@ -103,7 +89,7 @@ public class FileServiceImpl implements IFileService {
         File file = fileRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("File not found"));
 
-        return FileMapper.toFileResponse(file, getCurrentViewerOrNull());
+        return FileMapper.toFileResponse(file, GetAuthUser.getCurrentUserOrNull());
     }
 
     @Transactional
@@ -210,13 +196,5 @@ public class FileServiceImpl implements IFileService {
         fileRepository.save(file);
 
         return FileMapper.toFileResponse(file, requester);
-    }
-
-    private User getCurrentViewerOrNull() {
-        Authentication authentication = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
-        if (authentication == null || !(authentication.getPrincipal() instanceof User user)) {
-            return null;
-        }
-        return user;
     }
 }
