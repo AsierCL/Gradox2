@@ -29,6 +29,8 @@ import software.amazon.awssdk.services.s3.model.NoSuchKeyException;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectResponse;
 
+import com.example.gradox2.service.interfaces.FileUrlSigner;
+
 @Configuration
 @Profile("test")
 public class TestS3Config {
@@ -37,6 +39,14 @@ public class TestS3Config {
     @Primary
     public S3Client s3Client(@Value("${s3.bucket-name}") String bucketName) {
         return new InMemoryS3Client(bucketName);
+    }
+
+    @Bean
+    @Primary
+    public FileUrlSigner fileUrlSigner(@Value("${s3.bucket-name}") String bucketName) {
+        return (key, contentDisposition) ->
+                "http://s3.test.local/" + bucketName + "/" + key
+                        + "?X-Amz-Signature=test-signature&response-content-disposition=" + contentDisposition;
     }
 
     static class InMemoryS3Client implements S3Client {

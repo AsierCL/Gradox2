@@ -6,13 +6,13 @@ import org.springframework.validation.annotation.Validated;
 
 import com.example.gradox2.persistence.entities.enums.FileVisibility;
 import com.example.gradox2.presentation.dto.fileProposal.FileProposalResponse;
+import com.example.gradox2.presentation.dto.files.FileDownloadResponse;
 import com.example.gradox2.presentation.dto.files.FileResponse;
 import com.example.gradox2.presentation.dto.vote.VoteResponse;
 import com.example.gradox2.service.interfaces.IFileService;
 
 import java.util.List;
 
-import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -63,14 +63,14 @@ public class FileController {
     }
 
     @GetMapping("/{id}/download")
-    @Operation(summary = "Descargar archivo", description = "Descarga el contenido del archivo publicado")
+    @Operation(summary = "Descargar archivo", description = "Genera una URL firmada para descargar el archivo directamente desde el bucket (válida 120 segundos)")
     @ApiResponses({
-        @ApiResponse(responseCode = "200", description = "Archivo descargado"),
+        @ApiResponse(responseCode = "200", description = "URL firmada de descarga generada", content = @Content(mediaType = "application/json")),
         @ApiResponse(responseCode = "404", description = "Archivo no encontrado", content = @Content)
     })
-    public ResponseEntity<ByteArrayResource> downloadFile(
+    public ResponseEntity<FileDownloadResponse> downloadFile(
             @Parameter(description = "ID del archivo") @PathVariable @Positive Long id) {
-        return fileService.downloadFile(id);
+        return ResponseEntity.ok(fileService.downloadFile(id));
     }
 
     @DeleteMapping("/{id}")

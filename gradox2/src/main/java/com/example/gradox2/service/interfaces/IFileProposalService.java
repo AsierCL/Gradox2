@@ -6,6 +6,7 @@ import org.springframework.data.domain.Page;
 import com.example.gradox2.persistence.entities.TempFile;
 import com.example.gradox2.presentation.dto.fileProposal.FileProposalResponse;
 import com.example.gradox2.presentation.dto.fileProposal.UploadFileProposalRequest;
+import com.example.gradox2.presentation.dto.files.FileDownloadResponse;
 
 public interface IFileProposalService {
     FileProposalResponse uploadFileProposal(UploadFileProposalRequest dto);
@@ -14,4 +15,5 @@ public interface IFileProposalService {
     Page<FileProposalResponse> getFileProposalsPaged(int page, int size, String sortBy);
     FileProposalResponse getFileProposalById(Long id);
     TempFile downloadFileFromProposal(Long id);
+    FileDownloadResponse getFileDownloadLink(Long id);
 }

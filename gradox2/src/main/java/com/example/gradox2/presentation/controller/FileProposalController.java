@@ -4,20 +4,16 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.validation.annotation.Validated;
 
-import com.example.gradox2.persistence.entities.TempFile;
 import com.example.gradox2.presentation.dto.fileProposal.FileProposalResponse;
 import com.example.gradox2.presentation.dto.fileProposal.UploadFileProposalRequest;
-import com.example.gradox2.service.implementation.S3StorageService;
+import com.example.gradox2.presentation.dto.files.FileDownloadResponse;
 import com.example.gradox2.service.interfaces.IFileProposalService;
 
 import java.util.List;
 
-import org.springframework.core.io.ByteArrayResource;
 import org.springframework.data.domain.Page;
-import org.springframework.http.HttpHeaders;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -44,11 +40,9 @@ import jakarta.validation.constraints.Positive;
 public class FileProposalController {
 
     private final IFileProposalService fileProposalService;
-    private final S3StorageService s3StorageService;
 
-    public FileProposalController(IFileProposalService fileProposalService, S3StorageService s3StorageService) {
+    public FileProposalController(IFileProposalService fileProposalService) {
         this.fileProposalService = fileProposalService;
-        this.s3StorageService = s3StorageService;
     }
 
     @PostMapping("/upload")
@@ -94,22 +88,14 @@ public class FileProposalController {
     }
 
     @GetMapping("/{id}/download")
-    @Operation(summary = "Descargar archivo propuesto", description = "Descarga el archivo temporal asociado a una propuesta pendiente")
+    @Operation(summary = "Descargar archivo propuesto", description = "Genera una URL firmada para descargar el archivo temporal asociado a una propuesta pendiente (válida 120 segundos)")
     @ApiResponses({
-        @ApiResponse(responseCode = "200", description = "Archivo descargado"),
+        @ApiResponse(responseCode = "200", description = "URL firmada de descarga generada", content = @Content(mediaType = "application/json")),
         @ApiResponse(responseCode = "404", description = "Propuesta o archivo no encontrado", content = @Content)
     })
-    public ResponseEntity<ByteArrayResource> downloadProposalFile(
+    public ResponseEntity<FileDownloadResponse> downloadProposalFile(
             @Parameter(description = "ID de la propuesta") @PathVariable @Positive Long id) {
-        TempFile file = fileProposalService.downloadFileFromProposal(id);
-        byte[] fileData = s3StorageService.get(file.getObjectKey());
-        ByteArrayResource resource = new ByteArrayResource(fileData);
-
-        return ResponseEntity.ok()
-                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment;filename=" + file.getTitle())
-                .contentType(MediaType.APPLICATION_OCTET_STREAM)
-                .contentLength(fileData.length)
-                .body(resource);
+        return ResponseEntity.ok(fileProposalService.getFileDownloadLink(id));
     }
 
     @DeleteMapping("/{id}")

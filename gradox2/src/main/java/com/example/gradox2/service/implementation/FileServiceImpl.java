@@ -5,10 +5,6 @@ import java.util.stream.Collectors;
 
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
-import org.springframework.core.io.ByteArrayResource;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,11 +21,14 @@ import com.example.gradox2.persistence.repository.ScoreRepository;
 import com.example.gradox2.persistence.repository.FileProposalRepository;
 import com.example.gradox2.persistence.repository.UserRepository;
 import com.example.gradox2.service.interfaces.IGlobalConfigService;
+import com.example.gradox2.presentation.dto.files.FileDownloadResponse;
 import com.example.gradox2.presentation.dto.files.FileResponse;
 import com.example.gradox2.presentation.dto.vote.VoteResponse;
 import com.example.gradox2.service.exceptions.InvalidFileOperation;
 import com.example.gradox2.service.exceptions.NotFoundException;
+import com.example.gradox2.service.interfaces.FileUrlSigner;
 import com.example.gradox2.service.interfaces.IFileService;
+import com.example.gradox2.utils.ContentDisposition;
 import com.example.gradox2.utils.GetAuthUser;
 import com.example.gradox2.utils.IdentityVisibility;
 import com.example.gradox2.utils.mapper.FileMapper;
@@ -44,20 +43,23 @@ public class FileServiceImpl implements IFileService {
     private final UserRepository userRepository;
     private final IGlobalConfigService voteConfigService;
     private final S3StorageService s3StorageService;
+    private final FileUrlSigner fileUrlSigner;
 
     public FileServiceImpl(FileRepository fileRepository,
             FileProposalRepository uploadProposalRepository,
             IGlobalConfigService voteConfigService, ScoreRepository scoreRepository,
-            UserRepository userRepository, S3StorageService s3StorageService) {
+            UserRepository userRepository, S3StorageService s3StorageService,
+            FileUrlSigner fileUrlSigner) {
         this.fileRepository = fileRepository;
         this.uploadProposalRepository = uploadProposalRepository;
         this.scoreRepository = scoreRepository;
         this.userRepository = userRepository;
         this.voteConfigService = voteConfigService;
         this.s3StorageService = s3StorageService;
+        this.fileUrlSigner = fileUrlSigner;
     }
 
-    public ResponseEntity<ByteArrayResource> downloadFile(Long id) {
+    public FileDownloadResponse downloadFile(Long id) {
         File file = fileRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("File not found"));
 
@@ -67,14 +69,9 @@ public class FileServiceImpl implements IFileService {
             throw new NotFoundException("File not found");
         }
 
-        byte[] fileData = s3StorageService.get(file.getObjectKey());
-        ByteArrayResource resource = new ByteArrayResource(fileData);
-
-        return ResponseEntity.ok()
-                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + file.getTitle() + "\"")
-                .contentType(MediaType.APPLICATION_OCTET_STREAM)
-                .contentLength(fileData.length)
-                .body(resource);
+        String url = fileUrlSigner.presignedGetUrl(file.getObjectKey(),
+                ContentDisposition.attachmentOf(file.getTitle()));
+        return FileDownloadResponse.builder().url(url).build();
     }
 
     public List<FileResponse> getAllFiles() {

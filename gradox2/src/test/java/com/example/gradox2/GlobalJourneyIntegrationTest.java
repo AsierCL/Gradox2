@@ -222,7 +222,8 @@ class GlobalJourneyIntegrationTest {
 
         mockMvc.perform(get("/files/{id}/download", fileId)
                         .header("Authorization", bearer(token)))
-                .andExpect(status().isOk());
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.url").exists());
 
         // 9. Comentario: crea el hilo implícitamente; edición propia; otro usuario no puede editar.
         MvcResult comment = mockMvc.perform(post("/files/{id}/comments", fileId)
