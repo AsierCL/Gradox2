@@ -99,7 +99,7 @@ public class UserServiceImpl implements IUserService {
             user.setPasswordHash(passwordEncoder.encode(userProfile.getPassword()));
         }
 
-        userRepository.save(user);
+        user = userRepository.save(user);
         MyProfileResponse updatedProfile = UserMapper.mapper.toMyProfileResponse(user);
         return updatedProfile;
     }
