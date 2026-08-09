@@ -58,6 +58,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(authz -> authz
                                 .requestMatchers("/admin/**").hasRole("MASTER") // Sin implementar aún
                                 .requestMatchers(HttpMethod.GET, "/files/**").permitAll()
+                                .requestMatchers(HttpMethod.GET, "/subjects/**").permitAll()
                                 .requestMatchers("/api/auth/**").permitAll()
                                 .requestMatchers("/health**", "/actuator/health/**", "/actuator/info").permitAll()
                                 .requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**").permitAll()

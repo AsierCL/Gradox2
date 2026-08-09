@@ -6,4 +6,6 @@ import com.example.gradox2.persistence.entities.Subject;
 
 public interface SubjectRepository extends JpaRepository<Subject, Long> {
 
+    java.util.List<Subject> findAllByOrderByCourseIdAscCodeAsc();
+
 }
