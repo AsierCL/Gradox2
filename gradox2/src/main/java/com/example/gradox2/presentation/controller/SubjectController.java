@@ -21,7 +21,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 
 @RestController
 @RequestMapping("/subjects")
-@Tag(name = "08. Asignaturas", description = "Catálogo de asignaturas y cursos para crear propuestas de archivo")
+@Tag(name = "Asignaturas", description = "Catálogo de asignaturas y cursos para crear propuestas de archivo")
 public class SubjectController {
 
     private final SubjectRepository subjectRepository;

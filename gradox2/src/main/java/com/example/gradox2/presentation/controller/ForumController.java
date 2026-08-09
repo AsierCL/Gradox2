@@ -32,7 +32,7 @@ import jakarta.validation.constraints.Positive;
 @RestController
 @RequestMapping("files")
 @Validated
-@Tag(name = "06. Hilos / Comentarios", description = "Gestión de hilos de discusión por archivo: comentarios, respuestas, referencias a archivos y bloqueo")
+@Tag(name = "Hilos / Comentarios", description = "Gestión de hilos de discusión por archivo: comentarios, respuestas, referencias a archivos y bloqueo")
 public class ForumController {
 
     private final IForumService forumService;

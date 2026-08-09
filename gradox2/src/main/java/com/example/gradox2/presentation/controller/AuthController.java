@@ -30,7 +30,7 @@ import jakarta.validation.constraints.NotBlank;
 @RestController
 @RequestMapping("/api/auth")
 @Validated
-@Tag(name = "01. Autenticación", description = "Registro, login, verificación, refresh, logout y recuperación de contraseña")
+@Tag(name = "Autenticación", description = "Registro, login, verificación, refresh, logout y recuperación de contraseña")
 public class AuthController {
 
     private final IAuthService authService;

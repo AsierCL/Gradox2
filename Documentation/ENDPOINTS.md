@@ -1,187 +1,38 @@
-# Endpoints de la aplicacion
+# Guía de Uso de la API — Gradox 2
 
-Este documento refleja el estado real de la API implementada en el código.
-Cuando una ruta aparece marcada como no disponible, significa que está descrita como objetivo de producto, pero todavía no existe en los controladores actuales.
+## 1. El Contrato Oficial (OpenAPI)
+El listado exhaustivo de todos los endpoints, parámetros, esquemas de datos y respuestas se encuentra en el archivo JSON exportado directamente del código fuente:
 
----
-## 🔐 1. Autenticación y Seguridad
-AuthController
+📄 **[openapi.json](./openapi.json)**
 
-| Método | Endpoint                           | Descripción                              | ✔️  | MVP |
-| ------ | ---------------------------------- | ---------------------------------------- | --- | --- |
-| POST   | `/api/auth/login`                  | Login con email y contraseña             | ✅   | ☑️  |
-| POST   | `/api/auth/register`               | Registro con email institucional         | ✅   | ☑️  |
-| GET    | `/api/auth/verify`                 | Verificar email con token                | ✅   | ☑️  |
-| POST   | `/api/auth/token/refresh`          | Renovar token de acceso                  | ✅   | ☑️  |
-| POST   | `/api/auth/logout`                 | Cierre de sesión                         | ✅   | ☑️  |
-| POST   | `/api/auth/password/reset-request` | Solicitar reinicio de contraseña         | ✅   | ☑️  |
-| POST   | `/api/auth/password/reset`         | Confirmar cambio de contraseña con token | ✅   | ☑️  |
+## 2. Explorador Interactivo (Swagger UI)
+Para explorar, leer la documentación detallada de cada ruta y **probar la API en tiempo real**, debes levantar el entorno de desarrollo local (mediante `./run.sh dev` o `./mvnw spring-boot:run`).
 
----
-## 👤 2. Usuarios
-UserController
+Una vez levantado, abre tu navegador en:
+🔗 **http://localhost:8080/swagger-ui.html**
 
-| Método | Endpoint                                                 | Descripción                        | ✔️  | MVP |
-| ------ | ----------------------------------------------           | ---------------------------------- | --- | --- |
-| GET    | `/users/me`                                              | Obtener perfil propio              | ✅   | ☑️  |
-| PUT    | `/users/me`                                              | Editar perfil (nombre, alias, bio) | ✅   | ☑️  |
-| GET    | `/users/{id}`                                            | Ver perfil público                 | ✅   | ☑️  |
-| GET    | `/users/all`                                             | Todos los usuarios                 | ✅   | ☑️  |
-| GET    | `/users/all?paged=true&page=0&size=5&sortBy=reputation`  | Todos los usuarios paginados       | ✅   | ☑️  |
+> Nota: Por motivos de rendimiento, la interfaz de Swagger y el endpoint JSON `/v3/api-docs` están **desactivados en producción**.
 
+## 3. Autenticación (JWT)
+La API es *stateless*. Para acceder a las rutas protegidas, debes incluir tu token JWT en la cabecera HTTP `Authorization` con el prefijo `Bearer`.
 
----
-## 🛡️ 3. Roles y Promociones
-RolesController
+**Flujo básico:**
+1. Haz una petición `POST` a `/api/auth/login` con tus credenciales.
+2. Extrae el campo `token` de la respuesta JSON.
+3. Envíalo en las cabeceras de tus siguientes peticiones:
 
-| Método | Endpoint                       | Descripción                     | ✔️  | MVP |
-| ------ | ------------------------------ | ------------------------------- | --- | --- |
-| POST   | `/promoteProposal/request`     | Solicitar promoción a master    | ✅   | ☑️  |
-| DELETE | `/promoteProposal/delete`      | Quitar mi solicitud a master    | ✅   | ☑️  |
-| GET    | `/promoteProposal/pending`     | Ver promociones pendientes      | ✅   | ☑️  |
-| GET    | `/promoteProposal/{id}`        | Ver datos por id                | ✅   | ☑️  |
-| POST   | `/promoteProposal/demote/{id}` | Proponer expulsión de un master | ✅   | ☑️  |
+```bash
+curl -X GET http://localhost:8080/users/me \
+     -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsIn..."
+```
 
----
-## 📃 4. Propuestas de archivos
-FileProposalController
+## 4. Roadmap y Tareas Pendientes (MVP)
 
-| Método | Endpoint                        | Descripción                                        | ✔️  | MVP |
-| ------ | ------------------------------- | -------------------------------------------------- | --- | --- |
-| POST   | `/uploadProposal/upload`        | Proponer nuevo archivo (con visibilityLevel)       | ✅   | ☑️  |
-| GET    | `/uploadProposal`               | Listar propuestas (?paged, ?page, ?size, ?sortBy)  | ✅   | ☑️  |
-| GET    | `/uploadProposal/{id}`          | Ver datos de la propuesta (incluye visibilityLevel)| ✅   | ☑️  |
-| GET    | `/uploadProposal/{id}/download` | URL firmada de descarga del archivo propuesto (JSON `{"url"}`) | ✅   | ☑️  |
-| DELETE | `/uploadProposal/{id}`          | Borrar propuesta de archivo                        | ✅   | ☑️  |
+El core de la aplicación (Autenticación, Usuarios, Archivos, Asignaturas, Votaciones e Hilos) ya está 100% implementado y documentado en el archivo OpenAPI.
 
----
-## 📁 5. Archivos
-FileController
+Las siguientes capacidades a nivel de producto siguen en el backlog y se añadirán al contrato OpenAPI conforme se vayan desarrollando:
 
-| Método | Endpoint                    | Descripción                              | ✔️  | MVP |
-| ------ | --------------------------- | ---------------------------------------- | --- | --- |
-| GET    | `/files/all`                | Listar archivos todos los archivos       | ✅   | ☑️  |
-| GET    | `/files/{id}`               | Ver datos del archivo                    | ✅   | ☑️  |
-| GET    | `/files/{id}/download`      | URL firmada de descarga del archivo (JSON `{"url"}`) | ✅   | ☑️  |
-| DELETE | `/files/{id}`               | Proponer eliminación con votación        | ✅   | ☑️  |
-| POST   | `/files/{id}/vote/{upvote}` | Votar para puntuar un archivo            | ✅   | ☑️  |
-| DELETE | `/files/{id}/vote`          | Quitar votacion de un archivo            | ✅   | ☑️  |
-| PUT    | `/files/{id}/visibility`    | Cambiar visibilidad del uploader del archivo | ✅   | ☑️  |
-
-
----
-## 📝 6. Hilos y Exámenes
-
-| Método | Endpoint              | Descripción                     | ✔️  | MVP |
-| ------ | --------------------- | ------------------------------- | --- | --- |
-| POST   | `/threads`            | Crear hilo para un examen       |     |     |
-| GET    | `/threads`            | Listar hilos por asignatura     |     |     |
-| GET    | `/threads/{id}`       | Ver hilo y respuestas           |     |     |
-| POST   | `/threads/{id}/reply` | Responder a hilo con resolución |     |     |
-| POST   | `/threads/{id}/vote`  | Votar en respuestas             |     |     |
-
----
-## 🚨 7. Moderación
-
-| Método | Endpoint                           | Descripción                  | ✔️  | MVP |
-| ------ | ---------------------------------- | ---------------------------- | --- | --- |
-| POST   | `/moderation/report`               | Denunciar contenido          |     |     |
-| GET    | `/moderation/reports`              | Ver denuncias (solo masters) |     |     |
-| POST   | `/moderation/reports/{id}/resolve` | Resolver denuncia            |     |     |
-
----
-## 🔔 8. Notificaciones
-
-| Método | Endpoint              | Descripción                    | ✔️  | MVP |
-| ------ | --------------------- | ------------------------------ | --- | --- |
-| GET    | `/notifications`      | Ver notificaciones del usuario |     |     |
-| POST   | `/notifications/read` | Marcar como leídas             |     |     |
-
----
-## 📊 9. Métricas y Estadísticas
-
-| Método | Endpoint             | Descripción              | ✔️  | MVP |
-| ------ | -------------------- | ------------------------ | --- | --- |
-| GET    | `/stats`             | Estadísticas generales   |     |     |
-| GET    | `/stats/assignments` | Actividad por asignatura |     |     |
-| GET    | `/stats/activity`    | Actividad por usuario    |     |     |
-
----
-## 🗳️ 10. Sistema de Votaciones (Global)
-
-| Método | Endpoint              | Descripción                           | ✔️  | MVP |
-| ------ | --------------------- | ------------------------------------- | --- | --- |
-| GET    | `/vote/{id}`          | Ver mi voto en una propusta           | ✅   | ☑️  |
-| GET    | `/vote/{id}/results`  | Ver resultado actual de una propuesta | ✅   | ☑️  |
-| POST   | `/vote/{id}/{upvote}` | Votar en una propuesta (true/false)   | ✅   | ☑️  |
-| DELETE | `/vote/{id}`          | Borrar mi voto                        | ✅   | ☑️  |
-
----
-## ⚙️ 11. Configuración de votaciones
-
-| Método | Endpoint        | Descripción                        | ✔️  | MVP |
-| ------ | --------------- | ---------------------------------- | --- | --- |
-| GET    | `/vote-config`  | Ver configuración actual de votos  | ✅   | ☑️  |
-| PUT    | `/vote-config`  | Ajustar quórum y umbral de votos   | ✅   | ☑️  |
-
----
-## ⚙️ 12. Administración (Solo masters)
-
-| Método | Endpoint                  | Descripción                       | ✔️  | MVP |
-| ------ | ------------------------- | --------------------------------- | --- | --- |
-| PUT    | `/admin/users/{id}/ban`   | Banear usuario                    | ✅   | ☑️  |
-| PUT    | `/admin/users/{id}/unban` | Rehabilitar usuario               | ✅   | ☑️  |
-| GET    | `/admin/logs`             | Ver logs de actividad del sistema |     |     |
-| PUT    | `/admin/config`           | Ajustar parámetros del sistema    |     |     |
-
----
-## ⚙️ 13. Health
-
-| Método | Endpoint  | Descripción                                | ✔️  | MVP |
-| ------ | --------- | ------------------------------------------ | --- | --- |
-| GET    | `/health` | Responde 200 OK si la app esta funcionando | ✅   | ☑️  |
-
----
----
-## 🔒 14. Visibilidad del Uploader (FileVisibility)
-
-Los archivos tienen un nivel de visibilidad que controla quién puede ver el nickname del usuario que lo subió. Se define mediante el enum `FileVisibility`:
-
-| Valor       | Efecto                                                                 |
-|-------------|------------------------------------------------------------------------|
-| `PUBLIC`    | Cualquier usuario (incluyendo no autenticados y GUEST) ve el nickname  |
-| `RESTRICTED`| Solo USER y MASTER ven el nickname; GUEST y no autenticados ven "anonymous" |
-| `PRIVATE`   | Solo el propietario y MASTER ven el nickname; el resto (incluyendo USER) ven "anonymous" |
-
-- El propietario del archivo y los MASTER siempre ven el nombre real, independientemente del nivel.
-- Al subir un archivo, se puede especificar `visibilityLevel` en el `UploadFileProposalRequest`.
-- Las propuestas devuelven el campo `visibilityLevel` (String) en la respuesta.
-- Los archivos ya publicados pueden cambiar su visibilidad mediante `PUT /files/{id}/visibility`.
-- El campo `visibilityLevel` también se incluye en `FileResponse`.
-
----
-
-## ⏳ 15. Funcionalidades todavía no implementadas
-
-Estas capacidades siguen en la documentación de producto, pero todavía no existen en los controladores actuales:
-
-- Sistema de hilos y respuestas (`/threads`)
-- Moderación y denuncias (`/moderation/*`)
-- Notificaciones (`/notifications/*`)
-- Métricas y estadísticas (`/stats/*`)
-- Administración avanzada (`/admin/logs` y `/admin/config`)
-
----
-
-## 📦 16. Almacenamiento de archivos (S3)
-
-Los **documentos** (el contenido de los ficheros subidos y descargados) **no se
-guardan en la base de datos**: se almacenan en un bucket **S3 compatible**
-(`S3StorageService`) y en BD solo se persiste la **`object_key`**.
-
-- **Producción:** Cloudflare **R2**.
-- **Desarrollo:** **MinIO** (se levanta con `./run.sh dev`).
-- **Tests:** fake `S3Client` en memoria (`TestS3Config`).
-
-> En máquinas locales o CI **sin MinIO/R2**, los endpoints de subida/descarga
-> devolverán error S3 aunque el resto de la API funcione.
+- 🛡️ Moderación y denuncias (/moderation/*)
+- 🔔 Notificaciones internas (/notifications/*)
+- 📊 Métricas y estadísticas (/stats/*)
+- ⚙️ Administración avanzada (/admin/logs y /admin/config)

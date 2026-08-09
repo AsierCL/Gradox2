@@ -36,7 +36,7 @@ import jakarta.validation.constraints.Positive;
 @RestController
 @RequestMapping("/uploadProposal")
 @Validated
-@Tag(name = "04. Propuestas de Archivos", description = "Creación, consulta y borrado de propuestas de subida de archivos")
+@Tag(name = "Propuestas de Archivos", description = "Creación, consulta y borrado de propuestas de subida de archivos")
 public class FileProposalController {
 
     private final IFileProposalService fileProposalService;

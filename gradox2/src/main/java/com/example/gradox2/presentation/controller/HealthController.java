@@ -10,7 +10,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 
 @RestController
 @RequestMapping("/health")
-@Tag(name = "09. Health Check", description = "Endpoint de verificación de estado de la aplicación")
+@Tag(name = "Health Check", description = "Endpoint de verificación de estado de la aplicación")
 public class HealthController {
 
     @RequestMapping
