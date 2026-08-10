@@ -19,6 +19,6 @@ public class Badge {
 
     private String description;
 
-    @Lob
-    private byte[] icon;
+    @Column(name = "icon_key", length = 512)
+    private String iconKey;
 }

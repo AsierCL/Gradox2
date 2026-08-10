@@ -38,10 +38,15 @@ public class S3StorageService {
     }
 
     public String put(byte[] bytes) {
+        return put(bytes, "application/octet-stream");
+    }
+
+    public String put(byte[] bytes, String contentType) {
         String key = UUID.randomUUID().toString();
         s3Client.putObject(PutObjectRequest.builder()
                 .bucket(bucketName)
                 .key(key)
+                .contentType(contentType)
                 .build(), RequestBody.fromBytes(bytes));
         return key;
     }

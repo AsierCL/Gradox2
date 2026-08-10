@@ -12,6 +12,11 @@ public final class ContentDisposition {
         return "attachment; filename=\"" + safe + "\"";
     }
 
+    public static String inlineOf(String filename) {
+        String safe = sanitize(filename);
+        return "inline; filename=\"" + safe + "\"";
+    }
+
     private static String sanitize(String filename) {
         if (filename == null) {
             return FALLBACK_FILENAME;

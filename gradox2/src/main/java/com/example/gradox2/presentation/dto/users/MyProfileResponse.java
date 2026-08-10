@@ -34,6 +34,9 @@ public class MyProfileResponse {
     @Schema(description = "Último inicio de sesión")
     public Instant lastLogin;
 
+    @Schema(description = "URL firmada de la foto de perfil (null si no hay foto)")
+    public String profilePictureUrl;
+
     @Schema(description = "Insignias obtenidas", example = "[\"PRIMER_ARCHIVO\", \"COLABORADOR\"]")
     public Set<String> badges;
 }
