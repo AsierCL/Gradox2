@@ -319,7 +319,7 @@ de verificación serán inutilizables para el usuario final.
 | **Credenciales S3 por entorno** (`S3_ACCESS_KEY`/`S3_SECRET_KEY`) | ✅ |
 | **Bootstrap del primer MASTER** vía env (`BOOTSTRAP_MASTER_*`), sin logs de credenciales | ✅ |
 | **Swagger/OpenAPI desactivado en prod** | ✅ |
-| Rate limiting en login/register (in-memory por IP remota) | ✅ (parcial, ver abajo) |
+| Rate limiting en login/register (in-memory por IP del cliente vía `X-Forwarded-For`) | ✅ |
 | Rotación de logs (tamaño/fecha) | ✅ |
 | Límites de memoria/CPU por contenedor | ✅ |
 | Actuator expuesto solo `health` e `info` | ✅ |
@@ -327,28 +327,44 @@ de verificación serán inutilizables para el usuario final.
 | Datos demo (`DataLoader`) **solo** en perfiles `local`/`demo` | ✅ |
 | CSRF desactivado (API stateless con JWT) | ✅ |
 
+### Rate limiting y proxys (IP real del cliente)
+
+El `RateLimitFilter` identifica al cliente usando `X-Forwarded-For`: toma la
+**primera** IP de la cabecera (la más cercana al cliente) y, si la cabecera no
+viene o viene vacía, cae a `request.getRemoteAddr()`.
+
+Esto se combina con `server.forward-headers-strategy=framework`
+(`application-local.properties` y `application-prod.properties`), que hace que
+Spring interprete los headers de proxy (`X-Forwarded-For`, `X-Forwarded-Proto`,
+`Forwarded`) y genere esquemas/URLs correctos detrás de un terminador TLS.
+
+> ⚠️ **Frontera de confianza:** `X-Forwarded-For` **solo es fiable** cuando la
+> app está **detrás de un proxy/reverse-proxy que sobrescribe la cabecera**
+> (Caddy, nginx, Traefik, Render…). Si el puerto 8080 se expone **directamente**,
+> un cliente puede falsificar la cabecera y saturar el bucket de otra IP o
+> esquivar el límite usando IPs inventadas. Por eso, al introducir TLS,
+> hay que colocar el proxy delante y dejar que sea él quien fije
+> `X-Forwarded-For`, ignorando el valor que traiga el cliente.
+
 ### Pendientes / riesgos conocidos (por orden de prioridad)
 1. **Sin TLS/HTTPS** — decisión del equipo para esta fase. El tráfico (incluido
    login) va en claro. **Antes de exponer credenciales reales o datos reales,
    poner un proxy TLS** (Caddy, nginx, Traefik) delante del puerto 8080.
 2. **CORS totalmente permisivo** (`*`, con credentials). Pensado para un frontend
    aún inexistente; restringir `AllowedOriginPatterns` cuando exista frontend fijo.
-3. **Rate limiter in-memory basado en `request.getRemoteAddr()`** — detrás de un
-   proxy/túnel, todos los clientes comparten la IP. Si se introduce TLS/proxy,
-   usar el header `X-Forwarded-For`.
-4. **JWT sin revocación** — los tokens son válidos hasta `JWT_EXPIRATION`
+3. **JWT sin revocación** — los tokens son válidos hasta `JWT_EXPIRATION`
    (24 h). Los refresh tokens sí son revocables (BD).
-5. **Backups** — en Supabase la BD se respalda por el proveedor (ver §8); el
+4. **Backups** — en Supabase la BD se respalda por el proveedor (ver 8); el
    bucket R2 se gestiona desde el dashboard. Si se usara Postgres/MInIO local,
    habría que planificar dump + copia del bucket.
-6. **Tokens de verificación/reset enviados por email en claro** — mitigable con
+5. **Tokens de verificación/reset enviados por email en claro** — mitigable con
    HTTPS y rotación corta (por defecto expiran).
-7. **`GET /files/**` es `permitAll`** — el acceso al contenido se protege a nivel
+6. **`GET /files/**` es `permitAll`** — el acceso al contenido se protege a nivel
    de servicio (404 si no autorizado) y a la metadata vía `IdentityVisibility`,
    pero conviene revisar el mapeo al añadir más endpoints.
-8. **`/admin/**` mapeado a `hasRole("MASTER")`** — solo existen `ban`/`unban`;
+7. **`/admin/**` mapeado a `hasRole("MASTER")`** — solo existen `ban`/`unban`;
    `logs` y `config` siguen pendientes.
-9. **`badges.icon` y `users.profile_picture`** siguen en PostgreSQL como `oid`
+8. **`badges.icon` y `users.profile_picture`** siguen en PostgreSQL como `oid`
    (large objects) — candidatos a migrar a S3 en una iteración futura.
 
 ---
@@ -503,7 +519,7 @@ Base URL: `http://<host>:8080` (sin HTTPS por ahora). Lista detallada en
 | Subida/descarga de archivos falla con `S3Exception` | credenciales R2 incorrectas, bucket inexistente o endpoint mal configurado | revisar `S3_*` del `.env`, que el bucket exista en R2 y el API token tenga permisos |
 | `The authorization header is malformed` / 403 en R2 | región distinta de `auto` o secret incorrecto | `S3_REGION=auto` + regenerar el token |
 | Descargas con error pero la app levanta | `S3StorageService` no pudo crear el bucket (best-effort) | en MinIO dev el bucket se auto-crea; en R2 debe existir antes |
-| Login 429 / rate limited a pesar de IPs distintas | rate limiter in-memory por `getRemoteAddr()` | si hay proxy, ver §7.3 |
+| Login 429 / rate limited a pesar de IPs distintas | clientes reales tras el mismo proxy comparten IP, o `X-Forwarded-For` vacío | asegurarse de que el proxy sobrescribe la cabecera; si no, ver §7.3 (frontera de confianza) |
 | Enlaces de verificación apuntan a `localhost` | `APP_BASE_URL` sin cambiar | fijar URL pública en `Docker/.env` |
 | No hay forma de crear el primer admin | `BOOTSTRAP_MASTER_*` vacíos | rellenar y reiniciar la app (es idempotente) |
 | Swagger/OpenAPI no responde en prod | desactivado a propósito | esperado; no re-activar en prod |
@@ -514,14 +530,15 @@ Base URL: `http://<host>:8080` (sin HTTPS por ahora). Lista detallada en
 
 ## 14. Pendientes del equipo DevOps (hoja de ruta)
 
-1. **TLS/HTTPS** (Caddy/nginx + ajustar `APP_BASE_URL` a `https://...`).
+1. **TLS/HTTPS** (Caddy/nginx + ajustar `APP_BASE_URL` a `https://...`). Al
+   añadirlo, el proxy debe sobrescribir `X-Forwarded-For` para que el rate
+   limiter (§7.3) use la IP del cliente real.
 2. Revisar **IPv6/IPv4** y el uso del **connection pooler** de Supabase según el host.
 3. Definir **backup del bucket R2** (lifecycle/versionado) y revisar los backups
    automáticos de Supabase.
 4. Montar `/app/logs` como volumen persistente (hoy efímero).
-5. Revisar rate limiter para funcionamiento tras proxy (`X-Forwarded-For`).
-6. Restringir CORS al frontend real cuando exista.
-7. CI/CD: actualmente no hay pipeline; el build es manual (`docker build` +
+5. Restringir CORS al frontend real cuando exista.
+6. CI/CD: actualmente no hay pipeline; el build es manual (`docker build` +
    `docker compose up`). Considerar GitHub Actions (build de imagen + push a
    registry + deploy por SSH).
-8. Migrar `badges.icon` y `users.profile_picture` (aún `oid` en PostgreSQL) a S3.
+7. Migrar `badges.icon` y `users.profile_picture` (aún `oid` en PostgreSQL) a S3.

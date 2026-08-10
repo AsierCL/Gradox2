@@ -1,5 +1,7 @@
 package com.example.gradox2;
 
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -9,7 +11,9 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.cache.CacheManager;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import com.example.gradox2.persistence.entities.Course;
@@ -29,12 +33,16 @@ class SubjectIntegrationTest {
     private CourseRepository courseRepository;
 
     @Autowired
+    private CacheManager cacheManager;
+
+    @MockitoSpyBean
     private SubjectRepository subjectRepository;
 
     @BeforeEach
     void cleanDatabase() {
         subjectRepository.deleteAll();
         courseRepository.deleteAll();
+        cacheManager.getCache("subjects").clear();
     }
 
     @Test
@@ -74,5 +82,44 @@ class SubjectIntegrationTest {
     void getSubjectReturns404WhenMissing() throws Exception {
         mockMvc.perform(get("/subjects/{id}", 999999L))
                 .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void getAllSubjectsIsServedFromCacheOnSecondRequest() throws Exception {
+        Course curso = courseRepository.save(Course.builder().code("1").name("Primer curso").build());
+        subjectRepository.save(Subject.builder().code("MAT1").name("Matemáticas I").course(curso).build());
+
+        mockMvc.perform(get("/subjects")).andExpect(status().isOk());
+        mockMvc.perform(get("/subjects")).andExpect(status().isOk());
+        mockMvc.perform(get("/subjects")).andExpect(status().isOk());
+
+        verify(subjectRepository, times(1))
+                .findAllByOrderByCourseIdAscCodeAsc();
+    }
+
+    @Test
+    void getAllSubjectsRehitsDatabaseAfterCacheEviction() throws Exception {
+        Course curso = courseRepository.save(Course.builder().code("1").name("Primer curso").build());
+        subjectRepository.save(Subject.builder().code("MAT1").name("Matemáticas I").course(curso).build());
+
+        mockMvc.perform(get("/subjects")).andExpect(status().isOk());
+        cacheManager.getCache("subjects").clear();
+
+        mockMvc.perform(get("/subjects")).andExpect(status().isOk());
+
+        verify(subjectRepository, times(2))
+                .findAllByOrderByCourseIdAscCodeAsc();
+    }
+
+    @Test
+    void getSubjectIsServedFromCacheOnSecondRequest() throws Exception {
+        Course curso = courseRepository.save(Course.builder().code("1").name("Primer curso").build());
+        Subject subject = subjectRepository.save(
+                Subject.builder().code("MAT1").name("Matemáticas I").course(curso).build());
+
+        mockMvc.perform(get("/subjects/{id}", subject.getId())).andExpect(status().isOk());
+        mockMvc.perform(get("/subjects/{id}", subject.getId())).andExpect(status().isOk());
+
+        verify(subjectRepository, times(1)).findById(subject.getId());
     }
 }

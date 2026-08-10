@@ -11,6 +11,10 @@ public class InMemoryRateLimiter {
 
     private final ConcurrentHashMap<String, Deque<Long>> requestBuckets = new ConcurrentHashMap<>();
 
+    public void clear() {
+        requestBuckets.clear();
+    }
+
     public boolean isAllowed(String key, int maxRequests, long windowMs) {
         long now = System.currentTimeMillis();
         Deque<Long> bucket = requestBuckets.computeIfAbsent(key, ignored -> new ArrayDeque<>());

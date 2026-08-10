@@ -22,6 +22,7 @@ import com.example.gradox2.persistence.repository.PasswordResetTokenRepository;
 import com.example.gradox2.persistence.repository.RefreshTokenRepository;
 import com.example.gradox2.persistence.repository.UserRepository;
 import com.example.gradox2.persistence.repository.VerificationTokenRepository;
+import com.example.gradox2.security.InMemoryRateLimiter;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 @SpringBootTest
@@ -50,8 +51,12 @@ class AuthRateLimitIntegrationTest {
     @Autowired
     private PasswordEncoder passwordEncoder;
 
+    @Autowired
+    private InMemoryRateLimiter rateLimiter;
+
     @BeforeEach
     void setUp() {
+        rateLimiter.clear();
         passwordResetTokenRepository.deleteAll();
         refreshTokenRepository.deleteAll();
         verificationTokenRepository.deleteAll();
@@ -95,16 +100,14 @@ class AuthRateLimitIntegrationTest {
     }
 
     @Test
-    void loginRateLimitShouldIgnoreSpoofedForwardedForHeader() throws Exception {
-        String remoteIp = "10.0.0.11";
-
+    void loginRateLimitUsesFirstIpFromForwardedForHeader() throws Exception {
         for (int i = 0; i < 5; i++) {
             mockMvc.perform(post("/api/auth/login")
                             .with(request -> {
-                                request.setRemoteAddr(remoteIp);
+                                request.setRemoteAddr("10.0.0.11");
                                 return request;
                             })
-                            .header("X-Forwarded-For", "198.51.100." + i)
+                            .header("X-Forwarded-For", "198.51.100.50")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(json(Map.of("username", "ratelimituser", "password", "WrongPass123!"))))
                     .andExpect(status().isUnauthorized())
@@ -113,14 +116,30 @@ class AuthRateLimitIntegrationTest {
 
         mockMvc.perform(post("/api/auth/login")
                         .with(request -> {
-                            request.setRemoteAddr(remoteIp);
+                            request.setRemoteAddr("10.0.0.11");
                             return request;
                         })
-                        .header("X-Forwarded-For", "203.0.113.200")
+                        .header("X-Forwarded-For", "198.51.100.50")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json(Map.of("username", "ratelimituser", "password", "WrongPass123!"))))
                 .andExpect(status().isTooManyRequests())
                 .andExpect(jsonPath("$.errorCode").value("RATE_LIMIT_EXCEEDED"));
+    }
+
+    @Test
+    void distinctForwardedForIpsDoNotShareRateLimitBucket() throws Exception {
+        for (int i = 0; i < 6; i++) {
+            mockMvc.perform(post("/api/auth/login")
+                            .with(request -> {
+                                request.setRemoteAddr("10.0.0.12");
+                                return request;
+                            })
+                            .header("X-Forwarded-For", "198.51.100." + i)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(json(Map.of("username", "ratelimituser", "password", "WrongPass123!"))))
+                    .andExpect(status().isUnauthorized())
+                    .andExpect(jsonPath("$.errorCode").value("UNAUTHENTICATED_ACCESS"));
+        }
     }
 
     private String json(Object value) throws Exception {
