@@ -21,6 +21,9 @@ public class PublicProfileResponse {
     @Schema(description = "Puntuación de reputación", example = "4.5")
     public Double reputation;
 
+    @Schema(description = "URL firmada de la foto de perfil (null si no hay foto)")
+    public String profilePictureUrl;
+
     @Schema(description = "Insignias obtenidas", example = "[\"PRIMER_ARCHIVO\"]")
     public Set<String> badges;
 }

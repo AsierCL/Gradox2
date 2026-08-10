@@ -33,9 +33,8 @@ public class User implements UserDetails{
     @Column(unique = true, nullable = false)
     private String email;
 
-    @Lob
-    @Column(name = "profile_picture")
-    private byte[] profilePicture;
+    @Column(name = "profile_picture_key", length = 512)
+    private String profilePictureKey;
 
     @Column(nullable = false)
     private String passwordHash;

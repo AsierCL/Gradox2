@@ -138,6 +138,13 @@
             <groupId>software.amazon.awssdk</groupId>
             <artifactId>s3</artifactId>
         </dependency>
+
+        <!-- WebP support for ImageIO -->
+        <dependency>
+            <groupId>com.github.gotson</groupId>
+            <artifactId>webp-imageio</artifactId>
+            <version>0.2.2</version>
+        </dependency>
     </dependencies>
 
     <dependencyManagement>

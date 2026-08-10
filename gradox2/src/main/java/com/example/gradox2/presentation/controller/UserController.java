@@ -13,10 +13,12 @@ import com.example.gradox2.presentation.dto.users.MyProfileResponse;
 import com.example.gradox2.presentation.dto.users.PublicProfileResponse;
 import com.example.gradox2.presentation.dto.users.UpdateMyProfileRequest;
 import com.example.gradox2.service.interfaces.IUserService;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.multipart.MultipartFile;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -28,6 +30,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 
 @RestController
@@ -63,6 +66,28 @@ public class UserController {
             @Valid @RequestBody UpdateMyProfileRequest updateMyProfileRequest) {
         MyProfileResponse updatedUser = userService.updateCurrentUser(updateMyProfileRequest);
         return ResponseEntity.ok(updatedUser);
+    }
+
+    @PutMapping("/me/profile-picture")
+    @Operation(summary = "Subir o actualizar foto de perfil", description = "Sube una imagen (multipart/form-data) al bucket y firma su URL de visualización")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Foto de perfil actualizada"),
+        @ApiResponse(responseCode = "400", description = "Imagen inválida o demasiado grande", content = @Content),
+        @ApiResponse(responseCode = "403", description = "No autenticado", content = @Content)
+    })
+    public ResponseEntity<MyProfileResponse> updateProfilePicture(
+            @Parameter(description = "Archivo de imagen") @RequestParam("file") @NotNull MultipartFile file) {
+        return ResponseEntity.ok(userService.updateProfilePicture(file));
+    }
+
+    @DeleteMapping("/me/profile-picture")
+    @Operation(summary = "Eliminar foto de perfil", description = "Elimina la foto de perfil del bucket y la referencia en el perfil")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Foto de perfil eliminada"),
+        @ApiResponse(responseCode = "403", description = "No autenticado", content = @Content)
+    })
+    public ResponseEntity<MyProfileResponse> deleteProfilePicture() {
+        return ResponseEntity.ok(userService.deleteProfilePicture());
     }
 
     @GetMapping("/{id}")
