@@ -101,7 +101,16 @@ public class RateLimitFilter extends OncePerRequestFilter {
     }
 
     private String clientIp(HttpServletRequest request) {
-        // Do not trust forwarded headers unless a trusted proxy strategy is explicitly configured.
+        // Confiar en la primera IP de X-Forwarded-For: solo es seguro si un proxy
+        // de confianza la sobrescribe (server.forward-headers-strategy=framework).
+        // Si el cliente conecta directo al puerto de la app, puede falsificarla.
+        String forwardedFor = request.getHeader("X-Forwarded-For");
+        if (forwardedFor != null && !forwardedFor.isBlank()) {
+            String firstIp = forwardedFor.split(",")[0].trim();
+            if (!firstIp.isEmpty()) {
+                return firstIp;
+            }
+        }
         return request.getRemoteAddr();
     }
 }
