@@ -16,8 +16,11 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.zip.CRC32;
 
 import javax.imageio.ImageIO;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -142,10 +145,49 @@ class ProfilePictureIntegrationTest {
         assertEquals("RIFF", new String(stored, 0, 4, StandardCharsets.US_ASCII));
         assertEquals("WEBP", new String(stored, 8, 4, StandardCharsets.US_ASCII));
 
-        BufferedImage decoded = ImageIO.read(new ByteArrayInputStream(stored));
-        assertNotNull(decoded);
-        assertEquals(256, decoded.getWidth());
-        assertEquals(256, decoded.getHeight());
+        int[] dimensions = readWebpDimensions(stored);
+        assertEquals(256, dimensions[0]);
+        assertEquals(256, dimensions[1]);
+    }
+
+    private int[] readWebpDimensions(byte[] webp) {
+        if (webp.length < 20) {
+            throw new AssertionError("WebP almacenado demasiado corto");
+        }
+        int offset = 12;
+        while (offset + 8 <= webp.length) {
+            String chunkId = new String(webp, offset, 4, StandardCharsets.US_ASCII);
+            int chunkSize = ByteBuffer.wrap(webp, offset + 4, 4).order(ByteOrder.LITTLE_ENDIAN).getInt();
+            if ("VP8 ".equals(chunkId)) {
+                if (chunkSize < 10) {
+                    throw new AssertionError("Chunk VP8 malformado");
+                }
+                int width = ByteBuffer.wrap(webp, offset + 8 + 6, 2).order(ByteOrder.LITTLE_ENDIAN).getShort() & 0xffff;
+                int height = ByteBuffer.wrap(webp, offset + 8 + 8, 2).order(ByteOrder.LITTLE_ENDIAN).getShort() & 0xffff;
+                return new int[] { width, height };
+            }
+            if ("VP8L".equals(chunkId)) {
+                if (chunkSize < 5) {
+                    throw new AssertionError("Chunk VP8L malformado");
+                }
+                int packed = ByteBuffer.wrap(webp, offset + 8 + 1, 4).order(ByteOrder.LITTLE_ENDIAN).getInt();
+                return new int[] { (packed & 0x3fff) + 1, ((packed >>> 14) & 0x3fff) + 1 };
+            }
+            if ("VP8X".equals(chunkId)) {
+                if (chunkSize < 10) {
+                    throw new AssertionError("Chunk VP8X malformado");
+                }
+                int width = 1 + ((webp[offset + 8 + 4] & 0xff)
+                        | ((webp[offset + 8 + 5] & 0xff) << 8)
+                        | ((webp[offset + 8 + 6] & 0xff) << 16));
+                int height = 1 + ((webp[offset + 8 + 7] & 0xff)
+                        | ((webp[offset + 8 + 8] & 0xff) << 8)
+                        | ((webp[offset + 8 + 9] & 0xff) << 16));
+                return new int[] { width, height };
+            }
+            offset += 8 + chunkSize + (chunkSize & 1);
+        }
+        throw new AssertionError("No se encontró ningún chunk de imagen WebP");
     }
 
     @Test
@@ -169,6 +211,20 @@ class ProfilePictureIntegrationTest {
 
         byte[] oversized = new byte[6 * 1024 * 1024];
         mockMvc.perform(putMultipart("/users/me/profile-picture", token, "big.png", "image/png", oversized))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errorCode").value("INVALID_FILE_OPERATION"));
+
+        User persisted = userRepository.findByUsername("pic").orElseThrow();
+        assertNull(persisted.getProfilePictureKey());
+    }
+
+    @Test
+    void uploadingHugeDimensionPictureShouldBeRejected() throws Exception {
+        createEnabledUser("pic", "pic@rai.test", "SecurePass1!");
+        String token = loginAndGetToken("pic", "SecurePass1!");
+
+        byte[] bomb = createHugeDimensionPng(65500, 65500);
+        mockMvc.perform(putMultipart("/users/me/profile-picture", token, "bomb.png", "image/png", bomb))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.errorCode").value("INVALID_FILE_OPERATION"));
 
@@ -266,6 +322,38 @@ class ProfilePictureIntegrationTest {
                 GetObjectRequest.builder().bucket("test-bucket").key(key).build())) {
             return response.readAllBytes();
         }
+    }
+
+    private byte[] createHugeDimensionPng(int width, int height) throws Exception {
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        baos.write(new byte[] { (byte) 0x89, 'P', 'N', 'G', 0x0d, 0x0a, 0x1a, 0x0a });
+
+        ByteBuffer ihdr = ByteBuffer.allocate(4 + 4 + 13 + 4);
+        ihdr.putInt(13);
+        ihdr.put("IHDR".getBytes(StandardCharsets.US_ASCII));
+        ihdr.putInt(width);
+        ihdr.putInt(height);
+        ihdr.put((byte) 8);
+        ihdr.put((byte) 6);
+        ihdr.put((byte) 0);
+        ihdr.put((byte) 0);
+        ihdr.put((byte) 0);
+
+        byte[] tail = new byte[21];
+        System.arraycopy(ihdr.array(), 4, tail, 0, 17);
+        CRC32 crc = new CRC32();
+        crc.update(tail, 0, 17);
+        ihdr.putInt((int) crc.getValue());
+        baos.write(ihdr.array());
+
+        ihdr.clear();
+        ihdr.putInt(0);
+        ihdr.put("IEND".getBytes(StandardCharsets.US_ASCII));
+        crc.reset();
+        crc.update("IEND".getBytes(StandardCharsets.US_ASCII));
+        ihdr.putInt((int) crc.getValue());
+        baos.write(ihdr.array());
+        return baos.toByteArray();
     }
 
     private void assertObjectPresent(String key) {
