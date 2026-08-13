@@ -160,6 +160,7 @@ public class AuthServiceImpl implements IAuthService {
 
         User user = resetToken.getUser();
         user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
+        user.setTokenVersion(user.getTokenVersion() + 1);
         user.getRefreshTokens().clear();
         userRepository.save(user);
         passwordResetTokenRepository.delete(resetToken);

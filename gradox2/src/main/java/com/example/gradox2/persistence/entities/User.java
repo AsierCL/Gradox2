@@ -81,6 +81,10 @@ public class User implements UserDetails{
     @Column(nullable = false)
     private boolean enabled = false;
 
+    @Builder.Default
+    @Column(name = "token_version", nullable = false)
+    private int tokenVersion = 1;
+
     @Override
     public boolean isEnabled() {
         return enabled;
