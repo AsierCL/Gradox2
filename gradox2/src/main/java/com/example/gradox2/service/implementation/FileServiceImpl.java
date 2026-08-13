@@ -59,6 +59,7 @@ public class FileServiceImpl implements IFileService {
         this.fileUrlSigner = fileUrlSigner;
     }
 
+    @Transactional
     public FileDownloadResponse downloadFile(Long id) {
         File file = fileRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("File not found"));
@@ -68,6 +69,9 @@ public class FileServiceImpl implements IFileService {
             // No revelar la existencia del archivo a quien no puede acceder a él.
             throw new NotFoundException("File not found");
         }
+
+        file.incrementDownloadCount();
+        fileRepository.save(file);
 
         String url = fileUrlSigner.presignedGetUrl(file.getObjectKey(),
                 ContentDisposition.attachmentOf(file.getTitle()));

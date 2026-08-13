@@ -33,6 +33,13 @@ public class File {
     private String objectKey;
     private String fileHash;
 
+    @Column(name = "size_bytes")
+    private Long sizeBytes;
+
+    @Builder.Default
+    @Column(name = "download_count", nullable = false)
+    private Long downloadCount = 0L;
+
     @Builder.Default
     private Instant uploadAt = Instant.now();
 
@@ -68,6 +75,13 @@ public class File {
         score.setFile(null);
         // Actualizar el score total
         this.score = calculateTotalScore();
+    }
+
+    public void incrementDownloadCount() {
+        if (this.downloadCount == null) {
+            this.downloadCount = 0L;
+        }
+        this.downloadCount++;
     }
 
     // El score total ahora se puede calcular dinámicamente

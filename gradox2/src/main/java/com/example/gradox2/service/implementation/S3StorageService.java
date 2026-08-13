@@ -11,6 +11,7 @@ import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.CreateBucketRequest;
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import software.amazon.awssdk.services.s3.model.HeadBucketRequest;
+import software.amazon.awssdk.services.s3.model.HeadObjectRequest;
 import software.amazon.awssdk.services.s3.model.NoSuchBucketException;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.model.S3Exception;
@@ -59,5 +60,22 @@ public class S3StorageService {
                 .bucket(bucketName)
                 .key(key)
                 .build());
+    }
+
+    /**
+     * Tamaño en bytes del objeto, o {@code null} si no se puede determinar.
+     */
+    public Long sizeOf(String key) {
+        if (key == null || key.isBlank()) {
+            return null;
+        }
+        try {
+            return s3Client.headObject(HeadObjectRequest.builder()
+                    .bucket(bucketName)
+                    .key(key)
+                    .build()).contentLength();
+        } catch (S3Exception e) {
+            return null;
+        }
     }
 }
