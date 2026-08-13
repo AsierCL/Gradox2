@@ -4,6 +4,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -42,10 +43,16 @@ import com.example.gradox2.persistence.repository.TempFileRepository;
 import com.example.gradox2.utils.EmailService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.SignatureAlgorithm;
+import io.jsonwebtoken.security.Keys;
+import java.security.Key;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
+import java.util.Date;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -261,6 +268,64 @@ class AuthSessionIntegrationTest {
                 .andExpect(jsonPath("$.errorCode").value("UNAUTHENTICATED_ACCESS"));
     }
 
+    @Test
+    void accessTokenShouldBeRejectedAfterPasswordResetBumpsTokenVersion() throws Exception {
+        createEnabledUser("versionreset", "versionreset@rai.usc.es", "SecurePass1!", UserRole.USER);
+        String accessToken = login("versionreset", "SecurePass1!").get("token").asText();
+
+        mockMvc.perform(get("/users/me")
+                        .header("Authorization", bearer(accessToken)))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(post("/api/auth/password/reset-request")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json(Map.of("email", "versionreset@rai.usc.es"))))
+                .andExpect(status().isOk());
+
+        PasswordResetToken token = passwordResetTokenRepository.findAll().stream().findFirst().orElseThrow();
+
+        mockMvc.perform(post("/api/auth/password/reset")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json(Map.of("token", token.getToken(), "newPassword", "NewSecurePass1!"))))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/users/me")
+                        .header("Authorization", bearer(accessToken)))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void accessTokenShouldBeRejectedForDisabledUserEvenAtSameTokenVersion() throws Exception {
+        createEnabledUser("disableduser", "disabled@rai.usc.es", "SecurePass1!", UserRole.USER);
+        String accessToken = login("disableduser", "SecurePass1!").get("token").asText();
+
+        User user = userRepository.findByUsername("disableduser").orElseThrow();
+        user.setEnabled(false);
+        userRepository.save(user);
+
+        mockMvc.perform(get("/users/me")
+                        .header("Authorization", bearer(accessToken)))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void legacyAccessTokenWithoutVersionClaimShouldBeRejected() throws Exception {
+        createEnabledUser("legacyuser", "legacy@rai.usc.es", "SecurePass1!", UserRole.USER);
+
+        Key key = Keys.hmacShaKeyFor("test-jwt-secret-that-is-long-enough-for-hs256".getBytes(StandardCharsets.UTF_8));
+        String legacyToken = Jwts.builder()
+                .setSubject("legacyuser")
+                .claim("role", UserRole.USER.name())
+                .setIssuedAt(new Date())
+                .setExpiration(new Date(System.currentTimeMillis() + 900000))
+                .signWith(key, SignatureAlgorithm.HS256)
+                .compact();
+
+        mockMvc.perform(get("/users/me")
+                        .header("Authorization", bearer(legacyToken)))
+                .andExpect(status().isForbidden());
+    }
+
     private User createEnabledUser(String username, String email, String password, UserRole role) {
         User user = User.builder()
                 .username(username)
@@ -284,6 +349,10 @@ class AuthSessionIntegrationTest {
                 .andReturn();
 
         return objectMapper.readTree(result.getResponse().getContentAsString());
+    }
+
+    private String bearer(String token) {
+        return "Bearer " + token;
     }
 
     private String json(Object value) throws Exception {

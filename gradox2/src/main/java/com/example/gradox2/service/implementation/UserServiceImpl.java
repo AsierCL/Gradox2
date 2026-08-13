@@ -176,6 +176,7 @@ public class UserServiceImpl implements IUserService {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Usuario no encontrado"));
         user.setEnabled(false);
+        user.setTokenVersion(user.getTokenVersion() + 1);
         userRepository.save(user);
     }
 

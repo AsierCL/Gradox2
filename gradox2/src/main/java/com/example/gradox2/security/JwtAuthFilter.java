@@ -45,11 +45,20 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         try {
             if (jwtUtils.isTokenValid(token)) {
                 final String username = jwtUtils.extractUsername(token);
+                final Integer tokenVersion = jwtUtils.extractVersion(token);
 
-                if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+                // Tolerancia cero: los tokens legacy (sin claim `ver`) se rechazan y fuerzan re-login.
+                if (username == null || tokenVersion == null) {
+                    filterChain.doFilter(request, response);
+                    return;
+                }
+
+                if (SecurityContextHolder.getContext().getAuthentication() == null) {
                     User user = userRepository.findByUsername(username).orElse(null);
 
-                    if (user != null) {
+                    // El JWT debe pertenecer a un usuario existente, habilitado y con la versión
+                    // de token vigente (revocación global vía token_version).
+                    if (user != null && user.isEnabled() && user.getTokenVersion() == tokenVersion) {
                         UsernamePasswordAuthenticationToken authToken =
                             new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities());
 

@@ -36,6 +36,7 @@ public class JwtUtils {
         return Jwts.builder()
                 .setSubject(user.getUsername())
                 .claim("role", user.getRole().name())
+                .claim("ver", user.getTokenVersion())
                 .setIssuedAt(new Date())
                 .setExpiration(new Date(System.currentTimeMillis() + jwtExpirationMs))
                 .signWith(getSigningKey(), SignatureAlgorithm.HS256) // Corregido: Se pasan la clave y el algoritmo por separado.
@@ -44,6 +45,25 @@ public class JwtUtils {
 
     public String extractUsername(String token) {
         return parseClaims(token).getSubject();
+    }
+
+    /**
+     * Devuelve el claim de versión del token ({@code ver}), o null si el claim no existe.
+     * Un token sin {@code ver} se considera legacy (pre-despliegue) y debe ser rechazado.
+     */
+    public Integer extractVersion(String token) {
+        Claims claims = parseClaims(token);
+        Object ver = claims.get("ver");
+        if (ver == null) {
+            return null;
+        }
+        if (ver instanceof Integer) {
+            return (Integer) ver;
+        }
+        if (ver instanceof Number) {
+            return ((Number) ver).intValue();
+        }
+        return Integer.parseInt(ver.toString());
     }
 
     public boolean isTokenValid(String token) {
