@@ -90,6 +90,7 @@ public class FileProposalServiceImpl implements IFileProposalService {
                     .type(dto.getType())
                     .objectKey(objectKey)
                     .fileHash(generateFileHash(fileData)) // Hash seguro
+                    .sizeBytes((long) fileData.length)
                     .subject(subject)
                     .uploader(uploader)
                     .visibilityLevel(dto.getVisibilityLevel() != null ? dto.getVisibilityLevel() : FileVisibility.PUBLIC)

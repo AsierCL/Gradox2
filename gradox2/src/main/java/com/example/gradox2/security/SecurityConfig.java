@@ -60,6 +60,7 @@ public class SecurityConfig {
                                 .requestMatchers(HttpMethod.GET, "/files/**").permitAll()
                                 .requestMatchers(HttpMethod.GET, "/subjects/**").permitAll()
                                 .requestMatchers(HttpMethod.GET, "/badges/**").permitAll()
+                                .requestMatchers(HttpMethod.GET, "/stats/**").permitAll()
                                 .requestMatchers("/api/auth/**").permitAll()
                                 .requestMatchers("/health**", "/actuator/health/**", "/actuator/info").permitAll()
                                 .requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**").permitAll()

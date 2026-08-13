@@ -244,6 +244,7 @@ public class VoteServiceImpl implements IVoteService {
                 .type(tempFile.getType())
                 .objectKey(tempFile.getObjectKey())
                 .fileHash(tempFile.getFileHash())
+                .sizeBytes(tempFile.getSizeBytes())
                 .uploader(tempFile.getUploader())
                 .subject(tempFile.getSubject())
                 .visibilityLevel(tempFile.getVisibilityLevel())

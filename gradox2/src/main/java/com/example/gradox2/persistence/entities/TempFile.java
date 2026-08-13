@@ -30,6 +30,9 @@ public class TempFile {
     private String objectKey;
     private String fileHash;
 
+    @Column(name = "size_bytes")
+    private Long sizeBytes;
+
     @Builder.Default
     private Instant uploadAt = Instant.now();
 
