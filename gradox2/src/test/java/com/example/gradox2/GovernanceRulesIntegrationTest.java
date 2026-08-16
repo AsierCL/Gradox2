@@ -274,6 +274,82 @@ class GovernanceRulesIntegrationTest {
     }
 
     @Test
+    void fileProposalShouldSnapshotVoteWeightsOnFirstVoteAndUseThemForStatus() throws Exception {
+        voteConfigService.reloadConfig();
+        voteConfigService.updateConfig(2, 0.5, 3, 2.0, 1.0);
+
+        Long subjectId = createSubject();
+        createEnabledUser("weightProposer", "weightProposer@rai.usc.es", "SecurePass1!", UserRole.USER);
+        createEnabledUser("weightMaster", "weightMaster@rai.usc.es", "SecurePass1!", UserRole.MASTER);
+        createEnabledUser("weightVoter", "weightVoter@rai.usc.es", "SecurePass1!", UserRole.USER);
+
+        String proposerToken = loginAndGetToken("weightProposer", "SecurePass1!");
+        String masterToken = loginAndGetToken("weightMaster", "SecurePass1!");
+        String voterToken = loginAndGetToken("weightVoter", "SecurePass1!");
+
+        long proposalId = uploadProposalAndGetId(proposerToken, subjectId, "temaW.pdf", "Tema W", "Desc W");
+
+        Proposal beforeVoting = proposalRepository.findById(proposalId).orElseThrow();
+        org.junit.jupiter.api.Assertions.assertNull(beforeVoting.getMasterVoteWeight());
+        org.junit.jupiter.api.Assertions.assertNull(beforeVoting.getUserVoteWeight());
+
+        mockMvc.perform(post("/vote/{id}/{upvote}", proposalId, false)
+                        .header("Authorization", bearer(masterToken)))
+                .andExpect(status().isOk());
+
+        Proposal afterFirstVote = proposalRepository.findById(proposalId).orElseThrow();
+        org.junit.jupiter.api.Assertions.assertEquals(2.0, afterFirstVote.getMasterVoteWeight());
+        org.junit.jupiter.api.Assertions.assertEquals(1.0, afterFirstVote.getUserVoteWeight());
+
+        voteConfigService.updateConfig(2, 0.5, 3, 0.5, 1.0);
+
+        mockMvc.perform(post("/vote/{id}/{upvote}", proposalId, true)
+                        .header("Authorization", bearer(voterToken)))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/uploadProposal/{id}", proposalId)
+                        .header("Authorization", bearer(proposerToken)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("REJECTED"));
+    }
+
+    @Test
+    void closeExpiredProposalsShouldRecordAuditWithSystemActor() throws Exception {
+        voteConfigService.reloadConfig();
+        voteConfigService.updateConfig(1, 0.5, 3);
+
+        Long subjectId = createSubject();
+        createEnabledUser("auditProposer", "auditProposer@rai.usc.es", "SecurePass1!", UserRole.USER);
+        createEnabledUser("auditMaster", "auditMaster@rai.usc.es", "SecurePass1!", UserRole.MASTER);
+        String token = loginAndGetTokenQuietly("auditProposer", "SecurePass1!");
+        String masterToken = loginAndGetToken("auditMaster", "SecurePass1!");
+
+        long proposalId = uploadProposalAndGetIdQuietly(token, subjectId, "audit.pdf", "Audit", "Desc");
+
+        Proposal proposal = proposalRepository.findById(proposalId).orElseThrow();
+        proposal.setEndsAt(java.time.Instant.now().minusSeconds(60));
+        proposalRepository.save(proposal);
+
+        voteService.closeExpiredProposals();
+
+        MvcResult auditResult = mockMvc.perform(get("/admin/audit")
+                        .header("Authorization", bearer(masterToken)))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        JsonNode payload = objectMapper.readTree(auditResult.getResponse().getContentAsString());
+        boolean foundSystemActor = false;
+        for (JsonNode entry : payload.get("content")) {
+            if ("[SYSTEM]".equals(entry.get("actor").asText())) {
+                foundSystemActor = true;
+                break;
+            }
+        }
+        org.junit.jupiter.api.Assertions.assertTrue(foundSystemActor,
+                "Se espera una auditoría registrada sin actor resuelta como [SYSTEM]");
+    }
+
+    @Test
     void demoteShouldCreateExpulsionProposalAndApplyRoleDowngradeWhenApproved() throws Exception {
         voteConfigService.reloadConfig();
         voteConfigService.updateConfig(2, 0.5, 3);

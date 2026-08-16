@@ -169,6 +169,39 @@ class AdminAndFileDeletionIntegrationTest {
     }
 
     @Test
+    void banningAnAlreadyBannedUserShouldReturnConflict() throws Exception {
+        createEnabledUser("masterban", "masterban@rai.usc.es", "SecurePass1!", UserRole.MASTER);
+        createEnabledUser("doubleban", "doubleban@rai.usc.es", "SecurePass1!", UserRole.USER);
+
+        String masterToken = loginAndGetToken("masterban", "SecurePass1!");
+        long userId = userRepository.findByUsername("doubleban").orElseThrow().getId();
+
+        mockMvc.perform(put("/admin/users/{id}/ban", userId)
+                        .header("Authorization", bearer(masterToken)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$").value("Usuario baneado correctamente"));
+
+        mockMvc.perform(put("/admin/users/{id}/ban", userId)
+                        .header("Authorization", bearer(masterToken)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.errorCode").value("ALREADY_EXIST_ERROR"));
+    }
+
+    @Test
+    void unbanningANonBannedUserShouldReturnConflict() throws Exception {
+        createEnabledUser("masterunban", "masterunban@rai.usc.es", "SecurePass1!", UserRole.MASTER);
+        createEnabledUser("notbanned", "notbanned@rai.usc.es", "SecurePass1!", UserRole.USER);
+
+        String masterToken = loginAndGetToken("masterunban", "SecurePass1!");
+        long userId = userRepository.findByUsername("notbanned").orElseThrow().getId();
+
+        mockMvc.perform(put("/admin/users/{id}/unban", userId)
+                        .header("Authorization", bearer(masterToken)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.errorCode").value("ALREADY_EXIST_ERROR"));
+    }
+
+    @Test
     void fileDeletionProposalShouldExposeMetadataAndRemainPendingBelowQuorum() throws Exception {
         setupPublishedFile();
         File publishedFile = fileRepository.findAll().stream().findFirst().orElseThrow();

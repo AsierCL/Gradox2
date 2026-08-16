@@ -28,4 +28,12 @@ public class VoteConfigUpdateRequest {
     @Min(value = 1, message = "Max pending uploads must be at least 1")
     @Schema(description = "Límite de subidas pendientes por usuario", example = "3")
     private Integer maxPendingUploads;
+
+    @Schema(description = "Peso de voto MASTER (opcional)", example = "2.0")
+    @DecimalMin(value = "0.1", message = "Master vote weight must be >= 0.1")
+    private Double masterVoteWeight;
+
+    @Schema(description = "Peso de voto de usuario (opcional)", example = "1.0")
+    @DecimalMin(value = "0.1", message = "User vote weight must be >= 0.1")
+    private Double userVoteWeight;
 }

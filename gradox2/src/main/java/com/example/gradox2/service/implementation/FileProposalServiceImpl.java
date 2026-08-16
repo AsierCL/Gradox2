@@ -32,6 +32,7 @@ import com.example.gradox2.service.exceptions.InvalidFileOperation;
 import com.example.gradox2.service.exceptions.NotFoundException;
 import com.example.gradox2.service.exceptions.ProposalClosedException;
 import com.example.gradox2.service.interfaces.FileUrlSigner;
+import com.example.gradox2.service.interfaces.IAuditService;
 import com.example.gradox2.service.interfaces.IFileProposalService;
 import com.example.gradox2.service.interfaces.IGlobalConfigService;
 import com.example.gradox2.utils.ContentDisposition;
@@ -59,17 +60,19 @@ public class FileProposalServiceImpl implements IFileProposalService {
     private final IGlobalConfigService voteConfigService;
     private final S3StorageService s3StorageService;
     private final FileUrlSigner fileUrlSigner;
+    private final IAuditService auditService;
 
     public FileProposalServiceImpl(TempFileRepository tempFileRepository,
             FileProposalRepository fileProposalRepository, SubjectRepository subjectRepository,
             IGlobalConfigService voteConfigService, S3StorageService s3StorageService,
-            FileUrlSigner fileUrlSigner) {
+            FileUrlSigner fileUrlSigner, IAuditService auditService) {
         this.tempFileRepository = tempFileRepository;
         this.fileProposalRepository = fileProposalRepository;
         this.subjectRepository = subjectRepository;
         this.voteConfigService = voteConfigService;
         this.s3StorageService = s3StorageService;
         this.fileUrlSigner = fileUrlSigner;
+        this.auditService = auditService;
     }
 
     @Transactional
@@ -105,6 +108,8 @@ public class FileProposalServiceImpl implements IFileProposalService {
             proposal.setQuorumRequired(config.getQuorumRequired());
             proposal.setApprovalThreshold(config.getApprovalThreshold());
             fileProposalRepository.save(proposal);
+
+            auditService.record(ActionType.UPLOAD, "FileProposal", proposal.getId(), "Propuesta de subida creada");
 
             return FileProposalMapper.toFileProposalResponse(proposal, uploader);
 

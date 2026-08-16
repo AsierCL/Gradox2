@@ -1,6 +1,8 @@
 package com.example.gradox2.persistence.repository;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 import com.example.gradox2.persistence.entities.User;
 import com.example.gradox2.persistence.entities.enums.UserRole;
@@ -15,4 +17,6 @@ public interface UserRepository extends JpaRepository<User, Long> {
     boolean existsByEmail(String email);
     void deleteById(Long id);
     long countByRole(UserRole role);
+    long countByRoleAndEnabled(UserRole role, boolean enabled);
+    Page<User> findByEnabledFalse(Pageable pageable);
 }

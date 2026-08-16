@@ -45,6 +45,31 @@ public class GlobalConfigService implements IGlobalConfigService {
     @Override
     @Transactional
     public GlobalConfig updateConfig(Integer quorumRequired, Double approvalThreshold, Integer maxPendingUploads) {
+        return updateConfig(quorumRequired, approvalThreshold, maxPendingUploads, null, null);
+    }
+
+    @Override
+    @Transactional
+    public GlobalConfig updateConfig(Integer quorumRequired, Double approvalThreshold, Integer maxPendingUploads,
+            Double masterVoteWeight, Double userVoteWeight) {
+        
+        // Validar parámetros antes de actualizar
+        if (quorumRequired != null && quorumRequired <= 0) {
+            throw new IllegalArgumentException("El quórum requerido debe ser mayor que 0.");
+        }
+        if (approvalThreshold != null && (approvalThreshold <= 0 || approvalThreshold > 1)) {
+            throw new IllegalArgumentException("El umbral de aprobación debe estar entre 0 y 1.");
+        }
+        if (maxPendingUploads != null && maxPendingUploads <= 0) {
+            throw new IllegalArgumentException("El máximo de cargas pendientes debe ser mayor que 0.");
+        }
+        if (masterVoteWeight != null && masterVoteWeight <= 0) {
+            throw new IllegalArgumentException("El peso del voto MASTER debe ser mayor que 0.");
+        }
+        if (userVoteWeight != null && userVoteWeight <= 0) {
+            throw new IllegalArgumentException("El peso del voto de usuario debe ser mayor que 0.");
+        }
+        
         GlobalConfig config = getConfig();
         if (quorumRequired != null) {
             config.setQuorumRequired(quorumRequired);
@@ -54,6 +79,12 @@ public class GlobalConfigService implements IGlobalConfigService {
         }
         if (maxPendingUploads != null) {
             config.setMaxPendingUploads(maxPendingUploads);
+        }
+        if (masterVoteWeight != null) {
+            config.setMasterVoteWeight(masterVoteWeight);
+        }
+        if (userVoteWeight != null) {
+            config.setUserVoteWeight(userVoteWeight);
         }
 
         cachedConfig = voteConfigRepository.save(config);

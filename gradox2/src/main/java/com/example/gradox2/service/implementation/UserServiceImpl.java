@@ -14,15 +14,20 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.example.gradox2.persistence.entities.User;
+import com.example.gradox2.persistence.entities.enums.ActionType;
+import com.example.gradox2.persistence.entities.enums.UserRole;
 import com.example.gradox2.persistence.repository.UserRepository;
+import com.example.gradox2.presentation.dto.admin.BannedUserResponse;
 import com.example.gradox2.presentation.dto.users.MyProfileResponse;
 import com.example.gradox2.presentation.dto.users.PublicProfileResponse;
 import com.example.gradox2.presentation.dto.users.UpdateMyProfileRequest;
 import com.example.gradox2.service.exceptions.InternalServerErrorException;
 import com.example.gradox2.service.exceptions.InvalidFileOperation;
+import com.example.gradox2.service.exceptions.InvalidRoleOperationException;
 import com.example.gradox2.service.exceptions.NotFoundException;
 import com.example.gradox2.service.exceptions.AlreadyExistsException;
 import com.example.gradox2.service.interfaces.FileUrlSigner;
+import com.example.gradox2.service.interfaces.IAuditService;
 import com.example.gradox2.service.interfaces.IUserService;
 import com.example.gradox2.utils.GetAuthUser;
 import com.example.gradox2.utils.SortUtils;
@@ -48,15 +53,17 @@ public class UserServiceImpl implements IUserService {
     private final S3StorageService s3StorageService;
     private final FileUrlSigner fileUrlSigner;
     private final ImageProcessingService imageProcessingService;
+    private final IAuditService auditService;
 
     public UserServiceImpl(UserRepository userRepository, PasswordEncoder passwordEncoder,
             S3StorageService s3StorageService, FileUrlSigner fileUrlSigner,
-            ImageProcessingService imageProcessingService) {
+            ImageProcessingService imageProcessingService, IAuditService auditService) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.s3StorageService = s3StorageService;
         this.fileUrlSigner = fileUrlSigner;
         this.imageProcessingService = imageProcessingService;
+        this.auditService = auditService;
     }
 
     @Transactional(readOnly = true)
@@ -103,7 +110,8 @@ public class UserServiceImpl implements IUserService {
 
         // 2. Actualizar los campos necesarios
         if (userProfile.getUsername() != null && !userProfile.getUsername().isBlank()) {
-            if (userRepository.findByUsername(userProfile.getUsername()).isPresent()) {
+            if (!userProfile.getUsername().equals(user.getUsername())
+                    && userRepository.findByUsername(userProfile.getUsername()).isPresent()) {
                 throw new AlreadyExistsException("Username duplicado");
             }
             user.setUsername(userProfile.getUsername());
@@ -173,18 +181,64 @@ public class UserServiceImpl implements IUserService {
 
     @Transactional
     public void banUser(Long id) {
+        banUser(id, null);
+    }
+
+    @Transactional
+    public void banUser(Long id, String reason) {
+        User authUser = GetAuthUser.getAuthUser();
+
+        if (authUser.getId().equals(id)) {
+            throw new InvalidRoleOperationException("No puedes banearte a ti mismo. Usa una propuesta de expulsión.");
+        }
+
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Usuario no encontrado"));
+
+        if (user.getRole() == UserRole.MASTER) {
+            throw new InvalidRoleOperationException(
+                    "No puedes banear a un MASTER directamente. Crea una propuesta de expulsión.");
+        }
+
+        // Validar que el usuario no esté ya baneado
+        if (!user.isEnabled()) {
+            throw new AlreadyExistsException("El usuario ya está baneado.");
+        }
+
         user.setEnabled(false);
         user.setTokenVersion(user.getTokenVersion() + 1);
         userRepository.save(user);
+        
+        String details = "Usuario baneado" + (reason != null && !reason.isEmpty() ? ": " + reason : "");
+        auditService.record(ActionType.BAN, "User", user.getId(), details);
     }
 
     @Transactional
     public void unbanUser(Long id) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Usuario no encontrado"));
+        
+        // Validar que el usuario esté baneado
+        if (user.isEnabled()) {
+            throw new AlreadyExistsException("El usuario no está baneado.");
+        }
+        
         user.setEnabled(true);
         userRepository.save(user);
+        auditService.record(ActionType.UNBAN, "User", user.getId(), "Usuario rehabilitado");
+    }
+
+    @Override
+    public Page<BannedUserResponse> getBannedUsers(int page, int size) {
+        int safePage = Math.max(page, 0);
+        int safeSize = Math.min(Math.max(size, 1), MAX_PAGE_SIZE);
+        Pageable pageable = PageRequest.of(safePage, safeSize, Sort.by("createdAt").descending());
+        return userRepository.findByEnabledFalse(pageable)
+                .map(user -> new BannedUserResponse(
+                        user.getId(),
+                        user.getUsername(),
+                        user.getEmail(),
+                        user.getCreatedAt(),
+                        user.getLastLogin()));
     }
 }

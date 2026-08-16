@@ -9,4 +9,7 @@ public interface IGlobalConfigService {
     void reloadConfig();
 
     GlobalConfig updateConfig(Integer quorumRequired, Double approvalThreshold, Integer maxPendingUploads);
+
+    GlobalConfig updateConfig(Integer quorumRequired, Double approvalThreshold, Integer maxPendingUploads,
+            Double masterVoteWeight, Double userVoteWeight);
 }
