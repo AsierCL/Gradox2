@@ -32,6 +32,14 @@ public abstract class Proposal {
 
     private int quorumRequired;
     private double approvalThreshold;
+    
+    // Snapshots de pesos de voto al momento de la propuesta
+    @Column(name = "master_vote_weight")
+    private Double masterVoteWeight;
+
+    @Column(name = "user_vote_weight")
+    private Double userVoteWeight;
+    
     @Column(updatable = false, nullable = false)
     private Instant createdAt = Instant.now();
     private Instant endsAt = createdAt.plusSeconds(7 * 24 * 60 * 60); // Por defecto, 7 días

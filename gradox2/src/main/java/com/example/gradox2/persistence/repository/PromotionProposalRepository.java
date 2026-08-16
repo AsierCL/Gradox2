@@ -11,6 +11,6 @@ import com.example.gradox2.persistence.entities.enums.ProposalStatus;
 public interface PromotionProposalRepository extends JpaRepository<PromotionProposal, Long> {
     Page<PromotionProposal> findByStatus(ProposalStatus status, Pageable pageable);
 
-    void deleteByProposerAndStatus(User proposer, ProposalStatus status);
+    long deleteByProposerAndStatus(User proposer, ProposalStatus status);
 
 }

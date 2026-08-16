@@ -20,6 +20,7 @@ import com.example.gradox2.persistence.repository.UserRepository;
 import com.example.gradox2.presentation.dto.promotionProposal.PromotionProposalResponse;
 import com.example.gradox2.service.exceptions.InvalidRoleOperationException;
 import com.example.gradox2.service.exceptions.NotFoundException;
+import com.example.gradox2.service.interfaces.IAuditService;
 import com.example.gradox2.service.interfaces.IRoleService;
 import com.example.gradox2.service.interfaces.IGlobalConfigService;
 import com.example.gradox2.utils.GetAuthUser;
@@ -43,12 +44,14 @@ public class RoleServiceImpl implements IRoleService{
     private final UserRepository userRepository;
     private final PromotionProposalRepository promotionProposalRepository;
     private final IGlobalConfigService voteConfigService;
+    private final IAuditService auditService;
 
     public RoleServiceImpl(UserRepository userRepository, PromotionProposalRepository promotionProposalRepository,
-            IGlobalConfigService voteConfigService) {
+            IGlobalConfigService voteConfigService, IAuditService auditService) {
         this.userRepository = userRepository;
         this.promotionProposalRepository = promotionProposalRepository;
         this.voteConfigService = voteConfigService;
+        this.auditService = auditService;
     }
 
     @Override
@@ -69,6 +72,8 @@ public class RoleServiceImpl implements IRoleService{
         proposal.setCandidate(user);
 
         promotionProposalRepository.save(proposal);
+
+        auditService.record(ActionType.PROMOTION, "User", user.getId(), "Propuesta de promoción creada");
 
         return PromotionProposerMapper.toPromotionProposalResponse(proposal, user);
     }
@@ -99,6 +104,16 @@ public class RoleServiceImpl implements IRoleService{
             throw new InvalidRoleOperationException("El usuario no es Master.");
         }
 
+        if (authUser.getId().equals(candidate.getId())) {
+            throw new InvalidRoleOperationException("No puedes expulsarte a ti mismo.");
+        }
+
+        long enabledMasters = userRepository.countByRoleAndEnabled(UserRole.MASTER, true);
+        if (enabledMasters <= 1) {
+            throw new InvalidRoleOperationException(
+                    "No puedes expulsar al último MASTER activo: la gobernanza quedaría sin representantes.");
+        }
+
         GlobalConfig config = voteConfigService.getConfig();
         PromotionProposal proposal = new PromotionProposal();
         proposal.setProposer(authUser);
@@ -110,13 +125,18 @@ public class RoleServiceImpl implements IRoleService{
 
         promotionProposalRepository.save(proposal);
 
+        auditService.record(ActionType.EXPULSION, "User", candidate.getId(), "Propuesta de expulsión creada");
+
         return PromotionProposerMapper.toPromotionProposalResponse(proposal, authUser);
     }
 
     @Override
     @Transactional
     public String deleteMyPromoteRequest() {
-        promotionProposalRepository.deleteByProposerAndStatus(GetAuthUser.getAuthUser(), ProposalStatus.PENDING);
+        long deleted = promotionProposalRepository.deleteByProposerAndStatus(GetAuthUser.getAuthUser(), ProposalStatus.PENDING);
+        if (deleted == 0) {
+            throw new NotFoundException("No hay solicitud de promoción pendiente");
+        }
         return "Promotion request deleted successfully";
     }
 

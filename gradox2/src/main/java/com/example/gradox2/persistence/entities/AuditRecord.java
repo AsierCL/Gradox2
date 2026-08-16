@@ -7,6 +7,9 @@ import com.example.gradox2.persistence.entities.enums.ActionType;
 import jakarta.persistence.*;
 import lombok.*;
 
+import org.hibernate.annotations.OnDelete;
+import org.hibernate.annotations.OnDeleteAction;
+
 @Getter
 @Setter
 @AllArgsConstructor
@@ -19,7 +22,8 @@ public class AuditRecord {
     private Long id;
 
     @ManyToOne
-    @JoinColumn(name = "actor_id", nullable = false)
+    @OnDelete(action = OnDeleteAction.CASCADE)
+    @JoinColumn(name = "actor_id", nullable = true)
     private User actor;
 
     @Enumerated(EnumType.STRING)

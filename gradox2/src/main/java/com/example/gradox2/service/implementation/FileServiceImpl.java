@@ -27,6 +27,7 @@ import com.example.gradox2.presentation.dto.vote.VoteResponse;
 import com.example.gradox2.service.exceptions.InvalidFileOperation;
 import com.example.gradox2.service.exceptions.NotFoundException;
 import com.example.gradox2.service.interfaces.FileUrlSigner;
+import com.example.gradox2.service.interfaces.IAuditService;
 import com.example.gradox2.service.interfaces.IFileService;
 import com.example.gradox2.utils.ContentDisposition;
 import com.example.gradox2.utils.GetAuthUser;
@@ -44,12 +45,13 @@ public class FileServiceImpl implements IFileService {
     private final IGlobalConfigService voteConfigService;
     private final S3StorageService s3StorageService;
     private final FileUrlSigner fileUrlSigner;
+    private final IAuditService auditService;
 
     public FileServiceImpl(FileRepository fileRepository,
             FileProposalRepository uploadProposalRepository,
             IGlobalConfigService voteConfigService, ScoreRepository scoreRepository,
             UserRepository userRepository, S3StorageService s3StorageService,
-            FileUrlSigner fileUrlSigner) {
+            FileUrlSigner fileUrlSigner, IAuditService auditService) {
         this.fileRepository = fileRepository;
         this.uploadProposalRepository = uploadProposalRepository;
         this.scoreRepository = scoreRepository;
@@ -57,6 +59,7 @@ public class FileServiceImpl implements IFileService {
         this.voteConfigService = voteConfigService;
         this.s3StorageService = s3StorageService;
         this.fileUrlSigner = fileUrlSigner;
+        this.auditService = auditService;
     }
 
     @Transactional
@@ -114,6 +117,7 @@ public class FileServiceImpl implements IFileService {
         proposal.setApprovalThreshold(config.getApprovalThreshold());
 
         uploadProposalRepository.save(proposal);
+        auditService.record(ActionType.DELETE, "File", file.getId(), "Propuesta de borrado creada");
         return com.example.gradox2.utils.mapper.FileProposalMapper.toFileProposalResponse(proposal, requester);
     }
 
