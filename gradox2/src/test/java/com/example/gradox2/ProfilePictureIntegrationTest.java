@@ -39,11 +39,16 @@ import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 
 import com.example.gradox2.persistence.entities.User;
 import com.example.gradox2.persistence.entities.enums.UserRole;
+import com.example.gradox2.persistence.repository.FileProposalRepository;
 import com.example.gradox2.persistence.repository.FileRepository;
 import com.example.gradox2.persistence.repository.PasswordResetTokenRepository;
+import com.example.gradox2.persistence.repository.ProposalRepository;
 import com.example.gradox2.persistence.repository.RefreshTokenRepository;
+import com.example.gradox2.persistence.repository.ScoreRepository;
+import com.example.gradox2.persistence.repository.TempFileRepository;
 import com.example.gradox2.persistence.repository.UserRepository;
 import com.example.gradox2.persistence.repository.VerificationTokenRepository;
+import com.example.gradox2.persistence.repository.VoteRepository;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -89,12 +94,32 @@ class ProfilePictureIntegrationTest {
     @Autowired
     private FileRepository fileRepository;
 
+    @Autowired
+    private VoteRepository voteRepository;
+
+    @Autowired
+    private ProposalRepository proposalRepository;
+
+    @Autowired
+    private FileProposalRepository fileProposalRepository;
+
+    @Autowired
+    private ScoreRepository scoreRepository;
+
+    @Autowired
+    private TempFileRepository tempFileRepository;
+
     @BeforeEach
     void setUp() {
+        scoreRepository.deleteAll();
+        voteRepository.deleteAll();
+        fileProposalRepository.deleteAll();
+        proposalRepository.deleteAll();
+        fileRepository.deleteAll();
+        tempFileRepository.deleteAll();
         passwordResetTokenRepository.deleteAll();
         refreshTokenRepository.deleteAll();
         verificationTokenRepository.deleteAll();
-        fileRepository.deleteAll();
         userRepository.deleteAll();
     }
 
