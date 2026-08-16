@@ -6,6 +6,8 @@ import java.util.Set;
 
 import com.example.gradox2.persistence.entities.enums.ActionType;
 import com.example.gradox2.persistence.entities.enums.ProposalStatus;
+import org.hibernate.annotations.OnDelete;
+import org.hibernate.annotations.OnDeleteAction;
 
 import jakarta.persistence.*;
 import lombok.*;
@@ -24,6 +26,7 @@ public abstract class Proposal {
     private Long id;
 
     @ManyToOne
+    @OnDelete(action = OnDeleteAction.CASCADE)
     @JoinColumn(name = "proposer_id", nullable = false)
     private User proposer;
 
