@@ -20,7 +20,7 @@ Gradox 2.0 separa los **datos relacionales** de los **binarios**:
 |---|---|
 | Entidades relacionales (usuarios, propuestas, votos, configuración…) | **PostgreSQL (Supabase)** vía Flyway + JPA |
 | Documentos aprobados (`files`) y propuestos (`temp_files`) | **S3 compatible** (R2 en prod, MinIO en dev); en BD solo la columna `object_key` |
-| `badges.icon` y `users.profile_picture` | aún como large objects `oid` en PostgreSQL (pendiente de migrar) |
+| Fotos de perfil (`users.profile_picture_key`) e iconos de insignias (`badges.icon_key`) | **S3 compatible** (migración `V3__store_images_in_s3`); en BD solo la clave del objeto. Sin columnas `oid`. |
 
 El acceso a S3 se concentra en un único servicio (ver `S3StorageService`), que
 depende de un bean `S3Client` (AWS SDK v2) configurado en `S3Config`. En el perfil
@@ -58,13 +58,16 @@ gradox2/
 │   │   ├── FileProposal.java        # Propuesta de subida de archivo
 │   │   ├── Proposal.java            # Base de propuestas (votables)
 │   │   ├── PromotionProposal.java   # Propuestas de ascenso/descenso
+│   │   ├── ConfigProposal.java      # Propuesta de cambio de configuración (vote-config)
+│   │   ├── ForumThread.java         # Hilo de comentarios por archivo
+│   │   ├── ThreadComment.java       # Comentario del hilo (respuestas anidadas)
 │   │   ├── Vote.java                # Registro de votos
 │   │   ├── Score.java               # Puntuación de archivos
 │   │   ├── GlobalConfig.java        # Configuración de votaciones
 │   │   ├── Course.java              # Curso académico
 │   │   ├── Subject.java             # Asignaturas
 │   │   ├── Delegation.java          # Delegación de voto
-│   │   ├── Badge.java               # Insignias (icon en PG, oid)
+│   │   ├── Badge.java               # Insignias (icon_key → S3)
 │   │   ├── Notification.java        # Notificaciones internas
 │   │   ├── AuditRecord.java         # Auditoría de acciones
 │   │   ├── RefreshToken.java        # Sesiones de refresh
@@ -98,7 +101,16 @@ gradox2/
 │   │   ├── RoleServiceImpl.java
 │   │   ├── VoteServiceImpl.java
 │   │   ├── GlobalConfigService.java
-│   │   └── S3StorageService.java    # PUT/GET/DELETE de objetos + bucket
+│   │   ├── S3StorageService.java    # PUT/GET/DELETE de objetos + bucket
+│   │   ├── S3FileUrlSigner.java     # PreSigned URLs (S3Presigner)
+│   │   ├── ImageProcessingService.java # Foto de perfil → WebP + recorte cuadrado
+│   │   ├── AuditServiceImpl.java    # Registro de auditoría (/admin/audit)
+│   │   ├── AdminProposalServiceImpl.java # Propuestas de administración
+│   │   ├── ConfigProposalServiceImpl.java # Propuestas de cambio de config
+│   │   ├── BadgeServiceImpl.java    # Catálogo de insignias público
+│   │   ├── ForumServiceImpl.java    # Hilos + comentarios
+│   │   ├── StatsServiceImpl.java    # Métricas /stats
+│   │   └── SubjectServiceImpl.java  # Catálogo de asignaturas (con caché)
 │   │
 │   └── exceptions/                  # Excepciones personalizadas
 │       ├── NotFoundException.java
@@ -113,20 +125,35 @@ gradox2/
 ├── presentation/                    # Capa de presentación (API REST)
 │   ├── controller/                  # Endpoints
 │   │   ├── AuthController.java      # /api/auth/*
-│   │   ├── UserController.java      # /users/*
-│   │   ├── FileController.java      # /files/*
+│   │   ├── UserController.java      # /users/* (+ /users/me/profile-picture)
+│   │   ├── FileController.java      # /files/* (metadata, descarga, votos, visibilidad)
+│   │   ├── ForumController.java     # /files/{id}/comments·thread/lock (hilo del archivo)
 │   │   ├── FileProposalController.java  # /uploadProposal/*
 │   │   ├── VoteController.java      # /vote/*
-│   │   ├── VoteConfigController.java   # /vote-config
-│   │   ├── RolesController.java     # /promoteProposal/*
+│   │   ├── VoteConfigController.java   # /vote-config (PUT crea propuesta de cambio)
+│   │   ├── RolesController.java     # /promoteProposal/* (ascenso + demote→propuesta)
 │   │   ├── AdminController.java     # /admin/users/* (ban/unban)
+│   │   ├── AdminAuditController.java   # /admin/audit (MASTER)
+│   │   ├── AdminProposalController.java # /admin/proposals (MASTER)
+│   │   ├── BadgeController.java     # /badges (catálogo público)
+│   │   ├── SubjectController.java   # /subjects (público, con caché)
+│   │   ├── StatsController.java     # /stats (público)
 │   │   ├── HealthController.java    # /health
 │   │   └── GlobalExceptionHandler.java
 │   │
 │   └── dto/                         # Objetos para Requests/Responses
+│       ├── admin/
 │       ├── auth/
+│       ├── badges/
+│       ├── fileProposal/
+│       ├── files/
+│       ├── promotionProposal/
+│       ├── stats/
+│       ├── subject/
+│       ├── thread/
 │       ├── users/
-│       └── files/
+│       ├── vote/
+│       └── voteConfig/
 │
 ├── config/                          # Configuración de infraestructura
 │   ├── S3Config.java                # Bean S3Client (perfil != test, path-style)

@@ -34,5 +34,5 @@ Las siguientes capacidades a nivel de producto siguen en el backlog y se añadir
 
 - 🛡️ Moderación y denuncias (/moderation/*)
 - 🔔 Notificaciones internas (/notifications/*)
-- 📊 Métricas y estadísticas (/stats/*)
 - ⚙️ Administración avanzada (/admin/logs y /admin/config)
+
