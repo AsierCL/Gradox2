@@ -42,12 +42,11 @@ externos gestionados para la persistencia y el almacenamiento de archivos:
             └────────────────────────┘   └────────────────────────┘
 ```
 
-- **Persistencia de documentos**: los ficheros subidos (apuntes, exámenes…) se
-  guardan en **S3**; en PostgreSQL solo se persiste la **clave del objeto**
-  (`object_key`) en las tablas `files` y `temp_files`. La base de datos deja de
-  almacenar los binarios como large objects.
-  > Excepciones aún en PostgreSQL como `oid`: `badges.icon` y
-  > `users.profile_picture` (no migradas todavía).
+- **Persistencia de documentos**: los ficheros subidos (apuntes, exámenes…) y las
+  imágenes (foto de perfil e iconos de insignias) se guardan en **S3**; en PostgreSQL
+  solo se persiste la **clave del objeto** (`object_key`, `profile_picture_key`,
+  `icon_key`) en las tablas `files`, `temp_files`, `users` y `badges`. La base de
+  datos no almacena binarios ni large objects (`oid`).
 - **Correo**: la app envía emails (verificación de cuenta, reseteo de contraseña)
   vía **Gmail SMTP** configurado por variables de entorno.
 - **Sin frontend separado**: hoy solo existe la API REST (endpoints en §10).
@@ -72,7 +71,7 @@ externos gestionados para la persistencia y el almacenamiento de archivos:
 | Object storage | Cloudflare R2 / MinIO | — | endpoint S3 compatible, path-style |
 | Build | Maven (wrapper) | 3.x vía `./mvnw` | imagen base `eclipse-temurin:21` |
 | Contenedores | Docker + Docker Compose | Compose v2 | perfil `full` |
-| Test | JUnit 5 + MockMvc | Boot test | H2 en memoria, 59 tests |
+| Test | JUnit 5 + MockMvc | Boot test | H2 en memoria, 117 tests |
 
 ### Versiones clave del stack Docker
 - `eclipse-temurin:21-jdk` — stage de build del Dockerfile
@@ -111,7 +110,7 @@ Gradox2/
 │       │       ├── application-prod.properties
 │       │       ├── application-test.properties
 │       │       ├── logback-spring.xml        # rotación de logs
-│       │       └── db/migration/V1__init.sql # schema inicial (Flyway)
+│       │       └── db/migration/    # Flyway: V1..V7 (schema init, foro, S3, /stats, token_version, gobernanza, pesos)
 │       └── test/            # tests de integración + TestS3Config (fake S3 in-memory)
 ├── Documentation/           # documentación (OVERVIEW, ARCHITECTURE, ENDPOINTS, DEVOPS…)
 ├── .dockerignore
@@ -213,7 +212,7 @@ docker build --network=host -t gradox2-app:latest -f Docker/Dockerfile .
 ### Build manual (sin Docker), para validar tests
 ```bash
 cd Gradox2/gradox2
-./mvnw test          # 59 tests (H2 + fake S3)
+./mvnw test          # 117 tests (H2 + fake S3)
 ./mvnw package -DskipTests
 ```
 
@@ -262,7 +261,7 @@ docker compose --env-file Docker/.env -f Docker/docker-compose.yml --profile ful
 > contenedor. El perfil `full` queda por compatibilidad con `run.sh`.
 
 En el **primer arranque**:
-1. Flyway aplica `V1__init.sql` contra la BD de Supabase (creación de schema).
+1. Flyway aplica las migraciones `V1`…`V7` contra la BD de Supabase (creación de schema).
 2. La app arranca con `ddl-auto=validate` (comprueba que el schema coincide con
    las entidades JPA; si hay mismatch, **falla el arranque** a propósito).
 3. `MasterBootstrap` crea el primer usuario **MASTER** a partir de
@@ -362,10 +361,13 @@ Spring interprete los headers de proxy (`X-Forwarded-For`, `X-Forwarded-Proto`,
 6. **`GET /files/**` es `permitAll`** — el acceso al contenido se protege a nivel
    de servicio (404 si no autorizado) y a la metadata vía `IdentityVisibility`,
    pero conviene revisar el mapeo al añadir más endpoints.
-7. **`/admin/**` mapeado a `hasRole("MASTER")`** — solo existen `ban`/`unban`;
-   `logs` y `config` siguen pendientes.
-8. **`badges.icon` y `users.profile_picture`** siguen en PostgreSQL como `oid`
-   (large objects) — candidatos a migrar a S3 en una iteración futura.
+7. **`/admin/**` mapeado a `hasRole("MASTER")`** — ya existen `ban`/`unban`,
+   `GET /admin/audit` (registro de auditoría filtrable) y `GET /admin/proposals`
+   (todas las propuestas); sigue sin haber moderación de contenido (`/moderation/*`).
+8. **Fotos e iconos ya migrados a S3** (migración `V3__store_images_in_s3.sql`):
+   `users.profile_picture_key` y `badges.icon_key` almacenan la clave del objeto en
+   lugar del `oid` anterior. La foto de perfil se procesa (WebP + recorte cuadrado)
+   vía `ImageProcessingService`.
 
 ---
 
@@ -391,7 +393,7 @@ pg_dump "postgresql://postgres:<PASSWORD>@db.<ref>.supabase.co:5432/postgres?ssl
   > supabase-$(date +%F).sql
 ```
 > La app usa `ddl-auto=validate` y Flyway: si restauras a una BD vacía, Flyway
-> re-aplicará `V1__init.sql` automáticamente en el arranque.
+> re-aplicará las migraciones Flyway automáticamente en el arranque.
 
 **Los objetos (archivos) viven en R2** → no se incluyen en `pg_dump`. Asegúrate
 de que el bucket tiene el plan de backup/versionado que el equipo decida (R2
@@ -430,13 +432,17 @@ docker compose --env-file Docker/.env -f Docker/docker-compose.yml down      # a
 
 - Motor: **PostgreSQL 16+ gestionado en Supabase** (conexión por puerto 5432 con
   SSL). Nombre/usr/pass definidos por `SPRING_DATASOURCE_*` del `.env`.
-- **Migraciones Flyway**: `V1__init.sql` (schema completo: usuarios, cursos,
-  asignaturas, archivos, propuestas, votos, delegaciones, badges, auditoría,
-  tokens de refresh/verificación/reset).
+- **Migraciones Flyway** (`V1`…`V7`): schema completo (usuarios, cursos,
+  asignaturas, archivos, propuestas, votos, delegaciones, insignias, auditoría,
+  tokens de refresh/verificación/reset), threads y comentarios de foro (`V2`),
+  imágenes en S3 (`V3`), métricas de archivos para `/stats` (`V4`), revocación
+  global de sesiones JWT vía `token_version` (`V5`), gobernanza de administración
+  con pista de auditoría y propuestas de cambio de configuración (`V6`) y pesos de
+  voto para las propuestas (`V7`).
 - En prod `spring.jpa.hibernate.ddl-auto=validate` (nunca `update` ni `create`).
-- **Binarios**: los documentos aprobados/propuestos se guardan en **S3**; en BD
-  solo la columna `object_key` (varchar 512) en `files` y `temp_files`. Aún como
-  `oid`: `badges.icon` y `users.profile_picture`.
+- **Binarios**: los documentos aprobados/propuestos y las imágenes se guardan en
+  **S3**; en BD solo las claves de objeto (`object_key`, `profile_picture_key`,
+  `icon_key`). No quedan columnas `oid`.
 
 ---
 
@@ -464,10 +470,19 @@ Base URL: `http://<host>:8080` (sin HTTPS por ahora). Lista detallada en
 | DELETE | `/files/{id}` | autenticado | propuesta de eliminación con votación |
 | POST/DELETE | `/files/{id}/vote[/{upvote}]` | autenticado | votar/retirar voto de archivo |
 | PUT | `/files/{id}/visibility` | owner/MASTER | cambiar visibilidad |
+| GET/POST | `/files/{id}/comments` · `/files/{id}/comments/{cid}` | autenticado | comentarios del hilo del archivo |
+| POST/DELETE | `/files/{id}/thread/lock` | uploader/MASTER | bloquear/desbloquear el hilo |
 | GET/POST/DELETE | `/vote/{id}...` | autenticado | votar propuestas |
 | GET/POST | `/promoteProposal/...` | autenticado | promociones/despromociones |
-| GET/PUT | `/vote-config` | MASTER | configuración de votaciones |
+| POST | `/promoteProposal/demote/{id}` | MASTER | despromoción gobernada (crea propuesta de expulsión) |
+| GET/PUT | `/vote-config` | MASTER | configuración de votaciones (PUT crea propuesta de cambio) |
+| GET | `/badges` | público | catálogo de insignias (icon_url solo si hay `icon_key`) |
+| GET | `/subjects[/{id}]` | público | catálogo de asignaturas (con caché) |
+| GET | `/stats` | público | estadísticas (archivos, espacio, descargas…) |
+| PUT/DELETE | `/users/me/profile-picture` | autenticado | foto de perfil (WebP + recorte, limpia el objeto S3 anterior) |
 | PUT | `/admin/users/{id}/ban` · `/unban` | MASTER | moderación de usuarios |
+| GET | `/admin/audit` | MASTER | registro de auditoría (actor, tipo, rango de fechas, paginación) |
+| GET | `/admin/proposals` | MASTER | todas las propuestas (subida, borrado, expulsión, config) |
 | GET | `/health` · `/actuator/health/**` · `/actuator/info` | público | healthcheck / info |
 | — | `/swagger-ui/**`, `/v3/api-docs/**` | **desactivado en prod** | solo disponible en local/dev |
 
@@ -498,7 +513,7 @@ Base URL: `http://<host>:8080` (sin HTTPS por ahora). Lista detallada en
 - [ ] `BOOTSTRAP_MASTER_USERNAME/PASSWORD/EMAIL` rellenos (si no, no habrá admin).
 - [ ] Credenciales SMTP de Gmail correctas y con permiso para enviar.
 - [ ] Build: `docker build --network=host -f Docker/Dockerfile .` OK.
-- [ ] Tests: `./mvnw test` → 59/59 OK (en el directorio `gradox2/`).
+- [ ] Tests: `./mvnw test` → 117/117 OK (en el directorio `gradox2/`).
 - [ ] `docker compose --env-file Docker/.env -f Docker/docker-compose.yml config --quiet` no da errores.
 - [ ] Primer arranque verificado: health UP, login del MASTER funciona, bootstrap idempotente.
 - [ ] Verificar subida+descarga de un archivo (S3 end-to-end).
@@ -541,4 +556,6 @@ Base URL: `http://<host>:8080` (sin HTTPS por ahora). Lista detallada en
 6. CI/CD: actualmente no hay pipeline; el build es manual (`docker build` +
    `docker compose up`). Considerar GitHub Actions (build de imagen + push a
    registry + deploy por SSH).
-7. Migrar `badges.icon` y `users.profile_picture` (aún `oid` en PostgreSQL) a S3.
+7. Moderación de contenido: no existen todavía endpoints `/moderation/*` (denuncias).
+   El registro de auditoría (`GET /admin/audit`) y el listado de propuestas
+   (`GET /admin/proposals`) ya están disponibles para soportar esa tarea.
