@@ -59,6 +59,7 @@ public class SecurityConfig {
                                 .requestMatchers("/admin/**").hasRole("MASTER") // Sin implementar aún
                                 .requestMatchers(HttpMethod.GET, "/files/**").permitAll()
                                 .requestMatchers(HttpMethod.GET, "/subjects/**").permitAll()
+                                .requestMatchers(HttpMethod.GET, "/courses/**").permitAll()
                                 .requestMatchers(HttpMethod.GET, "/badges/**").permitAll()
                                 .requestMatchers(HttpMethod.GET, "/stats/**").permitAll()
                                 .requestMatchers("/api/auth/**").permitAll()

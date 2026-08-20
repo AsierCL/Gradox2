@@ -94,7 +94,7 @@ class SubjectIntegrationTest {
         mockMvc.perform(get("/subjects")).andExpect(status().isOk());
 
         verify(subjectRepository, times(1))
-                .findAllByOrderByCourseIdAscCodeAsc();
+                .findAllByOrderByCourseCodeAscCodeAsc();
     }
 
     @Test
@@ -108,7 +108,7 @@ class SubjectIntegrationTest {
         mockMvc.perform(get("/subjects")).andExpect(status().isOk());
 
         verify(subjectRepository, times(2))
-                .findAllByOrderByCourseIdAscCodeAsc();
+                .findAllByOrderByCourseCodeAscCodeAsc();
     }
 
     @Test

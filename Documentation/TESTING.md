@@ -146,13 +146,23 @@ Archivo: [gradox2/src/test/java/com/example/gradox2/SubjectIntegrationTest.java]
 - Tras la **evicción de caché**, se re-consulta la BD.
 - El detalle también se sirve desde caché en la segunda petición.
 
-### 10) StatsIntegrationTest — 2 casos
+### 10) CourseIntegrationTest — 6 casos
+Archivo: [gradox2/src/test/java/com/example/gradox2/CourseIntegrationTest.java](../gradox2/src/test/java/com/example/gradox2/CourseIntegrationTest.java)
+
+- `GET /courses` devuelve los cursos ordenados por código, cada uno con su lista de asignaturas (ordenadas por código).
+- `GET /courses/{id}` devuelve el detalle del curso con sus asignaturas.
+- `GET /courses/{id}` con id inexistente → `404 NOT_FOUND`.
+- El catálogo de cursos se sirve desde **caché** en la segunda petición.
+- Tras la **evicción de caché**, se re-consulta la BD.
+- El detalle también se sirve desde caché en la segunda petición.
+
+### 11) StatsIntegrationTest — 2 casos
 Archivo: [gradox2/src/test/java/com/example/gradox2/StatsIntegrationTest.java](../gradox2/src/test/java/com/example/gradox2/StatsIntegrationTest.java)
 
 - `GET /stats` es **público** y devuelve la forma esperada (número de archivos, espacio, descargas…).
 - Las descargas y subidas se ven reflejadas en las estadísticas.
 
-### 11) ProfilePictureIntegrationTest — 10 casos
+### 12) ProfilePictureIntegrationTest — 10 casos
 Archivo: [gradox2/src/test/java/com/example/gradox2/ProfilePictureIntegrationTest.java](../gradox2/src/test/java/com/example/gradox2/ProfilePictureIntegrationTest.java)
 
 - Subir foto persiste la `profile_picture_key` (S3) y devuelve una URL firmada.
@@ -165,7 +175,7 @@ Archivo: [gradox2/src/test/java/com/example/gradox2/ProfilePictureIntegrationTes
 - Borrar la foto limpia la clave y elimina el objeto.
 - Subir/borrar foto sin autenticación → `403`.
 
-### 12) ForumThreadIntegrationTest — 20 casos
+### 13) ForumThreadIntegrationTest — 20 casos
 Archivo: [gradox2/src/test/java/com/example/gradox2/ForumThreadIntegrationTest.java](../gradox2/src/test/java/com/example/gradox2/ForumThreadIntegrationTest.java)
 
 #### Comentarios y threads (hilo implícito por archivo)
@@ -200,14 +210,14 @@ Archivo: [gradox2/src/test/java/com/example/gradox2/ForumThreadIntegrationTest.j
 #### Gobernanza
 - La eliminación de un archivo aprobada por votación elimina thread y comentarios.
 
-### 13) GlobalJourneyIntegrationTest — 1 caso
+### 14) GlobalJourneyIntegrationTest — 1 caso
 Archivo: [gradox2/src/test/java/com/example/gradox2/GlobalJourneyIntegrationTest.java](../gradox2/src/test/java/com/example/gradox2/GlobalJourneyIntegrationTest.java)
 
 - `fullUserJourneyFromRegistrationToLogout`
   - Un único test E2E que recorre el ciclo completo de un usuario: registro →
     verificación → login → operaciones → refresh → logout.
 
-### 14) EmailServiceAsyncTest — 2 casos
+### 15) EmailServiceAsyncTest — 2 casos
 Archivo: [gradox2/src/test/java/com/example/gradox2/EmailServiceAsyncTest.java](../gradox2/src/test/java/com/example/gradox2/EmailServiceAsyncTest.java)
 
 - `sendEmailRunsOnBackgroundThread`

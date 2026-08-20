@@ -478,6 +478,7 @@ Base URL: `http://<host>:8080` (sin HTTPS por ahora). Lista detallada en
 | GET/PUT | `/vote-config` | MASTER | configuración de votaciones (PUT crea propuesta de cambio) |
 | GET | `/badges` | público | catálogo de insignias (icon_url solo si hay `icon_key`) |
 | GET | `/subjects[/{id}]` | público | catálogo de asignaturas (con caché) |
+| GET | `/courses[/{id}]` | público | catálogo de cursos con sus asignaturas (con caché) |
 | GET | `/stats` | público | estadísticas (archivos, espacio, descargas…) |
 | PUT/DELETE | `/users/me/profile-picture` | autenticado | foto de perfil (WebP + recorte, limpia el objeto S3 anterior) |
 | PUT | `/admin/users/{id}/ban` · `/unban` | MASTER | moderación de usuarios |
