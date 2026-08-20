@@ -1,5 +1,4 @@
 package com.example.gradox2.init;
-import com.example.gradox2.persistence.entities.Course;
 import com.example.gradox2.persistence.entities.File;
 import com.example.gradox2.persistence.entities.GlobalConfig;
 import com.example.gradox2.persistence.entities.Subject;
@@ -7,7 +6,6 @@ import com.example.gradox2.persistence.entities.User;
 import com.example.gradox2.persistence.entities.enums.FileType;
 import com.example.gradox2.persistence.entities.enums.FileVisibility;
 import com.example.gradox2.persistence.entities.enums.UserRole;
-import com.example.gradox2.persistence.repository.CourseRepository;
 import com.example.gradox2.persistence.repository.FileRepository;
 import com.example.gradox2.persistence.repository.SubjectRepository;
 import com.example.gradox2.persistence.repository.UserRepository;
@@ -33,7 +31,6 @@ public class DataLoader {
     @Bean
     CommandLineRunner initDatabase(UserRepository userRepository,
                                     SubjectRepository subjectRepository,
-                                    CourseRepository courseRepository,
                                     VoteConfigRepository voteConfigRepository,
                                     FileRepository fileRepository,
                                     S3StorageService s3StorageService) {
@@ -308,91 +305,47 @@ public class DataLoader {
                 .enabled(true)
                 .build());
 
-                Course primero = courseRepository.save(Course.builder()
-                    .name("Primer curso")
-                    .code("1")
-                    .build());
-
-                Course segundo = courseRepository.save(Course.builder()
-                    .name("Segundo curso")
-                    .code("2")
-                    .build());
-
-                java.util.List<Subject> subjects = subjectRepository.saveAll(
-    java.util.List.of(
-                    // Subjects for "Primer curso"
-                    com.example.gradox2.persistence.entities.Subject.builder()
-                        .name("Matemáticas I")
-                        .code("MAT1")
-                        .course(primero)
-                        .build(),
-                    com.example.gradox2.persistence.entities.Subject.builder()
-                        .name("Lengua Castellana I")
-                        .code("LEN1")
-                        .course(primero)
-                        .build(),
-                    com.example.gradox2.persistence.entities.Subject.builder()
-                        .name("Ciencias Naturales I")
-                        .code("CNA1")
-                        .course(primero)
-                        .build(),
-                    // Subjects for "Segundo curso"
-                    com.example.gradox2.persistence.entities.Subject.builder()
-                        .name("Matemáticas II")
-                        .code("MAT2")
-                        .course(segundo)
-                        .build(),
-                    com.example.gradox2.persistence.entities.Subject.builder()
-                        .name("Lengua Castellana II")
-                        .code("LEN2")
-                        .course(segundo)
-                        .build(),
-                    com.example.gradox2.persistence.entities.Subject.builder()
-                        .name("Ciencias Sociales II")
-                        .code("CSO2")
-                        .course(segundo)
-                        .build()
-                ));
-
-                System.out.println("✅ Cursos de prueba insertados en la base de datos.");
-
+                // El catálogo de cursos y asignaturas lo siembra la migración Flyway V8.
                 User demoUploader = userRepository.findByUsername("juan123").orElseThrow();
-                Subject subject1 = subjects.get(0);
+                Subject subject1 = subjectRepository.findByCode("FMAT1").orElse(null);
+                if (subject1 == null) {
+                    System.out.println("ℹ️ Catálogo de asignaturas no disponible; se omite el seed de archivos demo.");
+                } else {
+                    fileRepository.save(File.builder()
+                        .title("Apuntes Algebra PUBLIC")
+                        .description("Visibilidad pública")
+                        .type(FileType.APUNTES)
+                        .objectKey(s3StorageService.put("contenido algebra".getBytes()))
+                        .fileHash("hash1")
+                        .subject(subject1)
+                        .uploader(demoUploader)
+                        .visibilityLevel(FileVisibility.PUBLIC)
+                        .build());
 
-                fileRepository.save(File.builder()
-                    .title("Apuntes Algebra PUBLIC")
-                    .description("Visibilidad pública")
-                    .type(FileType.APUNTES)
-                    .objectKey(s3StorageService.put("contenido algebra".getBytes()))
-                    .fileHash("hash1")
-                    .subject(subject1)
-                    .uploader(demoUploader)
-                    .visibilityLevel(FileVisibility.PUBLIC)
-                    .build());
+                    fileRepository.save(File.builder()
+                        .title("Ejercicio Lengua RESTRICTED")
+                        .description("Solo visible para USER y MASTER")
+                        .type(FileType.EJERCICIO)
+                        .objectKey(s3StorageService.put("contenido lengua".getBytes()))
+                        .fileHash("hash2")
+                        .subject(subject1)
+                        .uploader(demoUploader)
+                        .visibilityLevel(FileVisibility.RESTRICTED)
+                        .build());
 
-                fileRepository.save(File.builder()
-                    .title("Ejercicio Lengua RESTRICTED")
-                    .description("Solo visible para USER y MASTER")
-                    .type(FileType.EJERCICIO)
-                    .objectKey(s3StorageService.put("contenido lengua".getBytes()))
-                    .fileHash("hash2")
-                    .subject(subject1)
-                    .uploader(demoUploader)
-                    .visibilityLevel(FileVisibility.RESTRICTED)
-                    .build());
+                    fileRepository.save(File.builder()
+                        .title("Examen Privado PRIVATE")
+                        .description("Solo visible para MASTER")
+                        .type(FileType.EXAMEN)
+                        .objectKey(s3StorageService.put("contenido examen".getBytes()))
+                        .fileHash("hash3")
+                        .subject(subject1)
+                        .uploader(demoUploader)
+                        .visibilityLevel(FileVisibility.PRIVATE)
+                        .build());
 
-                fileRepository.save(File.builder()
-                    .title("Examen Privado PRIVATE")
-                    .description("Solo visible para MASTER")
-                    .type(FileType.EXAMEN)
-                    .objectKey(s3StorageService.put("contenido examen".getBytes()))
-                    .fileHash("hash3")
-                    .subject(subject1)
-                    .uploader(demoUploader)
-                    .visibilityLevel(FileVisibility.PRIVATE)
-                    .build());
-
-                System.out.println("✅ Archivos demo insertados con distintos niveles de visibilidad.");
+                    System.out.println("✅ Archivos demo insertados con distintos niveles de visibilidad.");
+                }
             } else if (!demoSeedsEnabled) {
                 System.out.println("ℹ️ Seed de desarrollo desactivado por defecto. Usa ENABLE_DEMO_SEEDS=true para cargar datos demo.");
             }

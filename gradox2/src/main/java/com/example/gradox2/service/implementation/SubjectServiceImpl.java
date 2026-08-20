@@ -26,7 +26,7 @@ public class SubjectServiceImpl implements ISubjectService {
     @Transactional(readOnly = true)
     @Cacheable("subjects")
     public List<SubjectResponse> listAll() {
-        return subjectRepository.findAllByOrderByCourseIdAscCodeAsc()
+        return subjectRepository.findAllByOrderByCourseCodeAscCodeAsc()
                 .stream()
                 .map(SubjectMapper::toSubjectResponse)
                 .toList();
