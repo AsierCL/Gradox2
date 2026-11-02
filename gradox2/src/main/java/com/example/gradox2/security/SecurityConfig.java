@@ -56,7 +56,7 @@ public class SecurityConfig {
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(authz -> authz
-                                .requestMatchers("/admin/**").hasRole("MASTER") // Sin implementar aún
+                                .requestMatchers("/admin/**").hasRole("MASTER")
                                 .requestMatchers(HttpMethod.GET, "/files/**").permitAll()
                                 .requestMatchers(HttpMethod.GET, "/subjects/**").permitAll()
                                 .requestMatchers(HttpMethod.GET, "/courses/**").permitAll()
