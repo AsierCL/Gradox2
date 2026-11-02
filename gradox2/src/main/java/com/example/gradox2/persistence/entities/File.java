@@ -31,6 +31,10 @@ public class File {
 
     @Column(name = "object_key", nullable = false)
     private String objectKey;
+
+    @Column(name = "original_filename")
+    private String originalFilename;
+
     private String fileHash;
 
     @Column(name = "size_bytes")
