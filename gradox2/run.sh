@@ -4,6 +4,31 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_ROOT="$SCRIPT_DIR"
 
+# Spring Boot no lee archivos .env: cargamos gradox2/.env (si existe) para que
+# las credenciales locales de SMTP y el resto de la configuración se apliquen.
+# Se parsea KEY=VALUE en vez de hacer `source`, porque los valores pueden tener
+# espacios (p. ej. la app password de Gmail tal como la muestra Google).
+load_env_file() {
+  local file="$1" line key value
+  [[ -f "$file" ]] || return 0
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    line="${line%$'\r'}"
+    [[ "$line" =~ ^[[:space:]]*(#|$) ]] && continue
+    [[ "$line" == export\ * ]] && line="${line#export }"
+    [[ "$line" != *=* ]] && continue
+    key="${line%%=*}"
+    value="${line#*=}"
+    key="${key//[[:space:]]/}"
+    [[ "$key" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]] || continue
+    if [[ "$value" == \"*\" || "$value" == \'*\' ]]; then
+      value="${value:1:${#value}-2}"
+    fi
+    export "$key=$value"
+  done < "$file"
+}
+
+load_env_file "$PROJECT_ROOT/.env"
+
 export SPRING_PROFILES_ACTIVE="${SPRING_PROFILES_ACTIVE:-local}"
 
 case "${1:-dev}" in
