@@ -8,6 +8,8 @@ PROJECT_ROOT="$SCRIPT_DIR"
 # las credenciales locales de SMTP y el resto de la configuración se apliquen.
 # Se parsea KEY=VALUE en vez de hacer `source`, porque los valores pueden tener
 # espacios (p. ej. la app password de Gmail tal como la muestra Google).
+# Lo que ya llega definido en el entorno del proceso manda: el archivo solo
+# rellena lo que falta, igual que la precedencia de Spring Boot (entorno > .env).
 load_env_file() {
   local file="$1" line key value
   [[ -f "$file" ]] || return 0
@@ -23,6 +25,7 @@ load_env_file() {
     if [[ "$value" == \"*\" || "$value" == \'*\' ]]; then
       value="${value:1:${#value}-2}"
     fi
+    [[ -v "$key" ]] && continue
     export "$key=$value"
   done < "$file"
 }
