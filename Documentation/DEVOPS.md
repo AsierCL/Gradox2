@@ -110,7 +110,7 @@ Gradox2/
 │       │       ├── application-prod.properties
 │       │       ├── application-test.properties
 │       │       ├── logback-spring.xml        # rotación de logs
-│       │       └── db/migration/    # Flyway: V1..V8 (schema init, foro, S3, /stats, token_version, gobernanza, pesos, seed de cursos/asignaturas)
+│       │       └── db/migration/    # Flyway: V1..V9 (schema init, foro, S3, /stats, token_version, gobernanza, pesos, seed de cursos/asignaturas, nombre original)
 │       └── test/            # tests de integración + TestS3Config (fake S3 in-memory)
 ├── Documentation/           # documentación (OVERVIEW, ARCHITECTURE, ENDPOINTS, DEVOPS…)
 ├── .dockerignore
@@ -263,7 +263,7 @@ docker compose --env-file Docker/.env -f Docker/docker-compose.yml --profile ful
 > contenedor. El perfil `full` queda por compatibilidad con `run.sh`.
 
 En el **primer arranque**:
-1. Flyway aplica las migraciones `V1`…`V8` contra la BD de Supabase (creación de schema).
+1. Flyway aplica las migraciones `V1`…`V9` contra la BD de Supabase (creación de schema).
 2. La app arranca con `ddl-auto=validate` (comprueba que el schema coincide con
    las entidades JPA; si hay mismatch, **falla el arranque** a propósito).
 3. `MasterBootstrap` crea el primer usuario **MASTER** a partir de
@@ -435,13 +435,14 @@ docker compose --env-file Docker/.env -f Docker/docker-compose.yml down      # a
 
 - Motor: **PostgreSQL 16+ gestionado en Supabase** (conexión por puerto 5432 con
   SSL). Nombre/usr/pass definidos por `SPRING_DATASOURCE_*` del `.env`.
-- **Migraciones Flyway** (`V1`…`V8`): schema completo (usuarios, cursos,
+- **Migraciones Flyway** (`V1`…`V9`): schema completo (usuarios, cursos,
   asignaturas, archivos, propuestas, votos, delegaciones, insignias, auditoría,
   tokens de refresh/verificación/reset), threads y comentarios de foro (`V2`),
   imágenes en S3 (`V3`), métricas de archivos para `/stats` (`V4`), revocación
   global de sesiones JWT vía `token_version` (`V5`), gobernanza de administración
-  con pista de auditoría y propuestas de cambio de configuración (`V6`) y pesos de
-  voto para las propuestas (`V7`).
+  con pista de auditoría y propuestas de cambio de configuración (`V6`), pesos de
+  voto para las propuestas (`V7`), seed de cursos y asignaturas (`V8`) y nombre de
+  archivo original para las descargas (`V9`).
 - En prod `spring.jpa.hibernate.ddl-auto=validate` (nunca `update` ni `create`).
 - **Binarios**: los documentos aprobados/propuestos y las imágenes se guardan en
   **S3**; en BD solo las claves de objeto (`object_key`, `profile_picture_key`,
@@ -519,7 +520,7 @@ Base URL: `http://<host>:8080` (sin HTTPS por ahora). Lista detallada en
 - [ ] Build: `docker build --network=host -f Docker/Dockerfile .` OK.
 - [ ] Tests: `./mvnw test` → 126/126 OK (en el directorio `gradox2/`).
 - [ ] Migraciones: `POSTGRES_TEST_URL=... ./mvnw test -Dtest=PostgresMigrationIT` → OK
-      (aplica V1..V8 sobre PostgreSQL 16 y valida el mapeo JPA; también corre en CI).
+      (aplica V1..V9 sobre PostgreSQL 16 y valida el mapeo JPA; también corre en CI).
 - [ ] `docker compose --env-file Docker/.env -f Docker/docker-compose.yml config --quiet` no da errores.
 - [ ] Primer arranque verificado: health UP, login del MASTER funciona, bootstrap idempotente.
 - [ ] Verificar subida+descarga de un archivo (S3 end-to-end).

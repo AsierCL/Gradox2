@@ -219,12 +219,20 @@ Archivo: [gradox2/src/test/java/com/example/gradox2/GlobalJourneyIntegrationTest
   - Un único test E2E que recorre el ciclo completo de un usuario: registro →
     verificación → login → operaciones → refresh → logout.
 
+### 15) EmailServiceAsyncTest — 2 casos
+Archivo: [gradox2/src/test/java/com/example/gradox2/EmailServiceAsyncTest.java](../gradox2/src/test/java/com/example/gradox2/EmailServiceAsyncTest.java)
+
+- `sendEmailRunsOnBackgroundThread`
+  - El envío de correo se ejecuta en un **hilo de fondo** (no bloquea al caller).
+- `sendEmailFailureDoesNotPropagateToCaller`
+  - Un fallo en el envío no se propaga a quien lo invocó (best-effort).
+
 ### 16) PostgresMigrationIT — 1 caso
 Archivo: [gradox2/src/test/java/com/example/gradox2/PostgresMigrationIT.java](../gradox2/src/test/java/com/example/gradox2/PostgresMigrationIT.java)
 
 - `migrationsApplyAndMatchEntityMapping`
   - Solo corre si `POSTGRES_TEST_URL` está definido (job `migrations` de CI, con
-    un service `postgres:16`). Aplica V1..V8 sobre PostgreSQL real y arranca el
+    un service `postgres:16`). Aplica V1..V9 sobre PostgreSQL real y arranca el
     contexto con `ddl-auto=validate`, así un desajuste entre migraciones y
     entidades falla en CI y no en el arranque de producción.
   - Caso negativo comprobado: una migración que elimina `users.email` produce
@@ -238,14 +246,6 @@ Archivo: [gradox2/src/test/java/com/example/gradox2/DemoSeedsGateTest.java](../g
 - Con `app.demo-seeds.enabled=true`: se crea el runner.
   - Motivo: los datos demo incluyen usuarios con contraseña conocida (dos MASTER);
     el seeding no debe depender solo del perfil activo.
-
-### 15) EmailServiceAsyncTest — 2 casos
-Archivo: [gradox2/src/test/java/com/example/gradox2/EmailServiceAsyncTest.java](../gradox2/src/test/java/com/example/gradox2/EmailServiceAsyncTest.java)
-
-- `sendEmailRunsOnBackgroundThread`
-  - El envío de correo se ejecuta en un **hilo de fondo** (no bloquea al caller).
-- `sendEmailFailureDoesNotPropagateToCaller`
-  - Un fallo en el envío no se propaga a quien lo invocó (best-effort).
 
 ---
 
