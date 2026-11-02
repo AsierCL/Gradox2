@@ -86,12 +86,16 @@ public class FileProposalServiceImpl implements IFileProposalService {
 
         try {
             byte[] fileData = dto.getFile().getBytes();
-            String objectKey = s3StorageService.put(fileData);
+            String contentType = dto.getFile().getContentType();
+            String objectKey = contentType != null
+                    ? s3StorageService.put(fileData, contentType)
+                    : s3StorageService.put(fileData);
             TempFile tempFile = TempFile.builder()
                     .title(dto.getTitle())
                     .description(dto.getDescription())
                     .type(dto.getType())
                     .objectKey(objectKey)
+                    .originalFilename(dto.getFile().getOriginalFilename())
                     .fileHash(generateFileHash(fileData)) // Hash seguro
                     .sizeBytes((long) fileData.length)
                     .subject(subject)
@@ -180,8 +184,11 @@ public class FileProposalServiceImpl implements IFileProposalService {
 
     public FileDownloadResponse getFileDownloadLink(Long id) {
         TempFile tempFile = downloadFileFromProposal(id);
+        String filename = tempFile.getOriginalFilename() != null
+                ? tempFile.getOriginalFilename()
+                : tempFile.getTitle();
         String url = fileUrlSigner.presignedGetUrl(tempFile.getObjectKey(),
-                ContentDisposition.attachmentOf(tempFile.getTitle()));
+                ContentDisposition.attachmentOf(filename));
         return FileDownloadResponse.builder().url(url).build();
     }
 

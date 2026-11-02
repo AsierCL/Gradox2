@@ -76,8 +76,11 @@ public class FileServiceImpl implements IFileService {
         file.incrementDownloadCount();
         fileRepository.save(file);
 
+        String filename = file.getOriginalFilename() != null
+                ? file.getOriginalFilename()
+                : file.getTitle();
         String url = fileUrlSigner.presignedGetUrl(file.getObjectKey(),
-                ContentDisposition.attachmentOf(file.getTitle()));
+                ContentDisposition.attachmentOf(filename));
         return FileDownloadResponse.builder().url(url).build();
     }
 
