@@ -17,6 +17,7 @@ import lombok.RequiredArgsConstructor;
 import java.time.Instant;
 
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
@@ -28,16 +29,22 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 public class DataLoader {
     private final PasswordEncoder passwordEncoder;
 
+    /**
+     * Datos demo solo con activación explícita (app.demo-seeds.enabled=true, o
+     * APP_DEMO_SEEDS_ENABLED=true en el entorno): siembran usuarios con
+     * contraseñas conocidas, dos de ellos MASTER. El perfil local/demo por sí
+     * solo no alcanza: un despliegue con el perfil equivocado apuntando a una
+     * base real no debe poder sembrar esas cuentas.
+     */
     @Bean
+    @ConditionalOnProperty(name = "app.demo-seeds.enabled", havingValue = "true")
     CommandLineRunner initDatabase(UserRepository userRepository,
                                     SubjectRepository subjectRepository,
                                     VoteConfigRepository voteConfigRepository,
                                     FileRepository fileRepository,
                                     S3StorageService s3StorageService) {
         return args -> {
-            boolean demoSeedsEnabled = Boolean.parseBoolean(System.getenv().getOrDefault("ENABLE_DEMO_SEEDS", "false"));
-
-            if (demoSeedsEnabled && userRepository.count() < 3) { // Solo carga si non hai usuarios (deixo 3 de margen)
+            if (userRepository.count() < 3) { // Solo carga si non hai usuarios (deixo 3 de margen)
                 userRepository.save(User.builder()
                 .username("juan123")
                 .email("juan@example.com")
@@ -346,8 +353,6 @@ public class DataLoader {
 
                     System.out.println("✅ Archivos demo insertados con distintos niveles de visibilidad.");
                 }
-            } else if (!demoSeedsEnabled) {
-                System.out.println("ℹ️ Seed de desarrollo desactivado por defecto. Usa ENABLE_DEMO_SEEDS=true para cargar datos demo.");
             }
 
             if (voteConfigRepository.count() == 0) {

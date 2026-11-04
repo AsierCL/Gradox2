@@ -16,9 +16,11 @@ Notas:
 - El acceso a **S3 se simula con un fake en memoria** (`TestS3Config`): no se toca
   red ni se necesita MinIO/R2 para pasar los tests. Incluye un **signer fake**
   (`FileUrlSigner`) que devuelve URLs firmadas sin tocar red.
-- Ejecución más reciente: **117 tests, 0 fallos, 0 errores**.
+- Ejecución más reciente: **126 tests, 0 fallos, 0 errores**.
+- Las migraciones Flyway no pueden correr sobre H2: se validan con
+  `PostgresMigrationIT` contra PostgreSQL real (job `migrations` de CI).
 
-## Suite actual (14 clases)
+## Suite actual (17 clases)
 
 ### 1) Gradox2ApplicationTests — 1 caso
 Archivo: [gradox2/src/test/java/com/example/gradox2/Gradox2ApplicationTests.java](../gradox2/src/test/java/com/example/gradox2/Gradox2ApplicationTests.java)
@@ -225,6 +227,26 @@ Archivo: [gradox2/src/test/java/com/example/gradox2/EmailServiceAsyncTest.java](
 - `sendEmailFailureDoesNotPropagateToCaller`
   - Un fallo en el envío no se propaga a quien lo invocó (best-effort).
 
+### 16) PostgresMigrationIT — 1 caso
+Archivo: [gradox2/src/test/java/com/example/gradox2/PostgresMigrationIT.java](../gradox2/src/test/java/com/example/gradox2/PostgresMigrationIT.java)
+
+- `migrationsApplyAndMatchEntityMapping`
+  - Solo corre si `POSTGRES_TEST_URL` está definido (job `migrations` de CI, con
+    un service `postgres:16`). Aplica V1..V9 sobre PostgreSQL real y arranca el
+    contexto con `ddl-auto=validate`, así un desajuste entre migraciones y
+    entidades falla en CI y no en el arranque de producción.
+  - Caso negativo comprobado: una migración que elimina `users.email` produce
+    `Schema-validation: missing column [email] in table [users]`.
+
+### 17) DemoSeedsGateTest — 3 casos
+Archivo: [gradox2/src/test/java/com/example/gradox2/DemoSeedsGateTest.java](../gradox2/src/test/java/com/example/gradox2/DemoSeedsGateTest.java)
+
+- Sin `app.demo-seeds.enabled`: el runner de datos demo **no** existe.
+- Con `app.demo-seeds.enabled=false`: tampoco.
+- Con `app.demo-seeds.enabled=true`: se crea el runner.
+  - Motivo: los datos demo incluyen usuarios con contraseña conocida (dos MASTER);
+    el seeding no debe depender solo del perfil activo.
+
 ---
 
 ## Resumen de cobertura actual
@@ -251,4 +273,4 @@ Archivo: [gradox2/src/test/java/com/example/gradox2/EmailServiceAsyncTest.java](
 
 - Si cambian los tests o se añaden ejecuciones dinámicas/parametrizadas, refresca
   este documento junto con el último `./mvnw test` para mantener alineado el total
-  reportado por Maven (hoy **117**).
+  reportado por Maven (hoy **126**).

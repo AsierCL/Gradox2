@@ -17,7 +17,7 @@ services:
       retries: 5
 
   minio:
-    image: minio/minio:latest
+    image: pgsty/minio:latest
     container_name: minio_Gradox2_dev_host
     restart: unless-stopped
     network_mode: host
@@ -60,7 +60,7 @@ services:
       SPRING_MAIL_USERNAME: ""
       SPRING_MAIL_PASSWORD: ""
       SPRING_PROFILES_ACTIVE: local
-      ENABLE_DEMO_SEEDS: "true"
+      APP_DEMO_SEEDS_ENABLED: "true"
       HOME: /workspace
       MAVEN_OPTS: -Dmaven.repo.local=/workspace/.m2/repository
     command: ["bash", "-lc", "chmod +x mvnw && ./mvnw spring-boot:run -Dspring-boot.run.profiles=local"]

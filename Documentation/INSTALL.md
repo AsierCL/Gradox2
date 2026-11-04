@@ -88,6 +88,13 @@ que usan por defecto (sin necesidad de `.env`) son:
 | `SPRING_MAIL_HOST` / `PORT` | SMTP | `localhost` / `1025` (mailcatcher/smtp local) |
 | `JWT_SECRET` | firma HS256 | `local-dev-jwt-secret-min-32-bytes-long` |
 
+### 5.3 `gradox2/.env`
+
+`run.sh` carga `gradox2/.env` (si existe) antes de arrancar la app. Spring Boot
+no lee archivos `.env` por sí solo, así que ese archivo es la forma de fijar
+credenciales locales (por ejemplo SMTP) sin exportarlas a mano en cada terminal.
+No se versiona (está en `.gitignore`).
+
 ## 6. Perfiles
 
 | Perfil | Uso |
@@ -102,7 +109,7 @@ No existe un perfil `docker`: el entorno dev usa el perfil `local`.
 
 ```bash
 cd gradox2
-./mvnw test   # 117 tests
+./mvnw test   # 126 tests
 ```
 
 Más detalle en [TESTING.md](./TESTING.md).

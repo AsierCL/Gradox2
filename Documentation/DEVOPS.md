@@ -71,12 +71,12 @@ externos gestionados para la persistencia y el almacenamiento de archivos:
 | Object storage | Cloudflare R2 / MinIO | — | endpoint S3 compatible, path-style |
 | Build | Maven (wrapper) | 3.x vía `./mvnw` | imagen base `eclipse-temurin:21` |
 | Contenedores | Docker + Docker Compose | Compose v2 | perfil `full` |
-| Test | JUnit 5 + MockMvc | Boot test | H2 en memoria, 117 tests |
+| Test | JUnit 5 + MockMvc | Boot test | H2 en memoria, 126 tests (+ migraciones contra PostgreSQL real en CI) |
 
 ### Versiones clave del stack Docker
 - `eclipse-temurin:21-jdk` — stage de build del Dockerfile
 - `eclipse-temurin:21-jre` — imagen final de la app (más ligera)
-- `minio/minio` — object storage de desarrollo (solo `docker-compose.dev.yml`)
+- `pgsty/minio` — fork mantenido de MinIO para desarrollo (solo `docker-compose.dev.yml`); la imagen oficial `minio/minio` ya no está disponible en Docker Hub
 
 ---
 
@@ -110,7 +110,7 @@ Gradox2/
 │       │       ├── application-prod.properties
 │       │       ├── application-test.properties
 │       │       ├── logback-spring.xml        # rotación de logs
-│       │       └── db/migration/    # Flyway: V1..V7 (schema init, foro, S3, /stats, token_version, gobernanza, pesos)
+│       │       └── db/migration/    # Flyway: V1..V9 (schema init, foro, S3, /stats, token_version, gobernanza, pesos, seed de cursos/asignaturas, nombre original)
 │       └── test/            # tests de integración + TestS3Config (fake S3 in-memory)
 ├── Documentation/           # documentación (OVERVIEW, ARCHITECTURE, ENDPOINTS, DEVOPS…)
 ├── .dockerignore
@@ -212,7 +212,9 @@ docker build --network=host -t gradox2-app:latest -f Docker/Dockerfile .
 ### Build manual (sin Docker), para validar tests
 ```bash
 cd Gradox2/gradox2
-./mvnw test          # 117 tests (H2 + fake S3)
+./mvnw test          # 126 tests (H2 + fake S3)
+# Migraciones + mapeo JPA contra PostgreSQL real (lo corre el job `migrations` de CI):
+POSTGRES_TEST_URL=jdbc:postgresql://localhost:5432/gradoxdb ./mvnw test -Dtest=PostgresMigrationIT
 ./mvnw package -DskipTests
 ```
 
@@ -261,7 +263,7 @@ docker compose --env-file Docker/.env -f Docker/docker-compose.yml --profile ful
 > contenedor. El perfil `full` queda por compatibilidad con `run.sh`.
 
 En el **primer arranque**:
-1. Flyway aplica las migraciones `V1`…`V7` contra la BD de Supabase (creación de schema).
+1. Flyway aplica las migraciones `V1`…`V9` contra la BD de Supabase (creación de schema).
 2. La app arranca con `ddl-auto=validate` (comprueba que el schema coincide con
    las entidades JPA; si hay mismatch, **falla el arranque** a propósito).
 3. `MasterBootstrap` crea el primer usuario **MASTER** a partir de
@@ -351,8 +353,9 @@ Spring interprete los headers de proxy (`X-Forwarded-For`, `X-Forwarded-Proto`,
    poner un proxy TLS** (Caddy, nginx, Traefik) delante del puerto 8080.
 2. **CORS totalmente permisivo** (`*`, con credentials). Pensado para un frontend
    aún inexistente; restringir `AllowedOriginPatterns` cuando exista frontend fijo.
-3. **JWT sin revocación** — los tokens son válidos hasta `JWT_EXPIRATION`
-   (24 h). Los refresh tokens sí son revocables (BD).
+3. **Revocación de JWT** — el access token vale hasta `JWT_EXPIRATION` (24 h),
+   pero `token_version` (migración V5) permite invalidar los tokens emitidos de
+   un usuario (se comprueba en cada request). Los refresh tokens se revocan en BD.
 4. **Backups** — en Supabase la BD se respalda por el proveedor (ver 8); el
    bucket R2 se gestiona desde el dashboard. Si se usara Postgres/MInIO local,
    habría que planificar dump + copia del bucket.
@@ -432,13 +435,14 @@ docker compose --env-file Docker/.env -f Docker/docker-compose.yml down      # a
 
 - Motor: **PostgreSQL 16+ gestionado en Supabase** (conexión por puerto 5432 con
   SSL). Nombre/usr/pass definidos por `SPRING_DATASOURCE_*` del `.env`.
-- **Migraciones Flyway** (`V1`…`V7`): schema completo (usuarios, cursos,
+- **Migraciones Flyway** (`V1`…`V9`): schema completo (usuarios, cursos,
   asignaturas, archivos, propuestas, votos, delegaciones, insignias, auditoría,
   tokens de refresh/verificación/reset), threads y comentarios de foro (`V2`),
   imágenes en S3 (`V3`), métricas de archivos para `/stats` (`V4`), revocación
   global de sesiones JWT vía `token_version` (`V5`), gobernanza de administración
-  con pista de auditoría y propuestas de cambio de configuración (`V6`) y pesos de
-  voto para las propuestas (`V7`).
+  con pista de auditoría y propuestas de cambio de configuración (`V6`), pesos de
+  voto para las propuestas (`V7`), seed de cursos y asignaturas (`V8`) y nombre de
+  archivo original para las descargas (`V9`).
 - En prod `spring.jpa.hibernate.ddl-auto=validate` (nunca `update` ni `create`).
 - **Binarios**: los documentos aprobados/propuestos y las imágenes se guardan en
   **S3**; en BD solo las claves de objeto (`object_key`, `profile_picture_key`,
@@ -514,7 +518,9 @@ Base URL: `http://<host>:8080` (sin HTTPS por ahora). Lista detallada en
 - [ ] `BOOTSTRAP_MASTER_USERNAME/PASSWORD/EMAIL` rellenos (si no, no habrá admin).
 - [ ] Credenciales SMTP de Gmail correctas y con permiso para enviar.
 - [ ] Build: `docker build --network=host -f Docker/Dockerfile .` OK.
-- [ ] Tests: `./mvnw test` → 117/117 OK (en el directorio `gradox2/`).
+- [ ] Tests: `./mvnw test` → 126/126 OK (en el directorio `gradox2/`).
+- [ ] Migraciones: `POSTGRES_TEST_URL=... ./mvnw test -Dtest=PostgresMigrationIT` → OK
+      (aplica V1..V9 sobre PostgreSQL 16 y valida el mapeo JPA; también corre en CI).
 - [ ] `docker compose --env-file Docker/.env -f Docker/docker-compose.yml config --quiet` no da errores.
 - [ ] Primer arranque verificado: health UP, login del MASTER funciona, bootstrap idempotente.
 - [ ] Verificar subida+descarga de un archivo (S3 end-to-end).
@@ -554,9 +560,9 @@ Base URL: `http://<host>:8080` (sin HTTPS por ahora). Lista detallada en
    automáticos de Supabase.
 4. Montar `/app/logs` como volumen persistente (hoy efímero).
 5. Restringir CORS al frontend real cuando exista.
-6. CI/CD: actualmente no hay pipeline; el build es manual (`docker build` +
-   `docker compose up`). Considerar GitHub Actions (build de imagen + push a
-   registry + deploy por SSH).
+6. CI/CD: GitHub Actions corre la suite y (job `migrations`) aplica Flyway
+   sobre `postgres:16` validando el mapeo JPA. Lo que falta es el tramo de
+   entrega: build de imagen + push a registry + deploy.
 7. Moderación de contenido: no existen todavía endpoints `/moderation/*` (denuncias).
    El registro de auditoría (`GET /admin/audit`) y el listado de propuestas
    (`GET /admin/proposals`) ya están disponibles para soportar esa tarea.
