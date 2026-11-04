@@ -18,10 +18,21 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import com.example.gradox2.persistence.entities.User;
 import com.example.gradox2.persistence.entities.enums.UserRole;
+import com.example.gradox2.persistence.repository.CourseRepository;
+import com.example.gradox2.persistence.repository.FileProposalRepository;
+import com.example.gradox2.persistence.repository.FileRepository;
+import com.example.gradox2.persistence.repository.ForumThreadRepository;
 import com.example.gradox2.persistence.repository.PasswordResetTokenRepository;
+import com.example.gradox2.persistence.repository.ProposalRepository;
 import com.example.gradox2.persistence.repository.RefreshTokenRepository;
+import com.example.gradox2.persistence.repository.ScoreRepository;
+import com.example.gradox2.persistence.repository.SubjectRepository;
+import com.example.gradox2.persistence.repository.TempFileRepository;
+import com.example.gradox2.persistence.repository.ThreadCommentRepository;
 import com.example.gradox2.persistence.repository.UserRepository;
 import com.example.gradox2.persistence.repository.VerificationTokenRepository;
+import com.example.gradox2.persistence.repository.VoteConfigRepository;
+import com.example.gradox2.persistence.repository.VoteRepository;
 import com.example.gradox2.security.InMemoryRateLimiter;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -49,6 +60,39 @@ class AuthRateLimitIntegrationTest {
     private PasswordResetTokenRepository passwordResetTokenRepository;
 
     @Autowired
+    private ThreadCommentRepository threadCommentRepository;
+
+    @Autowired
+    private ForumThreadRepository forumThreadRepository;
+
+    @Autowired
+    private ScoreRepository scoreRepository;
+
+    @Autowired
+    private VoteRepository voteRepository;
+
+    @Autowired
+    private FileProposalRepository fileProposalRepository;
+
+    @Autowired
+    private ProposalRepository proposalRepository;
+
+    @Autowired
+    private FileRepository fileRepository;
+
+    @Autowired
+    private TempFileRepository tempFileRepository;
+
+    @Autowired
+    private VoteConfigRepository voteConfigRepository;
+
+    @Autowired
+    private SubjectRepository subjectRepository;
+
+    @Autowired
+    private CourseRepository courseRepository;
+
+    @Autowired
     private PasswordEncoder passwordEncoder;
 
     @Autowired
@@ -57,9 +101,25 @@ class AuthRateLimitIntegrationTest {
     @BeforeEach
     void setUp() {
         rateLimiter.clear();
+        // La BD H2 del perfil `test` es compartida por todas las clases de test
+        // del mismo contexto, así que pueden quedar propuestas y archivos de
+        // tests anteriores apuntando a usuarios. Borrar solo `users` revienta
+        // contra la FK de file_proposal según el orden en que corra Surefire;
+        // se limpia en orden de dependencias.
+        threadCommentRepository.deleteAll();
+        forumThreadRepository.deleteAll();
+        scoreRepository.deleteAll();
+        voteRepository.deleteAll();
+        fileProposalRepository.deleteAll();
+        proposalRepository.deleteAll();
+        fileRepository.deleteAll();
+        tempFileRepository.deleteAll();
         passwordResetTokenRepository.deleteAll();
         refreshTokenRepository.deleteAll();
         verificationTokenRepository.deleteAll();
+        voteConfigRepository.deleteAll();
+        subjectRepository.deleteAll();
+        courseRepository.deleteAll();
         userRepository.deleteAll();
 
         User user = User.builder()
