@@ -468,7 +468,7 @@ Base URL: `http://<host>:8080` (sin HTTPS por ahora). Lista detallada en
 | GET | `/users/{id}` · `/users/all` | autenticado | consultar usuarios |
 | POST/GET/DELETE | `/uploadProposal/...` | autenticado | proponer archivo |
 | GET | `/uploadProposal/{id}/download` | autenticado | descargar propuesta (desde S3) |
-| GET | `/files/all` | autenticado | listar archivos aprobados |
+| GET | `/files/all` | público (GUEST) | listar archivos aprobados |
 | GET | `/files/{id}` | público (metadata con visibilidad) | metadata de archivo |
 | GET | `/files/{id}/download` | público con visibilidad (404 si no autorizado) | descargar archivo (desde S3) |
 | DELETE | `/files/{id}` | autenticado | propuesta de eliminación con votación |
@@ -506,6 +506,12 @@ Base URL: `http://<host>:8080` (sin HTTPS por ahora). Lista detallada en
   de prod.
 
 ---
+
+### Códigos de autenticación
+
+- **401** con `{"errorMessage","errorCode":"UNAUTHENTICATED_ACCESS"}`: falta el token o es inválido/expirado.
+- **403** con `{"errorMessage","errorCode":"ACCESS_DENIED"}`: el usuario está autenticado pero no tiene el rol.
+- Las operaciones abiertas a invitados (catálogo, archivos visibles y `/api/auth/**`) responden sin token.
 
 ## 12. Checklist pre-despliegue
 
