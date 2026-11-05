@@ -264,9 +264,10 @@ Archivo: [gradox2/src/test/java/com/example/gradox2/AuthErrorContractTest.java](
 
 - Sin token o con token inválido: **401** con `errorCode=UNAUTHENTICATED_ACCESS`.
 - Usuario autenticado sin rol MASTER en `/admin/**`: **403** con `errorCode=ACCESS_DENIED`.
+- Exporta el contrato (`-Dopenapi.export=true` → `target/openapi.json`); CI lo publica como artefacto.
 - Los endpoints abiertos (`/subjects`, `/courses`, `/badges`, `/stats`, `/health`, `/files/all`) responden sin token.
 
-### 20) OpenApiContractTest — 3 casos
+### 20) OpenApiContractTest — 4 casos
 Archivo: [gradox2/src/test/java/com/example/gradox2/OpenApiContractTest.java](../gradox2/src/test/java/com/example/gradox2/OpenApiContractTest.java)
 
 - Fija el contrato que consume el frontend: operaciones públicas con `security: []`, `401` documentado en las protegidas, y todas las respuestas 4xx/5xx referenciando `ErrorDTO`.

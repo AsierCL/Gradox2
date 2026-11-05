@@ -4,6 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Map;
 import java.util.TreeMap;
 
@@ -24,6 +26,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ActiveProfiles("test")
 class OpenApiContractTest {
+
+    private static final Path SPEC_OUTPUT = Path.of("target", "openapi.json");
 
     private static final List<String> PUBLIC_OPERATIONS = List.of(
             "post /api/auth/login",
@@ -118,5 +122,20 @@ class OpenApiContractTest {
 
     private static <T> Iterable<T> iterable(java.util.Iterator<T> iterator) {
         return () -> iterator;
+    }
+
+    /**
+     * Publica el contrato para el frontend. En CI lo consume el job `openapi`,
+     * que sube el archivo como artefacto; el JSON no se versiona para no meter
+     * un archivo de decenas de KB en cada diff.
+     */
+    @Test
+    void exportsTheContractForTheFrontend() throws Exception {
+        if (!Boolean.getBoolean("openapi.export")) {
+            return;
+        }
+        Files.createDirectories(SPEC_OUTPUT.getParent());
+        Files.writeString(SPEC_OUTPUT, objectMapper.writerWithDefaultPrettyPrinter()
+                .writeValueAsString(fetchSpec()) + "\n");
     }
 }
