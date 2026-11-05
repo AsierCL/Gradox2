@@ -238,16 +238,6 @@ Archivo: [gradox2/src/test/java/com/example/gradox2/PostgresMigrationIT.java](..
   - Caso negativo comprobado a mano (no automatizado): una migración que elimina
     `users.email` produce `Schema-validation: missing column [email] in table [users]`.
 
-### 18) OriginalFilenameIntegrationTest — 3 casos
-Archivo: [gradox2/src/test/java/com/example/gradox2/OriginalFilenameIntegrationTest.java](../gradox2/src/test/java/com/example/gradox2/OriginalFilenameIntegrationTest.java)
-
-- Nombre de archivo más largo que la columna (300 caracteres): se acepta y se
-  guarda truncado a 255 conservando la extensión.
-- Nombre con componentes de ruta (`../../etc/notas.pdf`): se guarda solo el nombre.
-- Nombre normal (`Apuntes Tema 1.pdf`): se conserva tal cual.
-  - Comprueba el efecto visible: el `filename` del `Content-Disposition` en la URL
-    de descarga firmada, no el valor interno de la columna.
-
 ### 17) DemoSeedsGateTest — 3 casos
 Archivo: [gradox2/src/test/java/com/example/gradox2/DemoSeedsGateTest.java](../gradox2/src/test/java/com/example/gradox2/DemoSeedsGateTest.java)
 
@@ -258,6 +248,16 @@ Archivo: [gradox2/src/test/java/com/example/gradox2/DemoSeedsGateTest.java](../g
     el seeding no debe depender solo del perfil activo.
 
 ---
+
+### 18) OriginalFilenameIntegrationTest — 3 casos
+Archivo: [gradox2/src/test/java/com/example/gradox2/OriginalFilenameIntegrationTest.java](../gradox2/src/test/java/com/example/gradox2/OriginalFilenameIntegrationTest.java)
+
+- Nombre de archivo más largo que la columna (300 caracteres): se acepta y se
+  guarda truncado a 255 conservando la extensión.
+- Nombre con componentes de ruta (`../../etc/notas.pdf`): se guarda solo el nombre.
+- Nombre normal (`Apuntes Tema 1.pdf`): se conserva tal cual.
+  - Comprueba el efecto visible: el `filename` del `Content-Disposition` en la URL
+    de descarga firmada, no el valor interno de la columna.
 
 ## Resumen de cobertura actual
 
