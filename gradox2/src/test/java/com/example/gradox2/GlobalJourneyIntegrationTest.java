@@ -33,21 +33,11 @@ import com.example.gradox2.persistence.entities.VerificationToken;
 import com.example.gradox2.persistence.entities.enums.FileType;
 import com.example.gradox2.persistence.entities.enums.FileVisibility;
 import com.example.gradox2.persistence.entities.enums.UserRole;
+import com.example.gradox2.support.TestDatabaseCleaner;
 import com.example.gradox2.persistence.repository.CourseRepository;
-import com.example.gradox2.persistence.repository.FileProposalRepository;
-import com.example.gradox2.persistence.repository.FileRepository;
-import com.example.gradox2.persistence.repository.ForumThreadRepository;
-import com.example.gradox2.persistence.repository.PasswordResetTokenRepository;
-import com.example.gradox2.persistence.repository.ProposalRepository;
-import com.example.gradox2.persistence.repository.RefreshTokenRepository;
-import com.example.gradox2.persistence.repository.ScoreRepository;
 import com.example.gradox2.persistence.repository.SubjectRepository;
-import com.example.gradox2.persistence.repository.TempFileRepository;
-import com.example.gradox2.persistence.repository.ThreadCommentRepository;
 import com.example.gradox2.persistence.repository.UserRepository;
 import com.example.gradox2.persistence.repository.VerificationTokenRepository;
-import com.example.gradox2.persistence.repository.VoteConfigRepository;
-import com.example.gradox2.persistence.repository.VoteRepository;
 import com.example.gradox2.service.interfaces.IGlobalConfigService;
 import com.example.gradox2.utils.EmailService;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -57,6 +47,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 class GlobalJourneyIntegrationTest {
+
+    @Autowired
+    private TestDatabaseCleaner databaseCleaner;
+
 
     private static final AtomicInteger IP_COUNTER = new AtomicInteger(5000);
 
@@ -73,43 +67,10 @@ class GlobalJourneyIntegrationTest {
     private VerificationTokenRepository verificationTokenRepository;
 
     @Autowired
-    private RefreshTokenRepository refreshTokenRepository;
-
-    @Autowired
-    private PasswordResetTokenRepository passwordResetTokenRepository;
-
-    @Autowired
-    private VoteRepository voteRepository;
-
-    @Autowired
-    private VoteConfigRepository voteConfigRepository;
-
-    @Autowired
-    private ProposalRepository proposalRepository;
-
-    @Autowired
-    private FileProposalRepository fileProposalRepository;
-
-    @Autowired
-    private ScoreRepository scoreRepository;
-
-    @Autowired
-    private FileRepository fileRepository;
-
-    @Autowired
-    private TempFileRepository tempFileRepository;
-
-    @Autowired
     private SubjectRepository subjectRepository;
 
     @Autowired
     private CourseRepository courseRepository;
-
-    @Autowired
-    private ForumThreadRepository forumThreadRepository;
-
-    @Autowired
-    private ThreadCommentRepository threadCommentRepository;
 
     @Autowired
     private PasswordEncoder passwordEncoder;
@@ -122,21 +83,7 @@ class GlobalJourneyIntegrationTest {
 
     @BeforeEach
     void setUp() {
-        threadCommentRepository.deleteAll();
-        forumThreadRepository.deleteAll();
-        scoreRepository.deleteAll();
-        voteRepository.deleteAll();
-        fileProposalRepository.deleteAll();
-        proposalRepository.deleteAll();
-        fileRepository.deleteAll();
-        tempFileRepository.deleteAll();
-        passwordResetTokenRepository.deleteAll();
-        refreshTokenRepository.deleteAll();
-        verificationTokenRepository.deleteAll();
-        voteConfigRepository.deleteAll();
-        subjectRepository.deleteAll();
-        courseRepository.deleteAll();
-        userRepository.deleteAll();
+        databaseCleaner.clean();
 
         voteConfigService.reloadConfig();
         voteConfigService.updateConfig(1, 0.5, 3);
