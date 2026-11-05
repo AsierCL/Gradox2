@@ -30,6 +30,7 @@ import com.example.gradox2.service.interfaces.FileUrlSigner;
 import com.example.gradox2.service.interfaces.IAuditService;
 import com.example.gradox2.service.interfaces.IFileService;
 import com.example.gradox2.utils.ContentDisposition;
+import com.example.gradox2.utils.FileNames;
 import com.example.gradox2.utils.GetAuthUser;
 import com.example.gradox2.utils.IdentityVisibility;
 import com.example.gradox2.utils.mapper.FileMapper;
@@ -77,10 +78,10 @@ public class FileServiceImpl implements IFileService {
         fileRepository.save(file);
 
         String filename = file.getOriginalFilename() != null
-                ? file.getOriginalFilename()
-                : file.getTitle();
+                ? FileNames.sanitize(file.getOriginalFilename())
+                : null;
         String url = fileUrlSigner.presignedGetUrl(file.getObjectKey(),
-                ContentDisposition.attachmentOf(filename));
+                ContentDisposition.attachmentOf(filename != null ? filename : file.getTitle()));
         return FileDownloadResponse.builder().url(url).build();
     }
 
