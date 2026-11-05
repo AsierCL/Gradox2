@@ -22,10 +22,11 @@ load_env_file() {
     value="${line#*=}"
     key="${key//[[:space:]]/}"
     [[ "$key" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]] || continue
+    # El entorno del proceso tiene prioridad: si ya viene definida, no se toca.
+    [[ -v "$key" ]] && continue
     if [[ "$value" == \"*\" || "$value" == \'*\' ]]; then
       value="${value:1:${#value}-2}"
     fi
-    [[ -v "$key" ]] && continue
     export "$key=$value"
   done < "$file"
 }
