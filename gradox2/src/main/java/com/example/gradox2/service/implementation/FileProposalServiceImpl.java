@@ -36,6 +36,7 @@ import com.example.gradox2.service.interfaces.IAuditService;
 import com.example.gradox2.service.interfaces.IFileProposalService;
 import com.example.gradox2.service.interfaces.IGlobalConfigService;
 import com.example.gradox2.utils.ContentDisposition;
+import com.example.gradox2.utils.FileNames;
 import com.example.gradox2.utils.GetAuthUser;
 import com.example.gradox2.utils.SortUtils;
 import com.example.gradox2.utils.mapper.FileProposalMapper;
@@ -95,7 +96,7 @@ public class FileProposalServiceImpl implements IFileProposalService {
                     .description(dto.getDescription())
                     .type(dto.getType())
                     .objectKey(objectKey)
-                    .originalFilename(dto.getFile().getOriginalFilename())
+                    .originalFilename(FileNames.sanitize(dto.getFile().getOriginalFilename()))
                     .fileHash(generateFileHash(fileData)) // Hash seguro
                     .sizeBytes((long) fileData.length)
                     .subject(subject)
@@ -185,10 +186,10 @@ public class FileProposalServiceImpl implements IFileProposalService {
     public FileDownloadResponse getFileDownloadLink(Long id) {
         TempFile tempFile = downloadFileFromProposal(id);
         String filename = tempFile.getOriginalFilename() != null
-                ? tempFile.getOriginalFilename()
-                : tempFile.getTitle();
+                ? FileNames.sanitize(tempFile.getOriginalFilename())
+                : null;
         String url = fileUrlSigner.presignedGetUrl(tempFile.getObjectKey(),
-                ContentDisposition.attachmentOf(filename));
+                ContentDisposition.attachmentOf(filename != null ? filename : tempFile.getTitle()));
         return FileDownloadResponse.builder().url(url).build();
     }
 
