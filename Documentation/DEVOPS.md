@@ -71,7 +71,7 @@ externos gestionados para la persistencia y el almacenamiento de archivos:
 | Object storage | Cloudflare R2 / MinIO | — | endpoint S3 compatible, path-style |
 | Build | Maven (wrapper) | 3.x vía `./mvnw` | imagen base `eclipse-temurin:21` |
 | Contenedores | Docker + Docker Compose | Compose v2 | perfil `full` |
-| Test | JUnit 5 + MockMvc | Boot test | H2 en memoria, 126 tests (+ migraciones contra PostgreSQL real en CI) |
+| Test | JUnit 5 + MockMvc | Boot test | H2 en memoria, 129 tests (+ migraciones contra PostgreSQL real en CI) |
 
 ### Versiones clave del stack Docker
 - `eclipse-temurin:21-jdk` — stage de build del Dockerfile
@@ -212,7 +212,7 @@ docker build --network=host -t gradox2-app:latest -f Docker/Dockerfile .
 ### Build manual (sin Docker), para validar tests
 ```bash
 cd Gradox2/gradox2
-./mvnw test          # 126 tests (H2 + fake S3)
+./mvnw test          # 129 tests (H2 + fake S3)
 # Migraciones + mapeo JPA contra PostgreSQL real (lo corre el job `migrations` de CI):
 POSTGRES_TEST_URL=jdbc:postgresql://localhost:5432/gradoxdb ./mvnw test -Dtest=PostgresMigrationIT
 ./mvnw package -DskipTests
@@ -518,7 +518,7 @@ Base URL: `http://<host>:8080` (sin HTTPS por ahora). Lista detallada en
 - [ ] `BOOTSTRAP_MASTER_USERNAME/PASSWORD/EMAIL` rellenos (si no, no habrá admin).
 - [ ] Credenciales SMTP de Gmail correctas y con permiso para enviar.
 - [ ] Build: `docker build --network=host -f Docker/Dockerfile .` OK.
-- [ ] Tests: `./mvnw test` → 126/126 OK (en el directorio `gradox2/`).
+- [ ] Tests: `./mvnw test` → 129/129 OK (en el directorio `gradox2/`).
 - [ ] Migraciones: `POSTGRES_TEST_URL=... ./mvnw test -Dtest=PostgresMigrationIT` → OK
       (aplica V1..V9 sobre PostgreSQL 16 y valida el mapeo JPA; también corre en CI).
 - [ ] `docker compose --env-file Docker/.env -f Docker/docker-compose.yml config --quiet` no da errores.

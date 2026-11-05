@@ -16,11 +16,11 @@ Notas:
 - El acceso a **S3 se simula con un fake en memoria** (`TestS3Config`): no se toca
   red ni se necesita MinIO/R2 para pasar los tests. Incluye un **signer fake**
   (`FileUrlSigner`) que devuelve URLs firmadas sin tocar red.
-- Ejecución más reciente: **126 tests, 0 fallos, 0 errores**.
+- Ejecución más reciente: **129 tests, 0 fallos, 0 errores**.
 - Las migraciones Flyway no pueden correr sobre H2: se validan con
   `PostgresMigrationIT` contra PostgreSQL real (job `migrations` de CI).
 
-## Suite actual (17 clases)
+## Suite actual (18 clases)
 
 ### 1) Gradox2ApplicationTests — 1 caso
 Archivo: [gradox2/src/test/java/com/example/gradox2/Gradox2ApplicationTests.java](../gradox2/src/test/java/com/example/gradox2/Gradox2ApplicationTests.java)
@@ -235,8 +235,18 @@ Archivo: [gradox2/src/test/java/com/example/gradox2/PostgresMigrationIT.java](..
     un service `postgres:16`). Aplica V1..V9 sobre PostgreSQL real y arranca el
     contexto con `ddl-auto=validate`, así un desajuste entre migraciones y
     entidades falla en CI y no en el arranque de producción.
-  - Caso negativo comprobado: una migración que elimina `users.email` produce
-    `Schema-validation: missing column [email] in table [users]`.
+  - Caso negativo comprobado a mano (no automatizado): una migración que elimina
+    `users.email` produce `Schema-validation: missing column [email] in table [users]`.
+
+### 18) OriginalFilenameIntegrationTest — 3 casos
+Archivo: [gradox2/src/test/java/com/example/gradox2/OriginalFilenameIntegrationTest.java](../gradox2/src/test/java/com/example/gradox2/OriginalFilenameIntegrationTest.java)
+
+- Nombre de archivo más largo que la columna (300 caracteres): se acepta y se
+  guarda truncado a 255 conservando la extensión.
+- Nombre con componentes de ruta (`../../etc/notas.pdf`): se guarda solo el nombre.
+- Nombre normal (`Apuntes Tema 1.pdf`): se conserva tal cual.
+  - Comprueba el efecto visible: el `filename` del `Content-Disposition` en la URL
+    de descarga firmada, no el valor interno de la columna.
 
 ### 17) DemoSeedsGateTest — 3 casos
 Archivo: [gradox2/src/test/java/com/example/gradox2/DemoSeedsGateTest.java](../gradox2/src/test/java/com/example/gradox2/DemoSeedsGateTest.java)
