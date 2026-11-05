@@ -291,7 +291,7 @@ class AuthSessionIntegrationTest {
 
         mockMvc.perform(get("/users/me")
                         .header("Authorization", bearer(accessToken)))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isUnauthorized());
     }
 
     @Test
@@ -305,7 +305,7 @@ class AuthSessionIntegrationTest {
 
         mockMvc.perform(get("/users/me")
                         .header("Authorization", bearer(accessToken)))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isUnauthorized());
     }
 
     @Test
@@ -323,7 +323,7 @@ class AuthSessionIntegrationTest {
 
         mockMvc.perform(get("/users/me")
                         .header("Authorization", bearer(legacyToken)))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isUnauthorized());
     }
 
     private User createEnabledUser(String username, String email, String password, UserRole role) {
