@@ -136,14 +136,14 @@ class ApiIntegrationTest {
     @Test
     void usersMeShouldRequireAuthentication() throws Exception {
         mockMvc.perform(get("/users/me"))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isUnauthorized());
     }
 
     @Test
     void usersMeShouldNotFailWithMalformedJwt() throws Exception {
         mockMvc.perform(get("/users/me")
                         .header("Authorization", "Bearer malformed-token"))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isUnauthorized());
     }
 
     @Test

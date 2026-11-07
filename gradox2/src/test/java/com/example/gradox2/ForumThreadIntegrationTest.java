@@ -169,7 +169,7 @@ class ForumThreadIntegrationTest {
         mockMvc.perform(post("/files/{id}/comments", file.getId())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json(Map.of("content", "Sin sesion"))))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isUnauthorized());
     }
 
     @Test

@@ -16,11 +16,11 @@ Notas:
 - El acceso a **S3 se simula con un fake en memoria** (`TestS3Config`): no se toca
   red ni se necesita MinIO/R2 para pasar los tests. Incluye un **signer fake**
   (`FileUrlSigner`) que devuelve URLs firmadas sin tocar red.
-- Ejecución más reciente: **129 tests, 0 fallos, 0 errores**.
+- Ejecución más reciente: **138 tests, 0 fallos, 0 errores**.
 - Las migraciones Flyway no pueden correr sobre H2: se validan con
   `PostgresMigrationIT` contra PostgreSQL real (job `migrations` de CI).
 
-## Suite actual (18 clases)
+## Suite actual (20 clases)
 
 ### 1) Gradox2ApplicationTests — 1 caso
 Archivo: [gradox2/src/test/java/com/example/gradox2/Gradox2ApplicationTests.java](../gradox2/src/test/java/com/example/gradox2/Gradox2ApplicationTests.java)
@@ -258,6 +258,19 @@ Archivo: [gradox2/src/test/java/com/example/gradox2/OriginalFilenameIntegrationT
 - Nombre normal (`Apuntes Tema 1.pdf`): se conserva tal cual.
   - Comprueba el efecto visible: el `filename` del `Content-Disposition` en la URL
     de descarga firmada, no el valor interno de la columna.
+
+### 19) AuthErrorContractTest — 5 casos
+Archivo: [gradox2/src/test/java/com/example/gradox2/AuthErrorContractTest.java](../gradox2/src/test/java/com/example/gradox2/AuthErrorContractTest.java)
+
+- Sin token o con token inválido: **401** con `errorCode=UNAUTHENTICATED_ACCESS`.
+- Usuario autenticado sin rol MASTER en `/admin/**`: **403** con `errorCode=ACCESS_DENIED`.
+- Exporta el contrato (`-Dopenapi.export=true` → `target/openapi.json`); CI lo publica como artefacto.
+- Los endpoints abiertos (`/subjects`, `/courses`, `/badges`, `/stats`, `/health`, `/files/all`) responden sin token.
+
+### 20) OpenApiContractTest — 4 casos
+Archivo: [gradox2/src/test/java/com/example/gradox2/OpenApiContractTest.java](../gradox2/src/test/java/com/example/gradox2/OpenApiContractTest.java)
+
+- Fija el contrato que consume el frontend: operaciones públicas con `security: []`, `401` documentado en las protegidas, y todas las respuestas 4xx/5xx referenciando `ErrorDTO`.
 
 ## Resumen de cobertura actual
 

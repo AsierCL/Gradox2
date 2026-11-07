@@ -3,7 +3,8 @@
 ## 1. El Contrato Oficial (OpenAPI)
 El listado exhaustivo de todos los endpoints, parámetros, esquemas de datos y respuestas se encuentra en el archivo JSON exportado directamente del código fuente:
 
-📄 **[openapi.json](./openapi.json)**
+📄 **Contrato OpenAPI**: se genera en CI (job `openapi`) y se descarga como artefacto `openapi` de la última corrida.
+Para generarlo en local: `cd gradox2 && ./mvnw test -Dtest=OpenApiContractTest -Dopenapi.export=true` → `gradox2/target/openapi.json`.
 
 ## 2. Explorador Interactivo (Swagger UI)
 Para explorar, leer la documentación detallada de cada ruta y **probar la API en tiempo real**, debes levantar el entorno de desarrollo local (mediante `./run.sh dev` o `./mvnw spring-boot:run`).

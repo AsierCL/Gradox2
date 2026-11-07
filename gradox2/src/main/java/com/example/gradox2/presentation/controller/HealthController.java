@@ -1,6 +1,7 @@
 package com.example.gradox2.presentation.controller;
 
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -13,7 +14,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 @Tag(name = "Health Check", description = "Endpoint de verificación de estado de la aplicación")
 public class HealthController {
 
-    @RequestMapping
+    @GetMapping
     @Operation(summary = "Health check", description = "Responde 200 OK si la aplicación está funcionando correctamente")
     @ApiResponse(responseCode = "200", description = "Aplicación activa")
     public ResponseEntity<String> checkHealth() {

@@ -305,7 +305,7 @@ class ProfilePictureIntegrationTest {
     @Test
     void deletingPictureWithoutAuthenticationShouldBeRejected() throws Exception {
         mockMvc.perform(MockMvcRequestBuilders.delete("/users/me/profile-picture"))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isUnauthorized());
     }
 
     @Test
@@ -319,7 +319,7 @@ class ProfilePictureIntegrationTest {
             return r;
         });
         mockMvc.perform(request)
-                .andExpect(status().isForbidden());
+                .andExpect(status().isUnauthorized());
     }
 
     private MockHttpServletRequestBuilder putMultipart(String url, String token, String filename, String contentType,
