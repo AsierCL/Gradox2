@@ -31,6 +31,7 @@ import com.example.gradox2.service.interfaces.IAuditService;
 import com.example.gradox2.service.interfaces.IFileService;
 import com.example.gradox2.utils.ContentDisposition;
 import com.example.gradox2.utils.FileNames;
+import com.example.gradox2.security.DegreeAccessGuard;
 import com.example.gradox2.utils.GetAuthUser;
 import com.example.gradox2.utils.IdentityVisibility;
 import com.example.gradox2.utils.mapper.FileMapper;
@@ -47,12 +48,14 @@ public class FileServiceImpl implements IFileService {
     private final S3StorageService s3StorageService;
     private final FileUrlSigner fileUrlSigner;
     private final IAuditService auditService;
+    private final DegreeAccessGuard degreeAccessGuard;
 
     public FileServiceImpl(FileRepository fileRepository,
             FileProposalRepository uploadProposalRepository,
             IGlobalConfigService voteConfigService, ScoreRepository scoreRepository,
             UserRepository userRepository, S3StorageService s3StorageService,
-            FileUrlSigner fileUrlSigner, IAuditService auditService) {
+            FileUrlSigner fileUrlSigner, IAuditService auditService,
+            DegreeAccessGuard degreeAccessGuard) {
         this.fileRepository = fileRepository;
         this.uploadProposalRepository = uploadProposalRepository;
         this.scoreRepository = scoreRepository;
@@ -61,6 +64,7 @@ public class FileServiceImpl implements IFileService {
         this.s3StorageService = s3StorageService;
         this.fileUrlSigner = fileUrlSigner;
         this.auditService = auditService;
+        this.degreeAccessGuard = degreeAccessGuard;
     }
 
     @Transactional
@@ -105,6 +109,9 @@ public class FileServiceImpl implements IFileService {
         File file = fileRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("File not found"));
 
+        // El grado se deriva del archivo, nunca del payload (GRADOS.md §5.2).
+        degreeAccessGuard.requireSameDegree(file.getSubject().getDegree());
+
         if (uploadProposalRepository.existsByFileAndStatus(file, ProposalStatus.PENDING)) {
             throw new InvalidFileOperation("An active deletion proposal already exists for this file");
         }
@@ -130,7 +137,7 @@ public class FileServiceImpl implements IFileService {
         File file = fileRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("File not found"));
 
-        User user = GetAuthUser.getAuthUser();
+        User user = degreeAccessGuard.requireSameDegree(file.getSubject().getDegree());
 
         // Comprobar si ya existe voto
         Score existingScore = scoreRepository.findByFileAndUser(file, user);
@@ -195,7 +202,7 @@ public class FileServiceImpl implements IFileService {
         File file = fileRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("File not found"));
 
-        User requester = GetAuthUser.getAuthUser();
+        User requester = degreeAccessGuard.requireSameDegree(file.getSubject().getDegree());
 
         if (!IdentityVisibility.isSameUser(file.getUploader(), requester) && !IdentityVisibility.isMaster(requester)) {
             throw new InvalidFileOperation("Only the uploader or a master can change visibility");
