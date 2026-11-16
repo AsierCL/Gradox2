@@ -1,6 +1,6 @@
 # Gradox · Frontend
 
-Interfaz web de **Gradox 2.0**, la biblioteca colaborativa multi-grado de la Escuela de Ingeniería de la USC. Está construida con React, Vite y Tailwind CSS, y consume la API Spring Boot del repositorio.
+Interfaz web de **Gradox 2.0**, la biblioteca colaborativa multi-grado. Está construida con React, Vite y Tailwind CSS, y consume la API Spring Boot del repositorio.
 
 El catálogo cubre Ingeniería Informática, Ingeniería Química e Inteligencia Artificial. El grado es permanente para cada usuario y define dónde puede escribir; la lectura y la descarga son libres entre grados.
 
@@ -46,7 +46,7 @@ npm run lint     # ESLint
 - **Grados** con índice público y pantalla por grado: cursos, asignaturas, créditos, semestre y tipo de materia.
 - **Explorar** con búsqueda sin distinción de acentos, filtros por grado, curso, asignatura y tipo, ordenación y descarga directa.
 - **Ficha de material** con grado visible, descarga mediante URL firmada, votación, visibilidad configurable, metadatos e hilo de comentarios anidados.
-- **Cuenta USC** con registro (incluye elección obligatoria de grado), verificación por correo, login, renovación de token, logout y recuperación de contraseña.
+- **Cuenta institucional** con registro (incluye elección obligatoria de grado), verificación por correo, login, renovación de token, logout y recuperación de contraseña.
 - **Perfil** con grado permanente, foto, edición de alias y contraseña, reputación, insignias y solicitud de promoción a master del grado propio.
 - **Propuestas** de material con listado global en lectura, detalle, descarga del archivo propuesto y votación limitada al grado.
 - **Subida** de material como propuesta, solo con asignaturas del grado propio, PDF de hasta 10 MB y elección de visibilidad.

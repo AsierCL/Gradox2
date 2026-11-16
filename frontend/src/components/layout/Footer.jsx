@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { ArrowUpRight, GithubLogo, ChatCircleDots } from '@phosphor-icons/react'
+import { ArrowUpRight, ChatCircleDots, GithubLogo } from '@phosphor-icons/react'
 import { Logo } from '../ui/Logo'
 
 const columns = [
@@ -60,7 +60,7 @@ export function Footer() {
                 target="_blank"
                 rel="noreferrer"
                 className="text-ink-soft transition-colors hover:text-ink"
-                aria-label="Gradox en GitHub"
+                aria-label="Gradox2 en GitHub"
               >
                 <GithubLogo size={19} aria-hidden="true" />
               </a>
@@ -82,12 +82,23 @@ export function Footer() {
                 Ver código <ArrowUpRight size={13} weight="bold" aria-hidden="true" />
               </a>
             </div>
+            <p className="mt-4 text-sm leading-6 text-ink-soft">
+              Inspirado por{' '}
+              <a
+                href="https://gradox.es/"
+                target="_blank"
+                rel="noreferrer"
+                className="font-semibold text-ink underline decoration-ink/20 underline-offset-4 transition-opacity hover:opacity-65"
+              >
+                gradox
+              </a>
+            </p>
           </div>
         </div>
 
         <div className="mt-10 flex flex-col gap-2 border-t border-ink/8 pt-5 text-[0.7rem] text-ink-faint sm:flex-row sm:items-center sm:justify-between">
           <p>© {new Date().getFullYear()} Gradox2</p>
-          <p>GPL-3.0 · Universidad de Santiago de Compostela</p>
+          <p>GPL-3.0</p>
         </div>
       </div>
     </footer>

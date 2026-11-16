@@ -253,7 +253,7 @@ export function ProfilePage() {
                     {role}
                   </span>
                   <span className="chip border-transparent bg-white/40">
-                    <ShieldCheck size={12} aria-hidden="true" /> Cuenta USC
+                    <ShieldCheck size={12} aria-hidden="true" /> Cuenta verificada
                   </span>
                   {(degreeName || degreeCode) && (
                     <Link

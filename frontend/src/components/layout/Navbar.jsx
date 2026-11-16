@@ -497,7 +497,7 @@ export function Navbar() {
               ) : (
                 <>
                   <Button to="/registro" onClick={() => setMobileOpen(false)}>
-                    Crear cuenta USC
+                    Crear cuenta
                   </Button>
                   <Button
                     to="/acceso"

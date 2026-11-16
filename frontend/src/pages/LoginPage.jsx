@@ -38,7 +38,7 @@ export function LoginPage() {
     <AuthLayout
       eyebrow="Cuenta"
       title="Inicia sesión"
-      description="Accede con tu cuenta de la USC para votar, comentar y compartir material."
+      description="Accede con tu cuenta para votar, comentar y compartir material."
       footer={
         <p className="text-sm text-ink-soft">
           ¿No tienes cuenta?{' '}

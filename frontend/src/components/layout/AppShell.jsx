@@ -8,7 +8,7 @@ import { AppErrorBoundary } from './AppErrorBoundary'
 import { PageLoader } from '../ui/Spinner'
 
 const pageTitles = [
-  [/^\/$/, 'Gradox · Material de la Escuela de Ingeniería USC'],
+  [/^\/$/, 'Gradox2 · Biblioteca colaborativa'],
   [/^\/grados\/[^/]+/, 'Grado · Gradox'],
   [/^\/grados/, 'Grados · Gradox'],
   [/^\/explorar/, 'Explorar materiales · Gradox'],

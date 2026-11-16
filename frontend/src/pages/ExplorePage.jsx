@@ -171,7 +171,7 @@ export function ExplorePage() {
       <PageHeader
         eyebrow="Catálogo"
         title="Explorar materiales"
-        description="Apuntes, exámenes y ejercicios de los grados de la Escuela de Ingeniería."
+        description="Apuntes, exámenes y ejercicios de todos los grados."
       />
 
       <Reveal>

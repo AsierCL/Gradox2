@@ -294,7 +294,7 @@ export function Thread({ fileId, canWrite = false, canModerate = false, readOnly
           <div>
             <p className="text-sm font-semibold text-ink">Inicia sesión para comentar</p>
             <p className="mt-1 text-xs leading-5 text-ink-soft">
-              Necesitas una cuenta de la USC.
+              Necesitas una cuenta verificada.
             </p>
           </div>
           <Button to="/acceso" variant="ghost" className="shrink-0">

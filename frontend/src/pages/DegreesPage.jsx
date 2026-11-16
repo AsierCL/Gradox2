@@ -35,7 +35,7 @@ export function DegreesPage() {
   return (
     <div className="site-shell">
       <PageHeader
-        eyebrow="Escuela de Ingeniería"
+        eyebrow="Catálogo"
         title="Grados"
         description="Cada grado es una comunidad de escritura. Puedes leer y descargar material de cualquiera; para votar, comentar o proponer necesitas pertenecer a ese grado."
         actions={
