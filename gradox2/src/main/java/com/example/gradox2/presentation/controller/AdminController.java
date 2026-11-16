@@ -34,7 +34,7 @@ public class AdminController {
     }
 
     @PutMapping("/{id}/ban")
-    @PreAuthorize("hasRole('MASTER')")
+    @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Banear usuario", description = "Bloquea el acceso de un usuario (solo MASTER)")
     @ApiResponses({
         @ApiResponse(responseCode = "200", description = "Usuario baneado"),
@@ -49,7 +49,7 @@ public class AdminController {
     }
 
     @PutMapping("/{id}/unban")
-    @PreAuthorize("hasRole('MASTER')")
+    @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Rehabilitar usuario", description = "Desbloquea el acceso de un usuario previamente baneado (solo MASTER)")
     @ApiResponses({
         @ApiResponse(responseCode = "200", description = "Usuario rehabilitado"),
@@ -63,7 +63,7 @@ public class AdminController {
     }
 
     @GetMapping("/banned")
-    @PreAuthorize("hasRole('MASTER')")
+    @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Listar usuarios baneados", description = "Devuelve los usuarios deshabilitados paginados (solo MASTER)")
     @ApiResponses({
         @ApiResponse(responseCode = "200", description = "Listado de baneados"),

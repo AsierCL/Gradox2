@@ -183,6 +183,25 @@ class PostgresMigrationIT {
         assertThat(duplicateRejected)
                 .as("el mismo código de curso sigue prohibido dentro del mismo grado").isTrue();
 
+        // ── rol de plataforma (V12): el check de role sigue vigente y admite ADMIN ──
+        try (Connection connection = DriverManager.getConnection(url, user, pass);
+                Statement statement = connection.createStatement()) {
+            statement.execute("set search_path to " + schema);
+            statement.executeUpdate("update users set role = 'ADMIN' where username = 'legacyuser'");
+            statement.executeUpdate("update users set role = 'MASTER' where username = 'legacyuser'");
+        }
+
+        boolean invalidRoleRejected = false;
+        try (Connection connection = DriverManager.getConnection(url, user, pass);
+                Statement statement = connection.createStatement()) {
+            statement.execute("set search_path to " + schema);
+            statement.executeUpdate("update users set role = 'SUPERUSER' where username = 'legacyuser'");
+        } catch (SQLException expected) {
+            invalidRoleRejected = true;
+        }
+        assertThat(invalidRoleRejected)
+                .as("el check de role debe seguir rechazando valores fuera del enum").isTrue();
+
         dropSchema(url, user, pass, schema);
     }
 

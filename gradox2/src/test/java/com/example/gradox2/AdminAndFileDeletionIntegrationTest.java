@@ -126,14 +126,14 @@ class AdminAndFileDeletionIntegrationTest {
     }
 
     @Test
-    void masterShouldBeAbleToBanAndUnbanAUser() throws Exception {
-        createEnabledUser("masteradmin", "masteradmin@rai.usc.es", "SecurePass1!", UserRole.MASTER);
+    void adminShouldBeAbleToBanAndUnbanAUser() throws Exception {
+        createEnabledUser("platformadmin", "platformadmin@rai.usc.es", "SecurePass1!", UserRole.ADMIN);
         createEnabledUser("candidate", "candidate@rai.usc.es", "SecurePass1!", UserRole.USER);
 
-        String masterToken = loginAndGetToken("masteradmin", "SecurePass1!");
+        String adminToken = loginAndGetToken("platformadmin", "SecurePass1!");
 
         mockMvc.perform(put("/admin/users/{id}/ban", candidateId())
-                        .header("Authorization", bearer(masterToken)))
+                        .header("Authorization", bearer(adminToken)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$").value("Usuario baneado correctamente"));
 
@@ -146,7 +146,7 @@ class AdminAndFileDeletionIntegrationTest {
                 .andExpect(jsonPath("$.errorCode").value("UNAUTHENTICATED_ACCESS"));
 
         mockMvc.perform(put("/admin/users/{id}/unban", candidateId())
-                        .header("Authorization", bearer(masterToken)))
+                        .header("Authorization", bearer(adminToken)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$").value("Usuario rehabilitado correctamente"));
 
@@ -160,7 +160,7 @@ class AdminAndFileDeletionIntegrationTest {
     }
 
     @Test
-    void nonMasterShouldNotBeAbleToBanUsers() throws Exception {
+    void nonAdminShouldNotBeAbleToBanUsers() throws Exception {
         createEnabledUser("regular", "regular@rai.usc.es", "SecurePass1!", UserRole.USER);
         createEnabledUser("target", "target@rai.usc.es", "SecurePass1!", UserRole.USER);
 
@@ -173,33 +173,33 @@ class AdminAndFileDeletionIntegrationTest {
 
     @Test
     void banningAnAlreadyBannedUserShouldReturnConflict() throws Exception {
-        createEnabledUser("masterban", "masterban@rai.usc.es", "SecurePass1!", UserRole.MASTER);
+        createEnabledUser("platformban", "platformban@rai.usc.es", "SecurePass1!", UserRole.ADMIN);
         createEnabledUser("doubleban", "doubleban@rai.usc.es", "SecurePass1!", UserRole.USER);
 
-        String masterToken = loginAndGetToken("masterban", "SecurePass1!");
+        String adminToken = loginAndGetToken("platformban", "SecurePass1!");
         long userId = userRepository.findByUsername("doubleban").orElseThrow().getId();
 
         mockMvc.perform(put("/admin/users/{id}/ban", userId)
-                        .header("Authorization", bearer(masterToken)))
+                        .header("Authorization", bearer(adminToken)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$").value("Usuario baneado correctamente"));
 
         mockMvc.perform(put("/admin/users/{id}/ban", userId)
-                        .header("Authorization", bearer(masterToken)))
+                        .header("Authorization", bearer(adminToken)))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.errorCode").value("ALREADY_EXIST_ERROR"));
     }
 
     @Test
     void unbanningANonBannedUserShouldReturnConflict() throws Exception {
-        createEnabledUser("masterunban", "masterunban@rai.usc.es", "SecurePass1!", UserRole.MASTER);
+        createEnabledUser("platformunban", "platformunban@rai.usc.es", "SecurePass1!", UserRole.ADMIN);
         createEnabledUser("notbanned", "notbanned@rai.usc.es", "SecurePass1!", UserRole.USER);
 
-        String masterToken = loginAndGetToken("masterunban", "SecurePass1!");
+        String adminToken = loginAndGetToken("platformunban", "SecurePass1!");
         long userId = userRepository.findByUsername("notbanned").orElseThrow().getId();
 
         mockMvc.perform(put("/admin/users/{id}/unban", userId)
-                        .header("Authorization", bearer(masterToken)))
+                        .header("Authorization", bearer(adminToken)))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.errorCode").value("ALREADY_EXIST_ERROR"));
     }

@@ -62,6 +62,12 @@ public class RoleServiceImpl implements IRoleService{
             throw new InvalidRoleOperationException("El usuario ya es Master.");
         }
 
+        // El ADMIN es un rol operativo de plataforma, no una comunidad: no se promociona ni vota (D12).
+        if (user.getRole().equals(UserRole.ADMIN)) {
+            throw new InvalidRoleOperationException(
+                    "El administrador de plataforma no participa en las votaciones de un grado.");
+        }
+
         GlobalConfig config = voteConfigService.getConfig();
         PromotionProposal proposal = new PromotionProposal();
         proposal.setProposer(user);

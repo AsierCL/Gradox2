@@ -309,13 +309,14 @@ class GlobalJourneyIntegrationTest {
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.errorCode").value("UNAUTHENTICATED_ACCESS"));
 
-        // 18. Admin: banear y desbanear al usuario normal.
+        // 18. Admin de plataforma: banear y desbanear al usuario normal.
+        String adminToken = createAndGetAdmin();
         mockMvc.perform(put("/admin/users/{id}/ban", renamedId)
-                        .header("Authorization", bearer(masterToken)))
+                        .header("Authorization", bearer(adminToken)))
                 .andExpect(status().isOk());
 
         mockMvc.perform(put("/admin/users/{id}/unban", renamedId)
-                        .header("Authorization", bearer(masterToken)))
+                        .header("Authorization", bearer(adminToken)))
                 .andExpect(status().isOk());
     }
 
@@ -327,6 +328,11 @@ class GlobalJourneyIntegrationTest {
                 .enabled(true)
                 .role(role)
                 .build()).getUsername();
+    }
+
+    private String createAndGetAdmin() throws Exception {
+        createUser("globaladmin", "globaladmin@rai.usc.es", "SecurePass1!", UserRole.ADMIN);
+        return login("globaladmin", "SecurePass1!").get("token").asText();
     }
 
     private String createAndGetMaster() throws Exception {

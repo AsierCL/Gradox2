@@ -6,6 +6,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import com.example.gradox2.persistence.entities.User;
+import com.example.gradox2.persistence.entities.enums.UserRole;
 import com.example.gradox2.presentation.dto.users.MyProfileResponse;
 import com.example.gradox2.presentation.dto.users.PublicProfileResponse;
 import com.example.gradox2.service.interfaces.FileUrlSigner;
@@ -33,7 +34,11 @@ public final class UserMapper {
                 user.getCreatedAt(),
                 user.getLastLogin(),
                 profilePictureUrl(user.getProfilePictureKey(), signer),
-                mapBadges(user));
+                mapBadges(user),
+                user.getDegree() != null ? user.getDegree().getId() : null,
+                user.getDegree() != null ? user.getDegree().getCode() : null,
+                user.getDegree() != null ? user.getDegree().getName() : null,
+                user.getRole() == UserRole.ADMIN);
     }
 
     public PublicProfileResponse toPublicProfileResponse(User user, FileUrlSigner signer) {

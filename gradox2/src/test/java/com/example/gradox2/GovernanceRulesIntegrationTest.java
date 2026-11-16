@@ -287,7 +287,7 @@ class GovernanceRulesIntegrationTest {
         createEnabledUser("weightVoter", "weightVoter@rai.usc.es", "SecurePass1!", UserRole.USER);
 
         String proposerToken = loginAndGetToken("weightProposer", "SecurePass1!");
-        String masterToken = loginAndGetToken("weightMaster", "SecurePass1!");
+        String adminToken = loginAndGetToken("weightMaster", "SecurePass1!");
         String voterToken = loginAndGetToken("weightVoter", "SecurePass1!");
 
         long proposalId = uploadProposalAndGetId(proposerToken, subjectId, "temaW.pdf", "Tema W", "Desc W");
@@ -297,7 +297,7 @@ class GovernanceRulesIntegrationTest {
         org.junit.jupiter.api.Assertions.assertNull(beforeVoting.getUserVoteWeight());
 
         mockMvc.perform(post("/vote/{id}/{upvote}", proposalId, false)
-                        .header("Authorization", bearer(masterToken)))
+                        .header("Authorization", bearer(adminToken)))
                 .andExpect(status().isOk());
 
         Proposal afterFirstVote = proposalRepository.findById(proposalId).orElseThrow();
@@ -323,9 +323,9 @@ class GovernanceRulesIntegrationTest {
 
         Long subjectId = createSubject();
         createEnabledUser("auditProposer", "auditProposer@rai.usc.es", "SecurePass1!", UserRole.USER);
-        createEnabledUser("auditMaster", "auditMaster@rai.usc.es", "SecurePass1!", UserRole.MASTER);
+        createEnabledUser("auditAdmin", "auditAdmin@rai.usc.es", "SecurePass1!", UserRole.ADMIN);
         String token = loginAndGetTokenQuietly("auditProposer", "SecurePass1!");
-        String masterToken = loginAndGetToken("auditMaster", "SecurePass1!");
+        String adminToken = loginAndGetToken("auditAdmin", "SecurePass1!");
 
         long proposalId = uploadProposalAndGetIdQuietly(token, subjectId, "audit.pdf", "Audit", "Desc");
 
@@ -336,7 +336,7 @@ class GovernanceRulesIntegrationTest {
         voteService.closeExpiredProposals();
 
         MvcResult auditResult = mockMvc.perform(get("/admin/audit")
-                        .header("Authorization", bearer(masterToken)))
+                        .header("Authorization", bearer(adminToken)))
                 .andExpect(status().isOk())
                 .andReturn();
 

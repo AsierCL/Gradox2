@@ -29,6 +29,13 @@ public class AuthResponse {
     @Schema(description = "Nombre del grado", example = "Ingeniería Informática")
     public String degreeName;
 
+    /**
+     * {@code true} solo para el rol de plataforma {@code ADMIN}. El frontend debe usar esto —y nunca
+     * {@code role == "MASTER"}— para decidir si muestra el panel de administración (§9.3).
+     */
+    @Schema(description = "El usuario administra la plataforma (rol ADMIN)", example = "false")
+    public boolean isPlatformAdmin;
+
     public AuthResponse(String token, String refreshToken, String username, String role) {
         this.token = token;
         this.refreshToken = refreshToken;
