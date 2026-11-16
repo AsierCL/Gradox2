@@ -599,7 +599,12 @@ Sin cambios: son globales por usuario. Lo único que cambia es **quién vota** s
 |---|---|---|
 | `GET` | `/degrees` | Lista de grados: `id`, `code`, `name`, `coursesCount` |
 | `GET` | `/degrees/{id}` | Detalle de un grado |
-| `GET` | `/degrees/{id}/courses` | Cursos del grado, cada uno con sus asignaturas (mismo shape que `CourseResponse` + `degree*`) |
+| `GET` | `/degrees/{id}/courses` | Cursos del grado, cada uno con sus asignaturas (es la pantalla por defecto del grado) |
+| `GET` | `/degrees/{id}/subjects` | Asignaturas del grado en plano, con su curso y los metadatos del plan |
+
+El catálogo se navega **hacia abajo desde el grado**: no hay listados globales de cursos ni de asignaturas,
+porque el código de curso (`1`..`4`) se repite en los tres grados y un listado plano sería ambiguo.
+Un grado inexistente responde `404`; un grado sin cursos, una lista vacía.
 
 `GET /degrees` es el que consume la pantalla de registro: el selector de grado se llena de acá, nunca con una
 lista hardcodeada en el frontend.
@@ -609,16 +614,16 @@ lista hardcodeada en el frontend.
 | Endpoint | Qué se agrega | Rompe FE? |
 |---|---|---|
 | `GET /degrees/*` | nuevos | no |
-| `GET /courses` | cada curso gana `degreeId`, `degreeCode`, `degreeName`; filtro opcional `?degreeId=` | no |
-| `GET /courses/{id}` | idem | no |
-| `GET /subjects` | cada asignatura gana `degreeId`, `degreeCode`, `degreeName`, `credits`, `semester`, `type`; filtro opcional `?degreeId=` | no |
-| `GET /subjects/{id}` | idem | no |
+| `GET /courses`, `GET /subjects` | **eliminados**: eran listados globales sin contexto de grado | **SÍ** (§7.4) |
+| `GET /courses/{id}` | gana `degreeId`, `degreeCode`, `degreeName` | no |
+| `GET /subjects/{id}` | gana `degreeId`, `degreeCode`, `degreeName`, `credits`, `semester`, `subjectType` | no |
 | `GET /files/all` | cada archivo gana `subjectId`, `subjectCode`, `degreeId`, `degreeCode`, `degreeName` | no |
 | `GET /files/{id}` | idem | no |
 | `POST /api/auth/register` | campo `degreeId` **obligatorio** | **SÍ** (§7.4) |
 | `POST /api/auth/login` | `degree*` + `isPlatformAdmin` en el response | no |
 | `GET /users/me` | `degree*` + `isPlatformAdmin` | no |
 | `GET /roles/*` | propuestas expuestas con `candidateDegree*` | no |
+| `GET /uploadProposal/*` | gana `subjectId`, `subjectCode`, `courseId`, `courseName`, `degree*`; `course` pasa a llamarse `courseName` | **SÍ** |
 | `PUT /files/{id}/visibility` | sin cambios de contrato (sí de permiso: solo dentro del grado) | no |
 | `PATCH /admin/users/{id}/degree` | nuevo, solo `ADMIN`, auditado | no |
 
@@ -640,6 +645,8 @@ contraseña, `logout`, `token/refresh`. Siguen funcionando igual; los tres prime
 | B2 | `role == "MASTER"` ya no implica acceso a `/admin/**` | Cualquier UI que muestre el panel por rol queda mal | Usar `isPlatformAdmin` para eso (§9.3) |
 | B3 | `FileResponse.subject` deja de ser único global | Agrupaciones por nombre se mezclan entre grados | Usar `subjectId`/`subjectCode` (§9.4) |
 | B4 | Escrituras cross-grado devuelven `403 DEGREE_SCOPE_FORBIDDEN` | Antes todas respondían `200` | Manejar el código de error (§8, §9.5) |
+| B5 | Se eliminaron `GET /courses` y `GET /subjects` (listados globales) | Un listado plano mezcla los tres grados: el código `1` existe una vez por grado | Usar `/degrees/{id}/courses` y `/degrees/{id}/subjects` |
+| B6 | `GET /uploadProposal/*`: `course` → `courseName`, más identificadores | El nombre del curso tampoco es único entre grados | Leer `courseId`/`courseName` y los `degree*` |
 
 `OpenApiContractTest` fija la lista de operaciones públicas: **va a fallar a propósito** al agregar
 `/degrees`. Es el recordatorio de que el contrato cambió y hay que regenerar el JSON y avisar a FE.
@@ -654,7 +661,7 @@ contraseña, `logout`, `token/refresh`. Siguen funcionando igual; los tres prime
 | `DEGREE_NOT_FOUND` | `400` | `degreeId` inexistente en el registro | `El grado seleccionado no existe` |
 | `DEGREE_IMMUTABLE` | `403` | Intento de cambiar el grado por vía no administrativa | `El grado de un usuario no se puede modificar` |
 | `DEGREE_SCOPE_FORBIDDEN` | `403` | Escritura sobre un recurso de otro grado | `Solo puedes participar en tu grado` |
-| `INVALID_ROLE_OPERATION` | `400` | Expulsión del último master activo de un grado (se reutiliza el código existente; no se agregó `DEGREE_LAST_MASTER`) | `No puedes expulsar al último MASTER activo del grado...` |
+| `DEGREE_LAST_MASTER` | `409` | La operación dejaría un grado sin ningún master activo | `No puedes expulsar al último MASTER activo del grado...` |
 
 Formato: el mismo envelope de error que ya usa la API (`ErrorDTO`). El frontend debe discriminar por
 **código**, no por texto.
@@ -818,7 +825,7 @@ Tests de integración (perfil `test`), uno por regla. Cada uno debe verificar ta
 | V9 | Voto en propuesta ajena | `403`, sin `Vote` |
 | V10 | Puntuación de archivo ajeno | `403`, sin `Vote` |
 | V11 | Expulsión cross-grado | `403` aunque el actor sea `MASTER` de otro grado |
-| V12 | Último master de un grado | La votación de expulsión no deja el grado sin masters (propuesta `REJECTED`); el mismo caso con otro master vivo sí se aplica |
+| V12 | Último master de un grado | La votación de expulsión no deja el grado sin masters (propuesta `REJECTED`); el servicio responde `409 DEGREE_LAST_MASTER`; el mismo caso con otro master vivo sí se aplica |
 | V13 | Quórum por grado | con votos suficientes repartidos entre dos grados, la propuesta **no** se cierra |
 | V14 | Lectura cross-grado | `GET /files/{id}` de otro grado → `200`, con visibilidad aplicada |
 | V15 | `/admin/**` | `MASTER` → `403`; `ADMIN` → `200` |
@@ -866,12 +873,23 @@ PostgreSQL 16 real, que aplica V1→V13 sobre una base con datos previos y valid
 | 1 | **No existe** `POST /admin/degrees/{id}/masters` | A1 se resolvió operativamente: el `ADMIN` y el primer master de cada grado se asignan por SQL (§6.4) |
 | 2 | `subjects` **no** tiene `degree_id` | El grado se deriva de `course`; el código oficial USC ya es único global (§2.3) |
 | 3 | `AuthResponse` y `/users/me` exponen `isPlatformAdmin` | El frontend no debe inferir administración de `role == "MASTER"` (§9.3) |
-| 4 | `GET /courses` y `GET /subjects` aceptan `?degreeId=` | Compatibilidad con el frontend actual: sin filtro siguen devolviendo todo |
+| 4 | ~~`GET /courses` y `GET /subjects` con `?degreeId=`~~ → **eliminados** | Deuda de retrocompatibilidad: el catálogo se navega desde `/degrees` (§7.1) |
 | 5 | `Course.code` dejó de ser único global **también en la entidad** | Divergencia entidad/BD que solo aparecía en H2: la unicidad real es `(degree_id, code)` |
 | 6 | Se agregó manejo de `HandlerMethodValidationException` | Un fallo de validación de firma devolvía `400` sin body ni código de error |
 | 7 | El rol `ADMIN` tampoco puntúa archivos | D12: puntuar es votar |
 | 8 | La expulsión aprobada por voto revalida que quede otro master | El conteo global anterior no veía que un grado quedaba sin representación |
-| 9 | No se creó el código `DEGREE_LAST_MASTER` | El guard del último master solo es alcanzable en estados inconsistentes: por API, expulsar exige dos masters del mismo grado. Se reutiliza `INVALID_ROLE_OPERATION` (400) en lugar de ampliar el contrato con un código inalcanzable |
+| 9 | ~~No se creó el código `DEGREE_LAST_MASTER`~~ → **creado** (`409`) | El invariante se sostiene también en el servicio, así que merece su propio código: `INVALID_ROLE_OPERATION` era semánticamente incorrecto |
+
+Limpieza final, sin concesiones al frontend anterior:
+
+| # | Cambio | Motivo |
+|---|---|---|
+| 13 | Se eliminaron los listados globales `GET /courses` y `GET /subjects` | El código de curso se repite por grado; un listado plano es ambiguo y solo existía por compatibilidad |
+| 14 | `GET /degrees/{id}/subjects` | Reemplaza al filtro `?degreeId=` con una ruta que expresa la jerarquía |
+| 15 | Fetch joins de `degree` en cursos, asignaturas y archivos | Sin ellos, cada DTO con grado disparaba una consulta extra por fila (N+1) |
+| 16 | `coursesCount` de `/degrees` con `join fetch` | Evita una consulta por grado en el catálogo |
+| 17 | `FileProposalResponse` con `subjectId`/`subjectCode`/`courseId`/`courseName`/`degree*` | Mismo criterio que `FileResponse`: el nombre no identifica |
+| 18 | `FileProposalMapper` reescrito | Tres bloques casi idénticos derivaban asignatura, curso y grado por separado |
 
 Hallazgos de la **verificación independiente** posterior, ya corregidos:
 

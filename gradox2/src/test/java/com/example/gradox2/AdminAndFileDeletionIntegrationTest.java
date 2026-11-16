@@ -219,7 +219,11 @@ class AdminAndFileDeletionIntegrationTest {
                 .andExpect(jsonPath("$.description").value("Descripcion publicada"))
                 .andExpect(jsonPath("$.proposer").value("deletionProposer"))
                 .andExpect(jsonPath("$.subjectName").value("Asignatura Test"))
-                .andExpect(jsonPath("$.course").value("Curso Test"))
+                .andExpect(jsonPath("$.subjectId").isNumber())
+                .andExpect(jsonPath("$.subjectCode").isNotEmpty())
+                .andExpect(jsonPath("$.courseName").value("Curso Test"))
+                .andExpect(jsonPath("$.courseId").isNumber())
+                .andExpect(jsonPath("$.degreeCode").value(TestDegrees.INFORMATICA))
                 .andExpect(jsonPath("$.type").value(FileType.APUNTES.name()))
                 .andExpect(jsonPath("$.status").value(ProposalStatus.PENDING.name()))
                 .andReturn();
@@ -371,8 +375,8 @@ class AdminAndFileDeletionIntegrationTest {
                 .andExpect(status().isOk())
                 .andReturn();
 
-        String body = result.getResponse().getContentAsString();
-        return Long.parseLong(body.replaceAll("[^0-9]", ""));
+        // El cuerpo trae más números (subjectId, degreeId, códigos): hay que leer el campo `id`.
+        return objectMapper.readTree(result.getResponse().getContentAsString()).get("id").asLong();
     }
 
     private String json(Object value) throws Exception {

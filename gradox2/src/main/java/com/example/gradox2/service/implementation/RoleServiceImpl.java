@@ -18,6 +18,7 @@ import com.example.gradox2.persistence.entities.enums.UserRole;
 import com.example.gradox2.persistence.repository.PromotionProposalRepository;
 import com.example.gradox2.persistence.repository.UserRepository;
 import com.example.gradox2.presentation.dto.promotionProposal.PromotionProposalResponse;
+import com.example.gradox2.service.exceptions.DegreeLastMasterException;
 import com.example.gradox2.service.exceptions.InvalidRoleOperationException;
 import com.example.gradox2.service.exceptions.NotFoundException;
 import com.example.gradox2.service.interfaces.IAuditService;
@@ -125,7 +126,7 @@ public class RoleServiceImpl implements IRoleService{
         long enabledMasters = userRepository.countByRoleAndEnabledAndDegree(
                 UserRole.MASTER, true, candidate.getDegree());
         if (enabledMasters <= 1) {
-            throw new InvalidRoleOperationException(
+            throw new DegreeLastMasterException(
                     "No puedes expulsar al último MASTER activo del grado: la gobernanza quedaría sin representantes.");
         }
 

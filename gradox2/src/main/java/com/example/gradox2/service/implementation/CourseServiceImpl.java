@@ -1,6 +1,5 @@
 package com.example.gradox2.service.implementation;
 
-import java.util.Comparator;
 import java.util.List;
 
 import org.springframework.cache.annotation.Cacheable;
@@ -21,18 +20,6 @@ public class CourseServiceImpl implements ICourseService {
 
     public CourseServiceImpl(CourseRepository courseRepository) {
         this.courseRepository = courseRepository;
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    @Cacheable("courses")
-    public List<CourseResponse> listAll() {
-        return courseRepository.findAllWithSubjectsByOrderByCodeAsc()
-                .stream()
-                .map(CourseMapper::toCourseResponse)
-                .sorted(Comparator.comparing(CourseResponse::getDegreeCode)
-                        .thenComparing(CourseResponse::getCode))
-                .toList();
     }
 
     @Override

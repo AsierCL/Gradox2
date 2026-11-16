@@ -3,7 +3,9 @@ package com.example.gradox2.persistence.repository;
 import java.util.List;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import com.example.gradox2.persistence.entities.File;
 import com.example.gradox2.persistence.entities.enums.FileType;
@@ -16,6 +18,18 @@ public interface FileRepository extends JpaRepository<File, Long> {
     List<File> findByUploaderId(Long uploaderId);
     List<File> findByUploaderIdAndSubjectId(Long uploaderId, Long subjectId);
     List<File> findBySizeBytesIsNull();
+
+    /**
+     * Listado y detalle con asignatura, curso y grado precargados: el mapper expone los tres, así que sin
+     * el fetch serían tres consultas por archivo.
+     */
+    @Query("select f from File f join fetch f.subject s join fetch s.course c join fetch c.degree "
+            + "order by f.id desc")
+    List<File> findAllWithDetails(Pageable pageable);
+
+    @Query("select f from File f join fetch f.subject s join fetch s.course c join fetch c.degree "
+            + "where f.id = :id")
+    java.util.Optional<File> findByIdWithDetails(@Param("id") Long id);
 
     //Stats
     @Query("SELECT COALESCE(SUM(f.sizeBytes), 0) FROM File f")

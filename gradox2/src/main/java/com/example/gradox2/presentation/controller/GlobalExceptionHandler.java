@@ -15,6 +15,7 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
 
 import com.example.gradox2.presentation.dto.auth.ErrorDTO;
 import com.example.gradox2.service.exceptions.DegreeImmutableException;
+import com.example.gradox2.service.exceptions.DegreeLastMasterException;
 import com.example.gradox2.service.exceptions.DegreeNotFoundException;
 import com.example.gradox2.service.exceptions.DegreeRequiredException;
 import com.example.gradox2.service.exceptions.DegreeScopeException;
@@ -62,6 +63,15 @@ public class GlobalExceptionHandler {
                 .errorCode("DEGREE_IMMUTABLE")
                 .build();
         return new ResponseEntity<>(error, HttpStatus.FORBIDDEN);
+    }
+
+    @ExceptionHandler(DegreeLastMasterException.class)
+    public ResponseEntity<ErrorDTO> handleDegreeLastMaster(DegreeLastMasterException ex) {
+        ErrorDTO error = ErrorDTO.builder()
+                .errorMessage(ex.getMessage())
+                .errorCode("DEGREE_LAST_MASTER")
+                .build();
+        return new ResponseEntity<>(error, HttpStatus.CONFLICT);
     }
 
     @ExceptionHandler(DegreeScopeException.class)

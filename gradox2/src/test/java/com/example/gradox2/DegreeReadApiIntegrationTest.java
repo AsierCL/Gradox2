@@ -127,6 +127,39 @@ class DegreeReadApiIntegrationTest {
                 .andExpect(status().isNotFound());
     }
 
+
+    @Test
+    void degreeSubjectsReturnTheirCourseAndPlanMetadata() throws Exception {
+        Degree informatica = TestDegrees.informatica(degreeRepository);
+        Course course = createCourse(informatica, "1");
+        createSubject(course, "G4012103", "Matemática Discreta");
+
+        mockMvc.perform(get("/degrees/{id}/subjects", informatica.getId()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].code").value("G4012103"))
+                .andExpect(jsonPath("$[0].courseName").value("Primer curso"))
+                .andExpect(jsonPath("$[0].degreeCode").value("G4012"))
+                .andExpect(jsonPath("$[0].credits").value(6.0))
+                .andExpect(jsonPath("$[0].semester").value("Primer semestre"))
+                .andExpect(jsonPath("$[0].subjectType").value("Formación básica"));
+    }
+
+    @Test
+    void unknownDegreeSubjectsReturnNotFound() throws Exception {
+        mockMvc.perform(get("/degrees/{id}/subjects", 999_999))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void aDegreeWithoutCoursesReturnsAnEmptyListNotEmptyA404() throws Exception {
+        Degree quimica = TestDegrees.quimica(degreeRepository);
+
+        mockMvc.perform(get("/degrees/{id}/courses", quimica.getId()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(0));
+    }
+
     // ── independencia de asignaturas (V6) ───────────────────────────────────
 
     @Test
@@ -138,17 +171,18 @@ class DegreeReadApiIntegrationTest {
 
         assertThat(algebraInformatica.getId()).isNotEqualTo(algebraIa.getId());
 
-        mockMvc.perform(get("/subjects").param("degreeId", String.valueOf(ia.getId())))
+        mockMvc.perform(get("/degrees/{degreeId}/subjects", ia.getId()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(1))
                 .andExpect(jsonPath("$[0].id").value(algebraIa.getId()))
                 .andExpect(jsonPath("$[0].name").value("Álgebra"))
                 .andExpect(jsonPath("$[0].degreeCode").value("G4121"));
 
-        // Sin filtro el cliente recibe los dos grados, con sus identificadores y su grado explícito.
-        mockMvc.perform(get("/subjects"))
+        // Cada grado expone su propia asignatura: el nombre se repite, la fila no.
+        mockMvc.perform(get("/degrees/{degreeId}/subjects", informatica.getId()))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(2));
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].id").value(algebraInformatica.getId()));
     }
 
     // ── lectura cross-grado (V14) ───────────────────────────────────────────

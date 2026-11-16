@@ -777,7 +777,8 @@ class ForumThreadIntegrationTest {
                 .andExpect(status().isOk())
                 .andReturn();
 
-        return Long.parseLong(result.getResponse().getContentAsString().replaceAll("[^0-9]", ""));
+        // El cuerpo trae más números (subjectId, degreeId, códigos): hay que leer el campo `id`.
+        return objectMapper.readTree(result.getResponse().getContentAsString()).get("id").asLong();
     }
 
     private String loginAndGetToken(String username, String password) throws Exception {

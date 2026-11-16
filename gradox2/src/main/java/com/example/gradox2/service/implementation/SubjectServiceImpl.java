@@ -1,6 +1,5 @@
 package com.example.gradox2.service.implementation;
 
-import java.util.Comparator;
 import java.util.List;
 
 import org.springframework.cache.annotation.Cacheable;
@@ -25,19 +24,6 @@ public class SubjectServiceImpl implements ISubjectService {
 
     @Override
     @Transactional(readOnly = true)
-    @Cacheable("subjects")
-    public List<SubjectResponse> listAll() {
-        return subjectRepository.findAllByOrderByCourseCodeAscCodeAsc()
-                .stream()
-                .map(SubjectMapper::toSubjectResponse)
-                .sorted(Comparator.comparing(SubjectResponse::getDegreeCode)
-                        .thenComparing(SubjectResponse::getCourseCode)
-                        .thenComparing(SubjectResponse::getCode))
-                .toList();
-    }
-
-    @Override
-    @Transactional(readOnly = true)
     @Cacheable(value = "subjects", key = "'degree:' + #degreeId")
     public List<SubjectResponse> listByDegree(Long degreeId) {
         return subjectRepository.findAllByDegreeId(degreeId)
@@ -50,7 +36,7 @@ public class SubjectServiceImpl implements ISubjectService {
     @Transactional(readOnly = true)
     @Cacheable(value = "subjects", key = "#id")
     public SubjectResponse getById(Long id) {
-        Subject subject = subjectRepository.findById(id)
+        Subject subject = subjectRepository.findByIdWithCourseAndDegree(id)
                 .orElseThrow(() -> new NotFoundException("Subject not found"));
         return SubjectMapper.toSubjectResponse(subject);
     }

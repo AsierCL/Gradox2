@@ -11,13 +11,12 @@ import com.example.gradox2.persistence.entities.Subject;
 
 public interface SubjectRepository extends JpaRepository<Subject, Long> {
 
-    @Query("select s from Subject s join fetch s.course c "
-            + "order by c.degree.id asc, c.code asc, s.code asc")
-    List<Subject> findAllByOrderByCourseCodeAscCodeAsc();
-
-    @Query("select s from Subject s join fetch s.course c "
+    @Query("select s from Subject s join fetch s.course c join fetch c.degree "
             + "where c.degree.id = :degreeId order by c.code asc, s.code asc")
     List<Subject> findAllByDegreeId(@Param("degreeId") Long degreeId);
+
+    @Query("select s from Subject s join fetch s.course c join fetch c.degree where s.id = :id")
+    Optional<Subject> findByIdWithCourseAndDegree(@Param("id") Long id);
 
     Optional<Subject> findByCode(String code);
 

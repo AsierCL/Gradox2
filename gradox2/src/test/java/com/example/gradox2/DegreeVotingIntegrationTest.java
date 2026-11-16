@@ -9,6 +9,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,6 +17,8 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.security.authentication.TestingAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
@@ -41,7 +44,9 @@ import com.example.gradox2.persistence.repository.SubjectRepository;
 import com.example.gradox2.persistence.repository.UserRepository;
 import com.example.gradox2.persistence.repository.VoteRepository;
 import com.example.gradox2.security.InMemoryRateLimiter;
+import com.example.gradox2.service.exceptions.DegreeLastMasterException;
 import com.example.gradox2.service.interfaces.IGlobalConfigService;
+import com.example.gradox2.service.interfaces.IRoleService;
 import com.example.gradox2.support.TestDatabaseCleaner;
 import com.example.gradox2.support.TestDegrees;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -79,6 +84,8 @@ class DegreeVotingIntegrationTest {
     private PromotionProposalRepository promotionProposalRepository;
     @Autowired
     private IGlobalConfigService voteConfigService;
+    @Autowired
+    private IRoleService roleService;
     @Autowired
     private PasswordEncoder passwordEncoder;
     @Autowired
@@ -246,6 +253,30 @@ class DegreeVotingIntegrationTest {
                 .andExpect(jsonPath("$.errorCode").value("DEGREE_SCOPE_FORBIDDEN"));
 
         assertThat(voteRepository.count()).isZero();
+    }
+
+    @AfterEach
+    void clearSecurityContext() {
+        SecurityContextHolder.clearContext();
+    }
+
+    @Test
+    void theInvariantOfTheLastMasterIsEnforcedInTheServiceNotOnlyInTheController() {
+        Degree informatica = TestDegrees.informatica(degreeRepository);
+        User loneMaster = createUser("lonemaster", informatica, UserRole.MASTER);
+        User admin = createUser("opsuser", informatica, UserRole.ADMIN);
+
+        // El controller exige MASTER, pero el invariante vive en el servicio: una remoción
+        // administrativa futura (o un job) tampoco debe poder dejar un grado sin representación.
+        SecurityContextHolder.getContext().setAuthentication(
+                new TestingAuthenticationToken(admin, null, admin.getAuthorities()));
+
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> roleService.demoteToUser(loneMaster.getId()))
+                .isInstanceOf(DegreeLastMasterException.class)
+                .hasMessageContaining("último MASTER activo del grado");
+
+        assertThat(userRepository.findByUsername("lonemaster").orElseThrow().getRole())
+                .isEqualTo(UserRole.MASTER);
     }
 
     // ── helpers ─────────────────────────────────────────────────────────────

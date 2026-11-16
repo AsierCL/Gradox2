@@ -83,8 +83,7 @@ class AuthErrorContractTest {
 
     @Test
     void guestCanReadTheOpenEndpoints() throws Exception {
-        mockMvc.perform(get("/subjects")).andExpect(status().isOk());
-        mockMvc.perform(get("/courses")).andExpect(status().isOk());
+                mockMvc.perform(get("/degrees")).andExpect(status().isOk());
         mockMvc.perform(get("/badges")).andExpect(status().isOk());
         mockMvc.perform(get("/stats")).andExpect(status().isOk());
         mockMvc.perform(get("/health")).andExpect(status().isOk());

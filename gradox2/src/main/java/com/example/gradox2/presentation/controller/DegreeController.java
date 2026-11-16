@@ -10,7 +10,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.example.gradox2.presentation.dto.course.CourseResponse;
 import com.example.gradox2.presentation.dto.degree.DegreeResponse;
-import com.example.gradox2.service.interfaces.ICourseService;
+import com.example.gradox2.presentation.dto.subject.SubjectResponse;
 import com.example.gradox2.service.interfaces.IDegreeService;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -32,11 +32,9 @@ import jakarta.validation.constraints.Positive;
 public class DegreeController {
 
     private final IDegreeService degreeService;
-    private final ICourseService courseService;
 
-    public DegreeController(IDegreeService degreeService, ICourseService courseService) {
+    public DegreeController(IDegreeService degreeService) {
         this.degreeService = degreeService;
-        this.courseService = courseService;
     }
 
     @GetMapping
@@ -66,8 +64,18 @@ public class DegreeController {
     })
     public ResponseEntity<List<CourseResponse>> getDegreeCourses(
             @Parameter(description = "ID del grado") @PathVariable @Positive Long id) {
-        // Valida que el grado exista antes de devolver una lista vacía indistinguible de un ID inventado.
-        degreeService.getById(id);
-        return ResponseEntity.ok(courseService.listByDegree(id));
+        return ResponseEntity.ok(degreeService.getCourses(id));
+    }
+
+    @GetMapping("/{id}/subjects")
+    @Operation(summary = "Asignaturas de un grado",
+            description = "Lista plana de las asignaturas del grado, con su curso y los metadatos del plan")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Asignaturas del grado"),
+        @ApiResponse(responseCode = "404", description = "Grado no encontrado", content = @Content)
+    })
+    public ResponseEntity<List<SubjectResponse>> getDegreeSubjects(
+            @Parameter(description = "ID del grado") @PathVariable @Positive Long id) {
+        return ResponseEntity.ok(degreeService.getSubjects(id));
     }
 }

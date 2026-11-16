@@ -1,5 +1,6 @@
 package com.example.gradox2.utils.mapper;
 
+import com.example.gradox2.persistence.entities.Degree;
 import com.example.gradox2.persistence.entities.File;
 import com.example.gradox2.persistence.entities.User;
 import com.example.gradox2.presentation.dto.files.FileResponse;
@@ -10,19 +11,9 @@ public final class FileMapper {
     private FileMapper() {
     }
 
-    private static Long degreeId(File file) {
-        return file.getSubject() != null && file.getSubject().getDegree() != null
-                ? file.getSubject().getDegree().getId() : null;
-    }
-
-    private static String degreeCode(File file) {
-        return file.getSubject() != null && file.getSubject().getDegree() != null
-                ? file.getSubject().getDegree().getCode() : null;
-    }
-
-    private static String degreeName(File file) {
-        return file.getSubject() != null && file.getSubject().getDegree() != null
-                ? file.getSubject().getDegree().getName() : null;
+    /** El grado nunca se persiste en el archivo: se deriva de la asignatura y su curso. */
+    private static Degree degreeOf(File file) {
+        return file.getSubject() != null ? file.getSubject().getDegree() : null;
     }
 
     public static final FileResponse toFileResponse(File file, User viewer) {
@@ -38,9 +29,9 @@ public final class FileMapper {
             .subject(file.getSubject() != null ? file.getSubject().getName() : null)
             .subjectId(file.getSubject() != null ? file.getSubject().getId() : null)
             .subjectCode(file.getSubject() != null ? file.getSubject().getCode() : null)
-            .degreeId(degreeId(file))
-            .degreeCode(degreeCode(file))
-            .degreeName(degreeName(file))
+            .degreeId(degreeOf(file) != null ? degreeOf(file).getId() : null)
+            .degreeCode(degreeOf(file) != null ? degreeOf(file).getCode() : null)
+            .degreeName(degreeOf(file) != null ? degreeOf(file).getName() : null)
             .uploaderUsername(IdentityVisibility.resolveDisplayUsername(
                     file.getUploader(), viewer, file.getVisibilityLevel()))
             .visibilityLevel(file.getVisibilityLevel())

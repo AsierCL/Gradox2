@@ -37,12 +37,16 @@ La especificación completa está en [GRADOS.md](GRADOS.md).
 | `GET` | `/degrees` | público | Grados ordenados por código oficial (`G4012`, `G4022`, `G4121`) |
 | `GET` | `/degrees/{id}` | público | Detalle de un grado |
 | `GET` | `/degrees/{id}/courses` | público | Cursos del grado con sus asignaturas (pantalla por defecto tras el login) |
-| `GET` | `/courses?degreeId=` | público | Filtro opcional por grado (sin filtro: todos) |
-| `GET` | `/subjects?degreeId=` | público | Filtro opcional por grado (sin filtro: todos) |
+| `GET` | `/degrees/{id}/subjects` | público | Asignaturas del grado en plano, con curso y metadatos |
+| `GET` | `/courses/{id}` | público | Detalle de un curso |
+| `GET` | `/subjects/{id}` | público | Detalle de una asignatura |
 | `PATCH` | `/admin/users/{id}/degree` | `ADMIN` | Override auditado del grado; invalida las sesiones del usuario |
 
 `POST /api/auth/register` exige `degreeId`. El login y `/users/me` devuelven `degreeId`, `degreeCode`,
 `degreeName` e `isPlatformAdmin`.
+
+**No hay listados globales de cursos ni de asignaturas**: el código de curso (`1`..`4`) se repite en cada
+grado, así que el catálogo se navega siempre desde `/degrees`.
 
 ### Códigos de error del ámbito de grado
 
@@ -51,7 +55,7 @@ La especificación completa está en [GRADOS.md](GRADOS.md).
 | `DEGREE_REQUIRED` | `400` | Registro sin grado, o escritura de un usuario sin grado |
 | `DEGREE_NOT_FOUND` | `400` | `degreeId` inexistente en el registro |
 | `DEGREE_SCOPE_FORBIDDEN` | `403` | Escritura sobre un recurso de otro grado |
-| `INVALID_ROLE_OPERATION` | `400` | Expulsión del último master activo de un grado (código compartido con otras operaciones de rol) |
+| `DEGREE_LAST_MASTER` | `409` | La operación dejaría un grado sin ningún master activo |
 
 ---
 

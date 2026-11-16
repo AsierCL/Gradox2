@@ -93,14 +93,14 @@ public class FileServiceImpl implements IFileService {
 
     public List<FileResponse> getAllFiles() {
         User viewer = GetAuthUser.getCurrentUserOrNull();
-        return fileRepository.findAll(PageRequest.of(0, MAX_LIST_SIZE, Sort.by("id").descending())).getContent().stream()
+        return fileRepository.findAllWithDetails(PageRequest.of(0, MAX_LIST_SIZE)).stream()
             .map(file -> FileMapper.toFileResponse(file, viewer))
                 .collect(Collectors.toList());
     }
 
     @Transactional(readOnly = true)
     public FileResponse getFile(Long id) {
-        File file = fileRepository.findById(id)
+        File file = fileRepository.findByIdWithDetails(id)
                 .orElseThrow(() -> new NotFoundException("File not found"));
 
         return FileMapper.toFileResponse(file, GetAuthUser.getCurrentUserOrNull());
