@@ -3,12 +3,22 @@ import { toast } from 'sonner'
 import { Check, ThumbsDown, ThumbsUp, UsersFour, X } from '@phosphor-icons/react'
 import { api } from '../../lib/api'
 import { useAuth } from '../../context/AuthContext'
+import { degreeErrorMessage } from '../../lib/degree'
+import { useDegreeScope } from '../../hooks/useDegreeScope'
 import { Button } from '../ui/Button'
 import { Skeleton } from '../ui/Spinner'
+import { ReadOnlyNotice } from '../common/ReadOnlyNotice'
 import { cn } from '../../lib/cn'
 
-export function VoteBox({ proposalId, status = 'PENDING', compact = false }) {
-  const { isAuthenticated } = useAuth()
+export function VoteBox({
+  proposalId,
+  status = 'PENDING',
+  degreeId,
+  global = false,
+  compact = false,
+}) {
+  const { isAuthenticated, isPlatformAdmin, role } = useAuth()
+  const scope = useDegreeScope(degreeId)
   const queryClient = useQueryClient()
   const pending = status === 'PENDING'
 
@@ -44,7 +54,7 @@ export function VoteBox({ proposalId, status = 'PENDING', compact = false }) {
       toast.success(upvote ? 'Voto a favor registrado' : 'Voto en contra registrado')
       invalidate()
     },
-    onError: (error) => toast.error(error.message),
+    onError: (error) => toast.error(degreeErrorMessage(error)),
   })
 
   const retractMutation = useMutation({
@@ -53,7 +63,7 @@ export function VoteBox({ proposalId, status = 'PENDING', compact = false }) {
       toast.success('Voto retirado')
       invalidate()
     },
-    onError: (error) => toast.error(error.message),
+    onError: (error) => toast.error(degreeErrorMessage(error)),
   })
 
   const upvotes = Number(resultsQuery.data?.upvotes || 0)
@@ -64,6 +74,17 @@ export function VoteBox({ proposalId, status = 'PENDING', compact = false }) {
   const quorum = Number(configQuery.data?.quorumRequired || 10)
   const myVote = myVoteQuery.data?.inFavor
   const loading = resultsQuery.isLoading
+  const resultsError = resultsQuery.isError
+  const canVote = Boolean(
+    isAuthenticated &&
+      !isPlatformAdmin &&
+      (global ? role === 'MASTER' : scope.canParticipate),
+  )
+  const readOnly = Boolean(
+    isAuthenticated &&
+      !canVote &&
+      (scope.isReadOnly || scope.needsDegree || isPlatformAdmin || (global && role !== 'MASTER')),
+  )
 
   return (
     <div
@@ -77,6 +98,8 @@ export function VoteBox({ proposalId, status = 'PENDING', compact = false }) {
           <p className="eyebrow text-ink-faint">Recuento</p>
           {loading ? (
             <Skeleton className="mt-2 h-10 w-24" />
+          ) : resultsError ? (
+            <p className="mt-2 text-sm font-semibold text-ink-soft">Recuento no disponible</p>
           ) : (
             <p className="display-tight mt-1.5 flex items-baseline gap-1.5 text-4xl tabular-nums text-ink">
               {Math.round(approval)}%
@@ -92,7 +115,7 @@ export function VoteBox({ proposalId, status = 'PENDING', compact = false }) {
       <div className="relative mt-4 h-2 overflow-hidden rounded-full bg-ink/8">
         <div
           className="h-full rounded-full bg-gradient-to-r from-aqua-300 via-aqua-500 to-aqua-700 transition-all duration-700"
-          style={{ width: `${total ? Math.max(approval, 2) : 0}%` }}
+          style={{ width: `${total && !resultsError ? Math.max(approval, 2) : 0}%` }}
         />
       </div>
       <div className="mt-1.5 flex items-center justify-between text-[0.6rem] text-ink-faint">
@@ -116,9 +139,42 @@ export function VoteBox({ proposalId, status = 'PENDING', compact = false }) {
           </p>
         </div>
       </div>
+      {!global && degreeId !== undefined && degreeId !== null && (
+        <p className="mt-2 text-[0.6rem] leading-5 text-ink-faint">
+          Solo cuentan los votos de estudiantes del grado del recurso.
+        </p>
+      )}
 
       {pending ? (
-        isAuthenticated ? (
+        !isAuthenticated ? (
+          <Button to="/acceso" variant="ghost" className="mt-4 w-full min-h-9 text-xs">
+            Entra para votar
+          </Button>
+        ) : readOnly ? (
+          <div className="mt-4 space-y-2">
+            <ReadOnlyNotice
+              title="Votación reservada a su grado"
+              description={
+                isPlatformAdmin
+                  ? 'La administración de plataforma no participa en las votaciones.'
+                  : scope.needsDegree
+                    ? 'Tu cuenta no tiene grado asignado. Contacta con administración para poder participar.'
+                    : 'Solo los estudiantes del grado de esta propuesta pueden votar.'
+              }
+              icon="lock"
+            />
+            {myVote !== undefined && myVote !== null && (
+              <button
+                type="button"
+                onClick={() => retractMutation.mutate()}
+                disabled={retractMutation.isPending}
+                className="inline-flex items-center gap-1 text-[0.6rem] font-semibold text-ink-faint hover:text-ink"
+              >
+                <X size={11} weight="bold" aria-hidden="true" /> Retirar mi voto anterior
+              </button>
+            )}
+          </div>
+        ) : (
           <div className="mt-4">
             <p className="text-[0.62rem] text-ink-faint">Tu voto</p>
             <div className="mt-2 flex gap-2">
@@ -162,10 +218,6 @@ export function VoteBox({ proposalId, status = 'PENDING', compact = false }) {
               </button>
             )}
           </div>
-        ) : (
-          <Button to="/acceso" variant="ghost" className="mt-4 w-full min-h-9 text-xs">
-            Entra para votar
-          </Button>
         )
       ) : (
         <div className="mt-4 flex items-center gap-2 rounded-2xl bg-white/45 px-3 py-2.5 text-[0.65rem] text-ink-soft">

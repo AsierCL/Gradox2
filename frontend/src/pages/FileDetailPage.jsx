@@ -19,6 +19,8 @@ import {
 } from '@phosphor-icons/react'
 import { api } from '../lib/api'
 import { useAuth } from '../context/AuthContext'
+import { useDegreeScope } from '../hooks/useDegreeScope'
+import { degreeErrorMessage } from '../lib/degree'
 import { VISIBILITY, typeMeta, visibilityMeta } from '../lib/constants'
 import { scoreLabel } from '../lib/format'
 import { Badge, TypeBadge } from '../components/ui/Badge'
@@ -28,6 +30,8 @@ import { ErrorState } from '../components/ui/States'
 import { Modal } from '../components/ui/Modal'
 import { Avatar } from '../components/ui/Avatar'
 import { Thread } from '../components/file/Thread'
+import { ReadOnlyNotice } from '../components/common/ReadOnlyNotice'
+import { DegreeBadge } from '../components/degrees/DegreeBadge'
 import { cn } from '../lib/cn'
 
 function DocumentPreview({ file, type }) {
@@ -80,16 +84,16 @@ export function FileDetailPage() {
     enabled: Number.isFinite(fileId),
   })
 
-  const subjectsQuery = useQuery({
-    queryKey: ['subjects'],
-    queryFn: () => api.subjects.list(),
+  const subjectQuery = useQuery({
+    queryKey: ['subject', fileQuery.data?.subjectId],
+    queryFn: () => api.subjects.get(fileQuery.data.subjectId),
+    enabled: Boolean(fileQuery.data?.subjectId),
     staleTime: 5 * 60_000,
   })
 
   const file = fileQuery.data
-  const subjectInfo = (subjectsQuery.data || []).find(
-    (subject) => subject.name === file?.subject,
-  )
+  const subjectInfo = subjectQuery.data
+  const scope = useDegreeScope(file?.degreeId)
 
   useEffect(() => {
     if (file?.fileName) {
@@ -108,7 +112,7 @@ export function FileDetailPage() {
         description: 'El enlace es privado y caduca en 2 minutos.',
       })
     },
-    onError: (error) => toast.error(error.message),
+    onError: (error) => toast.error(degreeErrorMessage(error)),
   })
 
   const voteMutation = useMutation({
@@ -119,7 +123,7 @@ export function FileDetailPage() {
       queryClient.invalidateQueries({ queryKey: ['file', String(fileId)] })
       queryClient.invalidateQueries({ queryKey: ['files'] })
     },
-    onError: (error) => toast.error(error.message),
+    onError: (error) => toast.error(degreeErrorMessage(error)),
   })
 
   const retractMutation = useMutation({
@@ -130,7 +134,7 @@ export function FileDetailPage() {
       queryClient.invalidateQueries({ queryKey: ['file', String(fileId)] })
       queryClient.invalidateQueries({ queryKey: ['files'] })
     },
-    onError: (error) => toast.error(error.message),
+    onError: (error) => toast.error(degreeErrorMessage(error)),
   })
 
   const visibilityMutation = useMutation({
@@ -140,7 +144,7 @@ export function FileDetailPage() {
       queryClient.invalidateQueries({ queryKey: ['files'] })
       toast.success('Visibilidad actualizada')
     },
-    onError: (error) => toast.error(error.message),
+    onError: (error) => toast.error(degreeErrorMessage(error)),
   })
 
   const deleteMutation = useMutation({
@@ -152,7 +156,7 @@ export function FileDetailPage() {
         action: { label: 'Ver', onClick: () => navigate('/propuestas') },
       })
     },
-    onError: (error) => toast.error(error.message),
+    onError: (error) => toast.error(degreeErrorMessage(error)),
   })
 
   const handleVote = (upvote) => {
@@ -201,7 +205,9 @@ export function FileDetailPage() {
   const isPublic = (file.visibilityLevel || '').toUpperCase() === 'PUBLIC'
   const anonymous = !file.uploaderUsername || file.uploaderUsername === 'anonymous'
   const canManage =
-    isMaster || Boolean(profile?.username && profile.username === file.uploaderUsername)
+    scope.sameDegree &&
+    (isMaster || Boolean(profile?.username && profile.username === file.uploaderUsername))
+  const canShowVote = isAuthenticated ? scope.canParticipate : true
 
   return (
     <div className="site-shell">
@@ -215,10 +221,36 @@ export function FileDetailPage() {
         </Link>
       </div>
 
+      {scope.isReadOnly && (
+        <ReadOnlyNotice
+          className="mt-6"
+          title={`Estás viendo material de ${file.degreeName || 'otro grado'}`}
+          description="Puedes leerlo y descargarlo. Solo los estudiantes de este grado pueden votar, comentar o proponer cambios."
+        />
+      )}
+
+      {scope.isPlatformAdmin && (
+        <ReadOnlyNotice
+          className="mt-6"
+          icon="lock"
+          title="Sesión de administración"
+          description="La administración de plataforma no participa en las votaciones ni en las propuestas de la comunidad."
+        />
+      )}
+      {scope.needsDegree && (
+        <ReadOnlyNotice
+          className="mt-6"
+          icon="lock"
+          title="Tu cuenta no tiene grado asignado"
+          description="Puedes leer y descargar el material, pero necesitas que administración corrija tu grado antes de participar."
+        />
+      )}
+
       <div className="mt-7 grid gap-6 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start">
           <article className="glass relative min-w-0 overflow-hidden rounded-3xl p-6 sm:p-9 lg:col-start-1 lg:row-start-1">
             <div className="relative flex flex-wrap items-center gap-2">
               <TypeBadge meta={type} />
+              <DegreeBadge name={file.degreeName} code={file.degreeCode} />
               {isPublic ? (
                 <Badge>
                   <Eye size={12} aria-hidden="true" /> {visibility.label}
@@ -256,48 +288,52 @@ export function FileDetailPage() {
               >
                 Descargar PDF
               </Button>
-              <div className="flex items-center gap-1 rounded-full border border-ink/8 bg-white/45 p-1">
-                <button
-                  type="button"
-                  onClick={() => handleVote(true)}
-                  disabled={voteMutation.isPending || retractMutation.isPending}
-                  aria-label="Me ha servido"
-                  aria-pressed={myVote === true}
-                  className={cn(
-                    'inline-flex items-center gap-1.5 rounded-full px-3 py-2 text-[0.7rem] font-semibold transition-colors',
-                    myVote === true
-                      ? 'bg-aqua-700 text-white'
-                      : 'text-ink-soft hover:bg-white hover:text-ink',
+              {canShowVote && (
+                <>
+                  <div className="flex items-center gap-1 rounded-full border border-ink/8 bg-white/45 p-1">
+                    <button
+                      type="button"
+                      onClick={() => handleVote(true)}
+                      disabled={voteMutation.isPending || retractMutation.isPending}
+                      aria-label="Me ha servido"
+                      aria-pressed={myVote === true}
+                      className={cn(
+                        'inline-flex items-center gap-1.5 rounded-full px-3 py-2 text-[0.7rem] font-semibold transition-colors',
+                        myVote === true
+                          ? 'bg-aqua-700 text-white'
+                          : 'text-ink-soft hover:bg-white hover:text-ink',
+                      )}
+                    >
+                      <ThumbsUp size={14} weight={myVote === true ? 'fill' : 'regular'} aria-hidden="true" />
+                      Me sirve
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleVote(false)}
+                      disabled={voteMutation.isPending || retractMutation.isPending}
+                      aria-label="No me ha servido"
+                      aria-pressed={myVote === false}
+                      className={cn(
+                        'inline-flex items-center gap-1.5 rounded-full px-3 py-2 text-[0.7rem] font-semibold transition-colors',
+                        myVote === false
+                          ? 'bg-ink text-white'
+                          : 'text-ink-soft hover:bg-white hover:text-ink',
+                      )}
+                    >
+                      <ThumbsDown size={14} weight={myVote === false ? 'fill' : 'regular'} aria-hidden="true" />
+                      No me sirve
+                    </button>
+                  </div>
+                  {myVote !== null && (
+                    <button
+                      type="button"
+                      onClick={() => retractMutation.mutate()}
+                      className="text-[0.68rem] font-semibold text-ink-faint transition-colors hover:text-ink"
+                    >
+                      Retirar voto
+                    </button>
                   )}
-                >
-                  <ThumbsUp size={14} weight={myVote === true ? 'fill' : 'regular'} aria-hidden="true" />
-                  Me sirve
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleVote(false)}
-                  disabled={voteMutation.isPending || retractMutation.isPending}
-                  aria-label="No me ha servido"
-                  aria-pressed={myVote === false}
-                  className={cn(
-                    'inline-flex items-center gap-1.5 rounded-full px-3 py-2 text-[0.7rem] font-semibold transition-colors',
-                    myVote === false
-                      ? 'bg-ink text-white'
-                      : 'text-ink-soft hover:bg-white hover:text-ink',
-                  )}
-                >
-                  <ThumbsDown size={14} weight={myVote === false ? 'fill' : 'regular'} aria-hidden="true" />
-                  No me sirve
-                </button>
-              </div>
-              {myVote !== null && (
-                <button
-                  type="button"
-                  onClick={() => retractMutation.mutate()}
-                  className="text-[0.68rem] font-semibold text-ink-faint transition-colors hover:text-ink"
-                >
-                  Retirar voto
-                </button>
+                </>
               )}
             </div>
 
@@ -311,7 +347,9 @@ export function FileDetailPage() {
             <p className="eyebrow text-aqua-700">Ficha del material</p>
             <div className="mt-5 space-y-0 divide-y divide-ink/8">
               {[
+                ['Grado', file.degreeName || file.degreeCode || '—'],
                 ['Asignatura', file.subject || 'Sin asignatura'],
+                ['Código', file.subjectCode || '—'],
                 ['Curso', subjectInfo?.courseName || '—'],
                 ['Tipo', type.label],
                 ['Formato', 'PDF'],
@@ -351,7 +389,7 @@ export function FileDetailPage() {
                   value={file.visibilityLevel || 'PUBLIC'}
                   disabled={visibilityMutation.isPending}
                   onChange={(event) => visibilityMutation.mutate(event.target.value)}
-                  className="mt-2 h-9 w-full rounded-full border border-ink/10 bg-white/55 px-3 text-[0.7rem] font-semibold text-ink-soft outline-none disabled:opacity-50"
+                  className="mt-2 h-9 w-full rounded-full border border-ink/10 bg-white/55 px-3 focus-ring text-[0.7rem] font-semibold text-ink-soft outline-none disabled:opacity-50"
                 >
                   {Object.entries(VISIBILITY).map(([value, meta]) => (
                     <option key={value} value={value}>
@@ -377,8 +415,12 @@ export function FileDetailPage() {
               <div>
                 <p className="eyebrow text-ink-faint">Valoración media</p>
                 <p className="mt-3 flex items-baseline gap-1 text-ink">
-                  <span className="display text-5xl tabular-nums">{scoreLabel(file.score)}</span>
-                  <span className="text-sm text-ink-faint">/ 10</span>
+                  <span className="display text-5xl tabular-nums">
+                    {file.score === null || file.score === undefined ? '—' : scoreLabel(file.score)}
+                  </span>
+                  {(file.score !== null && file.score !== undefined) && (
+                    <span className="text-sm text-ink-faint">/ 10</span>
+                  )}
                 </p>
               </div>
               <Star size={19} weight="fill" className="text-ink-soft" aria-hidden="true" />
@@ -401,13 +443,19 @@ export function FileDetailPage() {
               su retirada.
             </p>
             {isAuthenticated ? (
-              <button
-                type="button"
-                onClick={() => setDeleteOpen(true)}
-                className="mt-4 inline-flex items-center gap-1.5 text-[0.68rem] font-semibold text-[#8b4b43] transition-colors hover:text-[#6f352f]"
-              >
-                <Flag size={13} aria-hidden="true" /> Proponer eliminación
-              </button>
+              scope.canParticipate ? (
+                <button
+                  type="button"
+                  onClick={() => setDeleteOpen(true)}
+                  className="mt-4 inline-flex items-center gap-1.5 text-[0.68rem] font-semibold text-[#8b4b43] transition-colors hover:text-[#6f352f]"
+                >
+                  <Flag size={13} aria-hidden="true" /> Proponer eliminación
+                </button>
+              ) : (
+                <p className="mt-4 text-[0.68rem] leading-5 text-ink-faint">
+                  Solo los estudiantes de este grado pueden proponer cambios.
+                </p>
+              )
             ) : (
               <Link
                 to="/acceso"
@@ -433,7 +481,12 @@ export function FileDetailPage() {
         </aside>
 
         <div className="order-3 min-w-0 glass-soft rounded-5xl p-6 sm:p-9 lg:col-start-1 lg:row-start-2 lg:order-none">
-          <Thread fileId={fileId} />
+          <Thread
+            fileId={fileId}
+            canWrite={scope.canParticipate}
+            canModerate={scope.sameDegree && isMaster}
+            readOnly={scope.isReadOnly || scope.isPlatformAdmin || scope.needsDegree}
+          />
         </div>
       </div>
 

@@ -2,7 +2,17 @@ import { useId } from 'react'
 import { CaretDown } from '@phosphor-icons/react'
 import { cn } from '../../lib/cn'
 
-export function Field({ label, hint, error, required, className, children, htmlFor }) {
+export function Field({
+  label,
+  hint,
+  error,
+  required,
+  className,
+  children,
+  htmlFor,
+  errorId,
+  hintId,
+}) {
   return (
     <div className={cn('w-full', className)}>
       {label && (
@@ -13,19 +23,40 @@ export function Field({ label, hint, error, required, className, children, htmlF
       )}
       {children}
       {error ? (
-        <p className="mt-1.5 text-xs leading-5 text-[#934b43]">{error}</p>
+        <p id={errorId} className="mt-1.5 text-xs leading-5 text-[#934b43]">
+          {error}
+        </p>
       ) : (
-        hint && <p className="mt-1.5 text-xs leading-5 text-ink-faint">{hint}</p>
+        hint && (
+          <p id={hintId} className="mt-1.5 text-xs leading-5 text-ink-faint">
+            {hint}
+          </p>
+        )
       )}
     </div>
   )
 }
 
+const describedBy = ({ error, hint, errorId, hintId }) =>
+  [error ? errorId : null, !error && hint ? hintId : null]
+    .filter(Boolean)
+    .join(' ') || undefined
+
 export function Input({ label, hint, error, className, id, rightAdornment, ...props }) {
   const generatedId = useId()
   const inputId = id || generatedId
+  const errorId = `${inputId}-error`
+  const hintId = `${inputId}-hint`
   return (
-    <Field label={label} hint={hint} error={error} required={props.required} htmlFor={inputId}>
+    <Field
+      label={label}
+      hint={hint}
+      error={error}
+      required={props.required}
+      htmlFor={inputId}
+      errorId={errorId}
+      hintId={hintId}
+    >
       <div className="relative">
         <input
           id={inputId}
@@ -36,6 +67,7 @@ export function Input({ label, hint, error, className, id, rightAdornment, ...pr
             className,
           )}
           aria-invalid={Boolean(error)}
+          aria-describedby={describedBy({ error, hint, errorId, hintId })}
           {...props}
         />
         {rightAdornment}
@@ -47,12 +79,23 @@ export function Input({ label, hint, error, className, id, rightAdornment, ...pr
 export function Textarea({ label, hint, error, className, id, ...props }) {
   const generatedId = useId()
   const inputId = id || generatedId
+  const errorId = `${inputId}-error`
+  const hintId = `${inputId}-hint`
   return (
-    <Field label={label} hint={hint} error={error} required={props.required} htmlFor={inputId}>
+    <Field
+      label={label}
+      hint={hint}
+      error={error}
+      required={props.required}
+      htmlFor={inputId}
+      errorId={errorId}
+      hintId={hintId}
+    >
       <textarea
         id={inputId}
         className={cn('field', error && 'border-[#c88982]', className)}
         aria-invalid={Boolean(error)}
+        aria-describedby={describedBy({ error, hint, errorId, hintId })}
         {...props}
       />
     </Field>
@@ -62,8 +105,18 @@ export function Textarea({ label, hint, error, className, id, ...props }) {
 export function Select({ label, hint, error, className, id, children, ...props }) {
   const generatedId = useId()
   const inputId = id || generatedId
+  const errorId = `${inputId}-error`
+  const hintId = `${inputId}-hint`
   return (
-    <Field label={label} hint={hint} error={error} required={props.required} htmlFor={inputId}>
+    <Field
+      label={label}
+      hint={hint}
+      error={error}
+      required={props.required}
+      htmlFor={inputId}
+      errorId={errorId}
+      hintId={hintId}
+    >
       <div className="relative">
         <select
           id={inputId}
@@ -73,6 +126,7 @@ export function Select({ label, hint, error, className, id, children, ...props }
             className,
           )}
           aria-invalid={Boolean(error)}
+          aria-describedby={describedBy({ error, hint, errorId, hintId })}
           {...props}
         >
           {children}

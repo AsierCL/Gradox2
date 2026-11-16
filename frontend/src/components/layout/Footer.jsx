@@ -6,6 +6,7 @@ const columns = [
   {
     title: 'Biblioteca',
     links: [
+      { to: '/grados', label: 'Grados' },
       { to: '/explorar', label: 'Explorar materiales' },
       { to: '/subir', label: 'Compartir material' },
       { to: '/propuestas', label: 'Propuestas' },
@@ -29,7 +30,8 @@ export function Footer() {
           <div>
             <Logo />
             <p className="mt-4 max-w-xs text-sm leading-6 text-ink-soft">
-              Material de Ingeniería Informática de la Universidad de Santiago de Compostela.
+              Material de los grados de la Escuela de Ingeniería de la Universidad de Santiago de
+              Compostela.
             </p>
           </div>
 

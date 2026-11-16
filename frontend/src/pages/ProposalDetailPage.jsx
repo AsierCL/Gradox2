@@ -15,6 +15,8 @@ import {
 } from '@phosphor-icons/react'
 import { api } from '../lib/api'
 import { useAuth } from '../context/AuthContext'
+import { useDegreeScope } from '../hooks/useDegreeScope'
+import { degreeErrorMessage } from '../lib/degree'
 import { statusMeta, typeMeta, visibilityMeta } from '../lib/constants'
 import { formatDate } from '../lib/format'
 import { Button, TextLink } from '../components/ui/Button'
@@ -23,6 +25,8 @@ import { Skeleton } from '../components/ui/Spinner'
 import { NotFoundInline } from '../components/ui/States'
 import { Modal } from '../components/ui/Modal'
 import { VoteBox } from '../components/proposals/VoteBox'
+import { ReadOnlyNotice } from '../components/common/ReadOnlyNotice'
+import { DegreeBadge } from '../components/degrees/DegreeBadge'
 
 export function ProposalDetailPage() {
   const { id } = useParams()
@@ -39,6 +43,7 @@ export function ProposalDetailPage() {
   })
 
   const proposal = proposalQuery.data
+  const scope = useDegreeScope(proposal?.degreeId)
   const status = statusMeta(proposal?.status)
   const type = typeMeta(proposal?.type)
   const visibility = visibilityMeta(proposal?.visibilityLevel)
@@ -54,7 +59,7 @@ export function ProposalDetailPage() {
         description: 'Enlace privado válido durante 2 minutos.',
       })
     },
-    onError: (error) => toast.error(error.message),
+    onError: (error) => toast.error(degreeErrorMessage(error)),
   })
 
   const cancelMutation = useMutation({
@@ -64,7 +69,7 @@ export function ProposalDetailPage() {
       queryClient.invalidateQueries({ queryKey: ['proposals'] })
       navigate('/propuestas')
     },
-    onError: (error) => toast.error(error.message),
+    onError: (error) => toast.error(degreeErrorMessage(error)),
   })
 
   if (proposalQuery.isLoading) {
@@ -105,12 +110,37 @@ export function ProposalDetailPage() {
         </Link>
       </div>
 
+      {scope.isReadOnly && (
+        <ReadOnlyNotice
+          className="mt-6"
+          title={`Esta propuesta pertenece a ${proposal.degreeName || 'otro grado'}`}
+          description="Puedes consultar el archivo y el recuento. Solo los estudiantes de ese grado pueden votar."
+        />
+      )}
+      {scope.isPlatformAdmin && (
+        <ReadOnlyNotice
+          className="mt-6"
+          icon="lock"
+          title="Sesión de administración"
+          description="La administración de plataforma no participa en las votaciones de la comunidad."
+        />
+      )}
+      {scope.needsDegree && (
+        <ReadOnlyNotice
+          className="mt-6"
+          icon="lock"
+          title="Tu cuenta no tiene grado asignado"
+          description="Puedes leer la propuesta, pero necesitas que administración corrija tu grado antes de votar."
+        />
+      )}
+
       <div className="mt-7 grid gap-6 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start">
         <article className="glass relative overflow-hidden rounded-3xl p-6 sm:p-9">
           <div className="relative flex flex-wrap items-center gap-2">
             <TypeBadge meta={type} />
             <StatusBadge meta={status} />
             <Badge>{visibility.label}</Badge>
+            <DegreeBadge name={proposal.degreeName} code={proposal.degreeCode} />
           </div>
 
           <p className="relative mt-8 text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-aqua-700">
@@ -153,7 +183,7 @@ export function ProposalDetailPage() {
                 <div>
                   <p className="text-sm font-semibold text-ink">{proposal.title}</p>
                   <p className="mt-1 text-[0.65rem] text-ink-faint">
-                    {proposal.subjectName} · {proposal.course} · PDF
+                    {proposal.subjectName} · {proposal.courseName} · PDF
                   </p>
                 </div>
               </div>
@@ -218,7 +248,12 @@ export function ProposalDetailPage() {
                 </span>
               )}
             </div>
-            <VoteBox proposalId={proposalId} status={proposal.status} compact />
+            <VoteBox
+              proposalId={proposalId}
+              status={proposal.status}
+              degreeId={proposal.degreeId}
+              compact
+            />
           </div>
 
           <div className="surface rounded-4xl p-5">
@@ -229,12 +264,18 @@ export function ProposalDetailPage() {
                 <span className="font-semibold text-ink">{type.label}</span>
               </div>
               <div className="flex justify-between gap-3">
+                <span className="text-ink-faint">Grado</span>
+                <span className="text-right font-semibold text-ink">
+                  {proposal.degreeName || proposal.degreeCode}
+                </span>
+              </div>
+              <div className="flex justify-between gap-3">
                 <span className="text-ink-faint">Asignatura</span>
                 <span className="text-right font-semibold text-ink">{proposal.subjectName}</span>
               </div>
               <div className="flex justify-between gap-3">
                 <span className="text-ink-faint">Curso</span>
-                <span className="font-semibold text-ink">{proposal.course}</span>
+                <span className="font-semibold text-ink">{proposal.courseName}</span>
               </div>
               <div className="flex justify-between gap-3">
                 <span className="text-ink-faint">Estado</span>
@@ -328,9 +369,13 @@ export function PromotionDetailPage() {
 
       <div className="mt-7 grid gap-6 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start">
         <article className="glass relative overflow-hidden rounded-3xl p-6 sm:p-9">
-          <div className="relative flex items-center gap-2">
+          <div className="relative flex flex-wrap items-center gap-2">
             <span className="chip chip-aqua">Candidatura a master</span>
             <StatusBadge meta={status} />
+            <DegreeBadge
+              name={promotion.candidateDegreeName}
+              code={promotion.candidateDegreeCode}
+            />
           </div>
           <h1 className="display-tight relative mt-8 text-[clamp(2.4rem,5vw,4rem)] text-ink">
             {promotion.candidate}
@@ -365,7 +410,12 @@ export function PromotionDetailPage() {
         <aside className="glass rounded-4xl p-5 lg:sticky lg:top-24">
           <p className="eyebrow text-ink-faint">Votación</p>
           <div className="mt-4">
-            <VoteBox proposalId={promotionId} status={promotion.status} compact />
+            <VoteBox
+              proposalId={promotionId}
+              status={promotion.status}
+              degreeId={promotion.candidateDegreeId}
+              compact
+            />
           </div>
         </aside>
       </div>

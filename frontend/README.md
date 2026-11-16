@@ -1,6 +1,8 @@
 # Gradox · Frontend
 
-Interfaz web de **Gradox 2.0**, la biblioteca colaborativa de Ingeniería Informática de la USC. Está construida con React, Vite y Tailwind CSS, y consume la API Spring Boot del repositorio.
+Interfaz web de **Gradox 2.0**, la biblioteca colaborativa multi-grado de la Escuela de Ingeniería de la USC. Está construida con React, Vite y Tailwind CSS, y consume la API Spring Boot del repositorio.
+
+El catálogo cubre Ingeniería Informática, Ingeniería Química e Inteligencia Artificial. El grado es permanente para cada usuario y define dónde puede escribir; la lectura y la descarga son libres entre grados.
 
 La interfaz usa una escala de grises, capas de cristal, luz ambiental muy sutil y movimiento lento. El objetivo es que el contenido y las acciones tengan prioridad sobre la decoración.
 
@@ -39,15 +41,18 @@ npm run lint     # ESLint
 
 ## Qué incluye
 
-- **Inicio** con buscador, últimos archivos con descarga directa y navegación por curso y asignatura.
-- **Explorar** con búsqueda sin distinción de acentos, filtros por curso, asignatura y tipo, ordenación y descarga directa desde el listado.
-- **Ficha de material** con descarga mediante URL firmada, votación, visibilidad configurable, metadatos e hilo de comentarios anidados.
-- **Cuenta USC** con registro, verificación por correo, login, renovación de token, logout y recuperación de contraseña.
-- **Perfil** con foto, edición de alias y contraseña, reputación, insignias y solicitud de promoción a master.
-- **Propuestas** con listado, detalle, descarga del archivo propuesto y votación ponderada.
-- **Subida** de material como propuesta, con validación de PDF de hasta 10 MB y elección de visibilidad.
-- **Administración para masters** con resumen, propuestas, usuarios baneados, auditoría y propuestas de cambio de política.
-- **Comunidad** con las reglas de votación, reputación, roles, privacidad y preguntas frecuentes.
+- **Inicio** con buscador, últimos archivos de todos los grados y tarjetas para entrar en cada grado.
+- **Grados** con índice público y pantalla por grado: cursos, asignaturas, créditos, semestre y tipo de materia.
+- **Explorar** con búsqueda sin distinción de acentos, filtros por grado, curso, asignatura y tipo, ordenación y descarga directa.
+- **Ficha de material** con grado visible, descarga mediante URL firmada, votación, visibilidad configurable, metadatos e hilo de comentarios anidados.
+- **Cuenta USC** con registro (incluye elección obligatoria de grado), verificación por correo, login, renovación de token, logout y recuperación de contraseña.
+- **Perfil** con grado permanente, foto, edición de alias y contraseña, reputación, insignias y solicitud de promoción a master del grado propio.
+- **Propuestas** de material con listado global en lectura, detalle, descarga del archivo propuesto y votación limitada al grado.
+- **Subida** de material como propuesta, solo con asignaturas del grado propio, PDF de hasta 10 MB y elección de visibilidad.
+- **Gobernanza para masters** con configuración global, promociones y expulsiones del grado.
+- **Administración de plataforma** con resumen, propuestas globales, usuarios baneados, auditoría y corrección auditada de grados.
+- **Comunidad** con las reglas de votación por grado, reputación, roles, privacidad y preguntas frecuentes.
+- **Modo lectura entre grados**: las acciones de escritura se ocultan o deshabilitan y el `403 DEGREE_SCOPE_FORBIDDEN` se presenta como aviso neutro.
 - **404** y estados de carga, error, sesión caducada y listas vacías en todas las vistas.
 
 ## Arquitectura
@@ -56,12 +61,16 @@ npm run lint     # ESLint
 src/
 ├── components/
 │   ├── auth/          # layout compartido de acceso
+│   ├── common/        # avisos de solo lectura y piezas compartidas
+│   ├── degrees/       # tarjetas, badges y selector de grados
 │   ├── file/          # filas de archivo y conversaciones
+│   ├── governance/    # propuesta de configuración global
 │   ├── home/          # buscador y navegador de cursos
 │   ├── layout/        # shell, navbar, footer, fondo, guardas
 │   ├── proposals/     # tarjetas y caja de votación
 │   └── ui/            # sistema visual reutilizable
 ├── context/           # sesión, perfil y refresco de tokens
+├── hooks/             # ámbito de grado reutilizable
 ├── lib/               # API, formato, constantes y utilidades
 └── pages/             # una entrada por ruta
 ```
@@ -69,17 +78,21 @@ src/
 Decisiones técnicas:
 
 - **TanStack Query** gestiona el estado del servidor y las invalidaciones tras votar, comentar o editar.
-- **React Router 7** organiza rutas públicas, protegidas y exclusivas de master.
+- **React Router 7** organiza rutas públicas, protegidas, exclusivas de master y exclusivas de administración de plataforma.
+- **`useDegreeScope`** centraliza la comparación entre el grado del perfil y el del recurso; el backend sigue siendo la autoridad final.
 - **Framer Motion** aporta entrada de página, revelados al hacer scroll y microinteracciones. Respeta `prefers-reduced-motion`.
 - **Tailwind CSS** contiene el sistema visual. Los tokens de color, tipografía, radios y sombras viven en `tailwind.config.js` y `src/index.css`.
 - **Phosphor Icons** se usa como familia única de iconos.
-- Los tokens se guardan en `localStorage` y el cliente renueva la sesión automáticamente cuando la API responde `401`.
+- Los tokens se guardan en `localStorage` y el cliente renueva la sesión automáticamente cuando la API responde `401`; el refresco conserva grado e `isPlatformAdmin`.
 - Las rutas se cargan con `lazy()` para no enviar toda la aplicación en el primer paquete.
 
 ## Notas de integración
 
+- El catálogo se navega desde `GET /degrees`; no existen listados globales de cursos ni asignaturas.
+- Los archivos se agrupan por `subjectId`, nunca por nombre: dos grados pueden tener una asignatura con el mismo nombre.
 - Las descargas usan el endpoint de la API que devuelve una URL firmada temporal; el navegador descarga directamente desde S3.
 - La visibilidad `PUBLIC`, `RESTRICTED` y `PRIVATE` se interpreta según lo devuelto por la API.
+- Los códigos `DEGREE_SCOPE_FORBIDDEN`, `DEGREE_REQUIRED`, `DEGREE_NOT_FOUND`, `DEGREE_IMMUTABLE` y `DEGREE_LAST_MASTER` se discriminan por `errorCode`.
 - Las notificaciones internas y la moderación avanzada siguen en el roadmap del backend y no se presentan como funciones activas.
 - Los enlaces de verificación y recuperación llegan desde el correo del backend. En local se pueden probar abriendo la URL con su `token`.
 

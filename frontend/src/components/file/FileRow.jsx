@@ -7,7 +7,7 @@ import { typeMeta, visibilityMeta } from '../../lib/constants'
 import { scoreLabel } from '../../lib/format'
 import { TypeBadge } from '../ui/Badge'
 
-export function FileRow({ file }) {
+export function FileRow({ file, showDegree = false }) {
   const meta = typeMeta(file.fileType)
   const visibility = visibilityMeta(file.visibilityLevel)
   const isPrivate = (file.visibilityLevel || '').toUpperCase() !== 'PUBLIC'
@@ -39,6 +39,15 @@ export function FileRow({ file }) {
           <span className="shrink-0 font-semibold text-ink-faint sm:hidden">{meta.label}</span>
           <span className="shrink-0 text-ink-faint sm:hidden" aria-hidden="true">·</span>
           <span className="truncate">{file.subject || 'Sin asignatura'}</span>
+          {showDegree && (file.degreeName || file.degreeCode) && (
+            <span
+              className="inline-flex shrink-0 items-center gap-1"
+              title={file.degreeName || file.degreeCode}
+            >
+              <span className="text-ink-faint" aria-hidden="true">·</span>
+              <span className="truncate">{file.degreeCode || file.degreeName}</span>
+            </span>
+          )}
           <span className="hidden shrink-0 items-center gap-1 sm:inline-flex">
             <span className="text-ink-faint" aria-hidden="true">·</span>
             {isPrivate ? <EyeSlash size={11} aria-hidden="true" /> : <Eye size={11} aria-hidden="true" />}

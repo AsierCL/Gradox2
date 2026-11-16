@@ -7,7 +7,12 @@ import { cn } from '../../lib/cn'
 export function Modal({ open, onClose, title, description, children, className }) {
   const reduceMotion = useReducedMotion()
   const panelRef = useRef(null)
+  const onCloseRef = useRef(onClose)
   const titleId = useId()
+
+  useEffect(() => {
+    onCloseRef.current = onClose
+  }, [onClose])
 
   useEffect(() => {
     if (!open) return undefined
@@ -16,7 +21,7 @@ export function Modal({ open, onClose, title, description, children, className }
     document.body.style.overflow = 'hidden'
 
     const handleKey = (event) => {
-      if (event.key === 'Escape') onClose?.()
+      if (event.key === 'Escape') onCloseRef.current?.()
       if (event.key !== 'Tab' || !panelRef.current) return
       const focusable = panelRef.current.querySelectorAll(
         'a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])',
@@ -42,7 +47,7 @@ export function Modal({ open, onClose, title, description, children, className }
       window.clearTimeout(timer)
       previous?.focus?.()
     }
-  }, [open, onClose])
+  }, [open])
 
   return createPortal(
     <AnimatePresence>

@@ -1,10 +1,17 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ArrowRight, EnvelopeSimple, PaperPlaneTilt, CheckCircle } from '@phosphor-icons/react'
+import { useQuery } from '@tanstack/react-query'
+import {
+  ArrowRight,
+  CheckCircle,
+  EnvelopeSimple,
+  Info,
+  PaperPlaneTilt,
+} from '@phosphor-icons/react'
 import { api } from '../lib/api'
 import { AuthLayout, PasswordToggle } from '../components/auth/AuthLayout'
 import { Button } from '../components/ui/Button'
-import { Input } from '../components/ui/Field'
+import { Input, Select } from '../components/ui/Field'
 
 const validEmail = /^[A-Za-z0-9._%+-]+@rai\.usc\.(es|gal)$/
 
@@ -14,12 +21,20 @@ export function RegisterPage() {
     username: '',
     password: '',
     confirm: '',
+    degreeId: '',
   })
   const [errors, setErrors] = useState({})
   const [serverError, setServerError] = useState('')
   const [loading, setLoading] = useState(false)
   const [sentTo, setSentTo] = useState('')
   const [showPassword, setShowPassword] = useState(false)
+
+  const degreesQuery = useQuery({
+    queryKey: ['degrees'],
+    queryFn: () => api.degrees.list(),
+    staleTime: 10 * 60_000,
+  })
+  const degrees = degreesQuery.data || []
 
   const update = (key, value) => {
     setForm((prev) => ({ ...prev, [key]: value }))
@@ -41,6 +56,9 @@ export function RegisterPage() {
     if (form.password !== form.confirm) {
       next.confirm = 'Las contraseñas no coinciden.'
     }
+    if (!form.degreeId) {
+      next.degreeId = 'Selecciona el grado que vas a cursar.'
+    }
     setErrors(next)
     return Object.keys(next).length === 0
   }
@@ -55,10 +73,20 @@ export function RegisterPage() {
         email: form.email.trim(),
         username: form.username.trim(),
         password: form.password,
+        degreeId: Number(form.degreeId),
       })
       setSentTo(form.email.trim())
     } catch (error) {
-      setServerError(error.message)
+      if (error.code === 'DEGREE_REQUIRED') {
+        setErrors((prev) => ({ ...prev, degreeId: 'Selecciona el grado que vas a cursar.' }))
+      } else if (error.code === 'DEGREE_NOT_FOUND') {
+        setErrors((prev) => ({
+          ...prev,
+          degreeId: 'El grado seleccionado ya no existe. Elige otro.',
+        }))
+      } else {
+        setServerError(error.message)
+      }
     } finally {
       setLoading(false)
     }
@@ -148,6 +176,48 @@ export function RegisterPage() {
           minLength={3}
           maxLength={50}
         />
+
+        <Select
+          label="Grado"
+          value={form.degreeId}
+          onChange={(event) => update('degreeId', event.target.value)}
+          error={errors.degreeId}
+          hint={
+            degreesQuery.isError
+              ? 'No se pudo cargar el catálogo de grados. Vuelve a intentarlo.'
+              : 'Selecciona el plan de estudios al que perteneces.'
+          }
+          disabled={degreesQuery.isLoading || degreesQuery.isError}
+          required
+        >
+          <option value="" disabled>
+            {degreesQuery.isLoading ? 'Cargando grados…' : 'Elige tu grado'}
+          </option>
+          {degrees.map((degree) => (
+            <option key={degree.id} value={degree.id}>
+              {degree.name} · {degree.code}
+            </option>
+          ))}
+        </Select>
+
+        {degreesQuery.isError && (
+          <button
+            type="button"
+            onClick={() => degreesQuery.refetch()}
+            className="text-left text-xs font-semibold text-aqua-800 underline decoration-aqua-300 underline-offset-4"
+          >
+            Reintentar la carga de grados
+          </button>
+        )}
+
+        <div className="flex items-start gap-2.5 rounded-2xl border border-ink/8 bg-white/40 px-4 py-3">
+          <Info size={16} className="mt-0.5 shrink-0 text-aqua-700" aria-hidden="true" />
+          <p className="text-[0.68rem] leading-5 text-ink-soft">
+            El grado no se puede cambiar después. Elígelo con cuidado: define en qué comunidad
+            podrás votar, comentar y proponer material.
+          </p>
+        </div>
+
         <div className="grid gap-4 sm:grid-cols-2">
           <Input
             label="Contraseña"

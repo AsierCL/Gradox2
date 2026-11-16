@@ -9,15 +9,16 @@ import {
   DownloadSimple,
   FileText,
   Gauge,
+  GraduationCap,
   HardDrives,
   ListMagnifyingGlass,
   ShieldCheck,
-  SlidersHorizontal,
   UserMinus,
   UsersThree,
   WarningCircle,
 } from '@phosphor-icons/react'
 import { api } from '../lib/api'
+import { degreeErrorMessage } from '../lib/degree'
 import { ACTION_TYPES, PROPOSAL_STATUS } from '../lib/constants'
 import { formatBytes, formatDate, formatDateTime, formatNumber } from '../lib/format'
 import { PageHeader } from '../components/ui/PageHeader'
@@ -25,7 +26,7 @@ import { Button } from '../components/ui/Button'
 import { Tabs } from '../components/ui/Tabs'
 import { Reveal } from '../components/ui/Reveal'
 import { Modal } from '../components/ui/Modal'
-import { Input } from '../components/ui/Field'
+import { Input, Select } from '../components/ui/Field'
 import { Skeleton } from '../components/ui/Spinner'
 import { EmptyState, ErrorState } from '../components/ui/States'
 import { StatusBadge } from '../components/ui/Badge'
@@ -37,6 +38,7 @@ const actionOptions = [
   { value: 'PROMOTION', label: 'Promociones' },
   { value: 'EXPULSION', label: 'Expulsiones' },
   { value: 'POLICY_CHANGE', label: 'Políticas' },
+  { value: 'DEGREE_CHANGE', label: 'Cambios de grado' },
 ]
 
 function Pager({ page, totalPages, onChange }) {
@@ -68,117 +70,15 @@ function Pager({ page, totalPages, onChange }) {
   )
 }
 
-function ConfigModal({ open, onClose, config }) {
-  const [form, setForm] = useState({
-    quorumRequired: config?.quorumRequired || 10,
-    approvalThreshold: config?.approvalThreshold ?? 0.6,
-    maxPendingUploads: config?.maxPendingUploads || 3,
-    masterVoteWeight: config?.masterVoteWeight ?? 2,
-    userVoteWeight: config?.userVoteWeight ?? 1,
-  })
-  const [error, setError] = useState('')
-
-  const mutation = useMutation({
-    mutationFn: () =>
-      api.config.propose({
-        quorumRequired: Number(form.quorumRequired),
-        approvalThreshold: Number(form.approvalThreshold),
-        maxPendingUploads: Number(form.maxPendingUploads),
-        masterVoteWeight: Number(form.masterVoteWeight),
-        userVoteWeight: Number(form.userVoteWeight),
-      }),
-    onSuccess: () => {
-      toast.success('Propuesta de política creada', {
-        description: 'Necesita aprobación reforzada de los masters.',
-      })
-      onClose()
-    },
-    onError: (requestError) => setError(requestError.message),
-  })
-
-  return (
-    <Modal
-      open={open}
-      onClose={onClose}
-      title="Proponer un cambio de política"
-      description="No se aplica de inmediato. Se abre una votación reforzada entre los masters."
-    >
-      <form
-        onSubmit={(event) => {
-          event.preventDefault()
-          setError('')
-          mutation.mutate()
-        }}
-        className="space-y-4"
-      >
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Input
-            label="Quórum mínimo"
-            type="number"
-            min={1}
-            max={10000}
-            value={form.quorumRequired}
-            onChange={(event) => setForm((prev) => ({ ...prev, quorumRequired: event.target.value }))}
-          />
-          <Input
-            label="Umbral de aprobación (0–1)"
-            type="number"
-            min={0.01}
-            max={1}
-            step={0.01}
-            value={form.approvalThreshold}
-            onChange={(event) => setForm((prev) => ({ ...prev, approvalThreshold: event.target.value }))}
-          />
-          <Input
-            label="Máx. subidas pendientes"
-            type="number"
-            min={1}
-            value={form.maxPendingUploads}
-            onChange={(event) => setForm((prev) => ({ ...prev, maxPendingUploads: event.target.value }))}
-          />
-          <Input
-            label="Peso del voto master"
-            type="number"
-            min={0.1}
-            step={0.1}
-            value={form.masterVoteWeight}
-            onChange={(event) => setForm((prev) => ({ ...prev, masterVoteWeight: event.target.value }))}
-          />
-          <Input
-            label="Peso del voto usuario"
-            type="number"
-            min={0.1}
-            step={0.1}
-            value={form.userVoteWeight}
-            onChange={(event) => setForm((prev) => ({ ...prev, userVoteWeight: event.target.value }))}
-          />
-        </div>
-        {error && (
-          <div role="alert" className="rounded-2xl border border-[#e7c7c2] bg-[#fbefed] px-4 py-3 text-xs text-[#86483f]">
-            {error}
-          </div>
-        )}
-        <div className="flex justify-end gap-2 pt-2">
-          <Button type="button" variant="ghost" onClick={onClose}>
-            Cancelar
-          </Button>
-          <Button type="submit" loading={mutation.isPending}>
-            Crear propuesta
-          </Button>
-        </div>
-      </form>
-    </Modal>
-  )
-}
-
 export function AdminPage() {
   const [tab, setTab] = useState('resumen')
   const [page, setPage] = useState(0)
   const [auditPage, setAuditPage] = useState(0)
   const [actionFilter, setActionFilter] = useState('')
-  const [configOpen, setConfigOpen] = useState(false)
   const [banOpen, setBanOpen] = useState(false)
   const [banForm, setBanForm] = useState({ userId: '', reason: '' })
+  const [degreeForm, setDegreeForm] = useState({ userId: '', degreeId: '', reason: '' })
+  const [degreeConfirmOpen, setDegreeConfirmOpen] = useState(false)
   const queryClient = useQueryClient()
 
   const statsQuery = useQuery({
@@ -206,6 +106,12 @@ export function AdminPage() {
     queryFn: () => api.admin.audit({ page: auditPage, size: 20 }),
     enabled: tab === 'auditoria',
   })
+  const degreesQuery = useQuery({
+    queryKey: ['degrees'],
+    queryFn: () => api.degrees.list(),
+    enabled: tab === 'usuarios',
+    staleTime: 10 * 60_000,
+  })
 
   const unbanMutation = useMutation({
     mutationFn: (userId) => api.admin.unban(userId),
@@ -227,6 +133,22 @@ export function AdminPage() {
     onError: (error) => toast.error(error.message),
   })
 
+  const degreeMutation = useMutation({
+    mutationFn: () =>
+      api.admin.changeUserDegree(Number(degreeForm.userId), {
+        degreeId: Number(degreeForm.degreeId),
+        reason: degreeForm.reason.trim(),
+      }),
+    onSuccess: () => {
+      toast.success('Grado actualizado', {
+        description: 'El cambio queda auditado y las sesiones del usuario se invalidan.',
+      })
+      setDegreeConfirmOpen(false)
+      setDegreeForm({ userId: '', degreeId: '', reason: '' })
+    },
+    onError: (error) => toast.error(degreeErrorMessage(error)),
+  })
+
   const stats = statsQuery.data
   const config = configQuery.data
   const proposalsPage = proposalsQuery.data
@@ -240,17 +162,9 @@ export function AdminPage() {
   return (
     <div className="site-shell">
       <PageHeader
+        eyebrow="Administración de plataforma"
         title="Panel de administración"
-        description="Propuestas, usuarios, auditoría y reglas de votación."
-        actions={
-          <Button
-            variant="ghost"
-            onClick={() => setConfigOpen(true)}
-            icon={<SlidersHorizontal size={16} />}
-          >
-            Cambiar política
-          </Button>
-        }
+        description="Catálogo, propuestas globales, usuarios, auditoría y corrección de grados."
       />
 
       <Reveal>
@@ -300,7 +214,7 @@ export function AdminPage() {
               <div className="glass rounded-4xl p-6">
                 <div className="flex items-center justify-between gap-4">
                   <div>
-                    <p className="eyebrow text-aqua-700">Configuración activa</p>
+                    <p className="eyebrow text-aqua-700">Configuración global</p>
                     <h2 className="mt-2 text-xl font-semibold tracking-tight text-ink">
                       Reglas de votación
                     </h2>
@@ -331,14 +245,10 @@ export function AdminPage() {
                 ) : (
                   <p className="mt-4 text-xs text-ink-soft">No se pudo leer la configuración.</p>
                 )}
-                <Button
-                  variant="ghost"
-                  onClick={() => setConfigOpen(true)}
-                  className="mt-4 w-full"
-                  icon={<SlidersHorizontal size={15} />}
-                >
-                  Proponer cambio
-                </Button>
+                <p className="mt-4 text-[0.65rem] leading-5 text-ink-faint">
+                  La configuración la proponen y votan los masters desde Gobernanza. La
+                  administración de plataforma no vota.
+                </p>
               </div>
 
               <div className="glass rounded-4xl p-6">
@@ -405,8 +315,11 @@ export function AdminPage() {
                 </div>
                 <select
                   value={actionFilter}
-                  onChange={(event) => setActionFilter(event.target.value)}
-                  className="h-9 rounded-full border border-ink/10 bg-white/45 px-3 text-[0.68rem] font-semibold text-ink-soft outline-none"
+                  onChange={(event) => {
+                    setActionFilter(event.target.value)
+                    setPage(0)
+                  }}
+                  className="focus-ring h-9 rounded-full border border-ink/10 bg-white/45 px-3 text-[0.68rem] font-semibold text-ink-soft outline-none"
                   aria-label="Filtrar por tipo de acción"
                 >
                   {actionOptions.map((option) => (
@@ -573,6 +486,92 @@ export function AdminPage() {
                 </div>
               </div>
             </div>
+
+            <div className="glass mt-4 rounded-4xl p-5 sm:p-6">
+              <div className="flex items-start gap-3">
+                <span className="grid size-9 shrink-0 place-items-center rounded-full bg-white/60 text-aqua-700">
+                  <GraduationCap size={17} weight="duotone" aria-hidden="true" />
+                </span>
+                <div>
+                  <p className="eyebrow text-aqua-700">Corrección excepcional</p>
+                  <h2 className="mt-1 text-xl font-semibold tracking-tight text-ink">
+                    Cambiar el grado de un usuario
+                  </h2>
+                  <p className="mt-1 max-w-2xl text-[0.68rem] leading-5 text-ink-soft">
+                    El grado es permanente por diseño. Esto solo existe para corregir un error del
+                    registro: exige motivo, queda en auditoría e invalida las sesiones del usuario.
+                  </p>
+                </div>
+              </div>
+
+              <form
+                onSubmit={(event) => {
+                  event.preventDefault()
+                  if (!degreeForm.userId || !degreeForm.degreeId) {
+                    toast.error('Introduce el ID del usuario y el nuevo grado.')
+                    return
+                  }
+                  if (!degreeForm.reason.trim()) {
+                    toast.error('El motivo es obligatorio.')
+                    return
+                  }
+                  setDegreeConfirmOpen(true)
+                }}
+                className="mt-5 grid gap-4 lg:grid-cols-[10rem_1fr_1fr_auto] lg:items-end"
+              >
+                <Input
+                  label="ID del usuario"
+                  type="number"
+                  min={1}
+                  value={degreeForm.userId}
+                  onChange={(event) =>
+                    setDegreeForm((prev) => ({ ...prev, userId: event.target.value }))
+                  }
+                  placeholder="Ej. 42"
+                  required
+                />
+                <Select
+                  label="Nuevo grado"
+                  value={degreeForm.degreeId}
+                  onChange={(event) =>
+                    setDegreeForm((prev) => ({ ...prev, degreeId: event.target.value }))
+                  }
+                  disabled={degreesQuery.isLoading || degreesQuery.isError}
+                  required
+                >
+                  <option value="">
+                    {degreesQuery.isLoading ? 'Cargando grados…' : 'Elige el grado'}
+                  </option>
+                  {(degreesQuery.data || []).map((degree) => (
+                    <option key={degree.id} value={degree.id}>
+                      {degree.name} · {degree.code}
+                    </option>
+                  ))}
+                </Select>
+                <Input
+                  label="Motivo"
+                  value={degreeForm.reason}
+                  onChange={(event) =>
+                    setDegreeForm((prev) => ({ ...prev, reason: event.target.value }))
+                  }
+                  placeholder="Explica el error que corrige"
+                  maxLength={500}
+                  required
+                />
+                <Button type="submit" loading={degreeMutation.isPending}>
+                  Aplicar cambio
+                </Button>
+              </form>
+              {degreesQuery.isError && (
+                <button
+                  type="button"
+                  onClick={() => degreesQuery.refetch()}
+                  className="mt-3 text-xs font-semibold text-aqua-800 underline decoration-aqua-300 underline-offset-4"
+                >
+                  Reintentar la carga de grados
+                </button>
+              )}
+            </div>
           </Reveal>
         )}
 
@@ -647,12 +646,45 @@ export function AdminPage() {
         )}
       </div>
 
-      <ConfigModal
-        key={config?.id ?? 'config-default'}
-        open={configOpen}
-        onClose={() => setConfigOpen(false)}
-        config={config}
-      />
+      <Modal
+        open={degreeConfirmOpen}
+        onClose={() => setDegreeConfirmOpen(false)}
+        title="Confirmar cambio de grado"
+        description="Es una corrección excepcional, auditada e irreversible desde la interfaz."
+      >
+        <div className="rounded-2xl border border-ink/8 bg-white/45 p-4 text-xs leading-6 text-ink-soft">
+          <p>
+            Usuario <span className="font-semibold text-ink">#{degreeForm.userId}</span> pasará a{' '}
+            <span className="font-semibold text-ink">
+              {(() => {
+                const degree = (degreesQuery.data || []).find(
+                  (item) => String(item.id) === String(degreeForm.degreeId),
+                )
+                return degree ? `${degree.name} · ${degree.code}` : 'el grado seleccionado'
+              })()}
+            </span>
+            .
+          </p>
+          <p className="mt-2">
+            Motivo: <span className="font-semibold text-ink">{degreeForm.reason}</span>
+          </p>
+          <p className="mt-2 text-[0.65rem] text-ink-faint">
+            Se invalidarán las sesiones del usuario afectado.
+          </p>
+        </div>
+        <div className="mt-5 flex justify-end gap-2">
+          <Button variant="ghost" onClick={() => setDegreeConfirmOpen(false)}>
+            Cancelar
+          </Button>
+          <Button
+            variant="danger"
+            loading={degreeMutation.isPending}
+            onClick={() => degreeMutation.mutate()}
+          >
+            Confirmar cambio
+          </Button>
+        </div>
+      </Modal>
 
       <Modal
         open={banOpen}

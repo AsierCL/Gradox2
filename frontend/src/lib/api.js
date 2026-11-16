@@ -60,6 +60,10 @@ async function refreshSession() {
           refreshToken: data.refreshToken,
           username: data.username,
           role: data.role,
+          degreeId: data.degreeId,
+          degreeCode: data.degreeCode,
+          degreeName: data.degreeName,
+          isPlatformAdmin: data.isPlatformAdmin,
         }
         sessionStore.write(next)
         return next
@@ -138,17 +142,22 @@ async function request(
   const payload = await parseResponse(response)
 
   if (!response.ok) {
+    const code = payload?.errorCode || `HTTP_${response.status}`
     const fallback =
-      response.status === 401
-        ? 'Tu sesión ha caducado. Inicia sesión de nuevo.'
-        : response.status === 403
-          ? 'No tienes permisos para realizar esta acción.'
-          : response.status === 429
-            ? 'Demasiados intentos. Espera un momento antes de volver a probar.'
-            : 'La operación no se pudo completar.'
+      code === 'DEGREE_SCOPE_FORBIDDEN'
+        ? 'Solo los estudiantes de este grado pueden participar.'
+        : code === 'DEGREE_REQUIRED'
+          ? 'Debes seleccionar un grado antes de participar.'
+          : response.status === 401
+            ? 'Tu sesión ha caducado. Inicia sesión de nuevo.'
+            : response.status === 403
+              ? 'No tienes permisos para realizar esta acción.'
+              : response.status === 429
+                ? 'Demasiados intentos. Espera un momento antes de volver a probar.'
+                : 'La operación no se pudo completar.'
     throw new ApiError(messageFromPayload(payload, fallback), {
       status: response.status,
-      code: payload?.errorCode || `HTTP_${response.status}`,
+      code,
     })
   }
 
@@ -202,14 +211,19 @@ export const api = {
     publicProfile: (id) => request(`users/${id}`),
   },
 
+  degrees: {
+    list: () => request('degrees', { auth: false }),
+    get: (id) => request(`degrees/${id}`, { auth: false }),
+    courses: (id) => request(`degrees/${id}/courses`, { auth: false }),
+    subjects: (id) => request(`degrees/${id}/subjects`, { auth: false }),
+  },
+
   subjects: {
-    list: () => request('subjects'),
-    get: (id) => request(`subjects/${id}`),
+    get: (id) => request(`subjects/${id}`, { auth: false }),
   },
 
   courses: {
-    list: () => request('courses'),
-    get: (id) => request(`courses/${id}`),
+    get: (id) => request(`courses/${id}`, { auth: false }),
   },
 
   files: {
@@ -289,6 +303,8 @@ export const api = {
       request(`admin/users/${userId}/ban${qs({ reason })}`, { method: 'PUT' }),
     unban: (userId) =>
       request(`admin/users/${userId}/unban`, { method: 'PUT' }),
+    changeUserDegree: (userId, payload) =>
+      request(`admin/users/${userId}/degree`, { method: 'PATCH', body: payload }),
     audit: (params = {}) => request(`admin/audit${qs(params)}`),
   },
 }

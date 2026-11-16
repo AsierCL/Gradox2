@@ -5,7 +5,7 @@ import { ArrowRight, MagnifyingGlass } from '@phosphor-icons/react'
 import { Button } from '../ui/Button'
 import { formatNumber } from '../../lib/format'
 
-export function Hero({ stats }) {
+export function Hero({ stats, degrees = [] }) {
   const [query, setQuery] = useState('')
   const navigate = useNavigate()
 
@@ -27,12 +27,12 @@ export function Hero({ stats }) {
         transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
         className="relative z-10 mx-auto max-w-3xl text-center"
       >
-        <p className="text-xs font-semibold text-ink-soft">Ingeniería Informática · USC</p>
+        <p className="text-xs font-semibold text-ink-soft">Escuela de Ingeniería · USC</p>
         <h1 className="display mt-3 text-balance text-[clamp(2.4rem,5vw,4rem)] text-ink">
-          Material de Ingeniería Informática
+          Material de la Escuela de Ingeniería
         </h1>
         <p className="mx-auto mt-4 max-w-xl text-base leading-7 text-ink-soft">
-          Busca apuntes, exámenes y ejercicios por asignatura o título.
+          Apuntes, exámenes y ejercicios de Informática, Química e Inteligencia Artificial.
         </p>
 
         <form onSubmit={handleSubmit} className="mx-auto mt-7 max-w-2xl">
@@ -68,6 +68,21 @@ export function Hero({ stats }) {
             </span>
           )}
         </div>
+
+        {degrees.length > 0 && (
+          <div className="mt-6 flex flex-wrap items-center justify-center gap-2">
+            {degrees.map((degree) => (
+              <Link
+                key={degree.id}
+                to={`/grados/${degree.code}`}
+                className="chip transition-colors hover:border-aqua-300 hover:bg-white/80 hover:text-ink"
+              >
+                {degree.name}
+                <span className="text-ink-faint">{degree.code}</span>
+              </Link>
+            ))}
+          </div>
+        )}
       </motion.div>
     </section>
   )

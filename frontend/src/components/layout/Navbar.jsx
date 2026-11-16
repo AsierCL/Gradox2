@@ -21,12 +21,21 @@ import { ROLES } from '../../lib/constants'
 
 const publicLinks = [
   { to: '/', label: 'Inicio', end: true },
+  { to: '/grados', label: 'Grados' },
   { to: '/explorar', label: 'Explorar' },
   { to: '/comunidad', label: 'Comunidad' },
 ]
 
 function UserMenu() {
-  const { profile, session, isMaster, logout } = useAuth()
+  const {
+    profile,
+    session,
+    isMaster,
+    isPlatformAdmin,
+    degreeCode,
+    degreeName,
+    logout,
+  } = useAuth()
   const [open, setOpen] = useState(false)
   const ref = useRef(null)
   const navigate = useNavigate()
@@ -82,7 +91,11 @@ function UserMenu() {
             <p className="truncate text-sm font-semibold text-ink">
               {profile?.username || session?.username}
             </p>
-            <p className="mt-0.5 text-[0.7rem] text-ink-faint">
+            <p className="mt-0.5 truncate text-[0.7rem] text-ink-soft">
+              {degreeName || 'Sin grado'}
+              {degreeCode && <span className="text-ink-faint"> · {degreeCode}</span>}
+            </p>
+            <p className="mt-0.5 text-[0.65rem] text-ink-faint">
               {ROLES[(profile?.role || session?.role || '').toUpperCase()] || 'Estudiante'} ·{' '}
               {Number(profile?.reputation || 0).toFixed(1)} de reputación
             </p>
@@ -96,6 +109,16 @@ function UserMenu() {
             >
               <UserCircle size={18} aria-hidden="true" /> Mi perfil
             </Link>
+            {degreeCode && (
+              <Link
+                to={`/grados/${degreeCode}`}
+                role="menuitem"
+                onClick={() => setOpen(false)}
+                className="flex items-center gap-2.5 rounded-2xl px-3 py-2.5 text-sm text-ink-soft transition-colors hover:bg-white/70 hover:text-ink"
+              >
+                <BookOpenText size={18} aria-hidden="true" /> Mi grado
+              </Link>
+            )}
             <Link
               to="/propuestas"
               role="menuitem"
@@ -104,15 +127,27 @@ function UserMenu() {
             >
               <ListBullets size={18} aria-hidden="true" /> Propuestas
             </Link>
-            <Link
-              to="/subir"
-              role="menuitem"
-              onClick={() => setOpen(false)}
-              className="flex items-center gap-2.5 rounded-2xl px-3 py-2.5 text-sm text-ink-soft transition-colors hover:bg-white/70 hover:text-ink"
-            >
-              <UploadSimple size={18} aria-hidden="true" /> Compartir material
-            </Link>
+            {!isPlatformAdmin && (
+              <Link
+                to="/subir"
+                role="menuitem"
+                onClick={() => setOpen(false)}
+                className="flex items-center gap-2.5 rounded-2xl px-3 py-2.5 text-sm text-ink-soft transition-colors hover:bg-white/70 hover:text-ink"
+              >
+                <UploadSimple size={18} aria-hidden="true" /> Compartir material
+              </Link>
+            )}
             {isMaster && (
+              <Link
+                to="/gobernanza"
+                role="menuitem"
+                onClick={() => setOpen(false)}
+                className="flex items-center gap-2.5 rounded-2xl px-3 py-2.5 text-sm text-ink-soft transition-colors hover:bg-white/70 hover:text-ink"
+              >
+                <ShieldCheck size={18} aria-hidden="true" /> Gobernanza
+              </Link>
+            )}
+            {isPlatformAdmin && (
               <Link
                 to="/administracion"
                 role="menuitem"
@@ -178,7 +213,7 @@ function SearchDialog({ open, onClose }) {
             onChange={(event) => setQuery(event.target.value)}
             placeholder="Ej. examen de Bases de Datos"
             aria-label="Buscar material"
-            className="h-14 w-full bg-transparent text-base text-ink outline-none placeholder:text-ink-faint"
+            className="h-14 w-full bg-transparent focus-ring text-base text-ink outline-none placeholder:text-ink-faint"
           />
           <kbd className="hidden rounded-lg border border-ink/10 bg-paper-50 px-2 py-1 text-[0.65rem] text-ink-faint sm:block">
             ↵
@@ -220,7 +255,7 @@ function SearchDialog({ open, onClose }) {
 }
 
 export function Navbar() {
-  const { isAuthenticated, isMaster, logout } = useAuth()
+  const { isAuthenticated, isMaster, isPlatformAdmin, logout } = useAuth()
   const navigate = useNavigate()
   const [searchOpen, setSearchOpen] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -237,20 +272,23 @@ export function Navbar() {
   }, [])
 
   useEffect(() => {
-    if (mobileOpen) {
-      document.body.style.overflow = 'hidden'
-      return () => {
-        document.body.style.overflow = ''
-      }
+    if (!mobileOpen) return undefined
+    document.body.style.overflow = 'hidden'
+    const handleKey = (event) => {
+      if (event.key === 'Escape') setMobileOpen(false)
     }
-    return undefined
+    document.addEventListener('keydown', handleKey)
+    return () => {
+      document.body.style.overflow = ''
+      document.removeEventListener('keydown', handleKey)
+    }
   }, [mobileOpen])
 
   const links = isAuthenticated
     ? [
         ...publicLinks,
         { to: '/propuestas', label: 'Propuestas' },
-        { to: '/subir', label: 'Subir' },
+        ...(isPlatformAdmin ? [] : [{ to: '/subir', label: 'Subir' }]),
       ]
     : publicLinks
 
@@ -275,6 +313,11 @@ export function Navbar() {
                 </NavLink>
               ))}
               {isMaster && (
+                <NavLink to="/gobernanza" className="nav-link">
+                  Gobernanza
+                </NavLink>
+              )}
+              {isPlatformAdmin && (
                 <NavLink to="/administracion" className="nav-link">
                   Administración
                 </NavLink>
@@ -339,7 +382,7 @@ export function Navbar() {
       {mobileOpen && (
         <div
           id="mobile-nav"
-          className="glass-nav fixed inset-x-3 top-[5.35rem] z-40 rounded-4xl p-6 lg:hidden"
+          className="glass-nav fixed inset-x-3 top-[5.35rem] z-40 max-h-[calc(100dvh-6.5rem)] overflow-y-auto overscroll-contain rounded-4xl p-6 lg:hidden"
         >
           <nav aria-label="Navegación móvil" className="flex flex-col">
             {links.map((link) => (
@@ -359,6 +402,15 @@ export function Navbar() {
               </NavLink>
             ))}
             {isMaster && (
+              <NavLink
+                to="/gobernanza"
+                onClick={() => setMobileOpen(false)}
+                className="border-b border-ink/8 py-4 text-2xl tracking-tight text-ink-soft"
+              >
+                Gobernanza
+              </NavLink>
+            )}
+            {isPlatformAdmin && (
               <NavLink
                 to="/administracion"
                 onClick={() => setMobileOpen(false)}
@@ -388,13 +440,15 @@ export function Navbar() {
                 >
                   Mi perfil
                 </Link>
-                <Link
-                  to="/subir"
-                  onClick={() => setMobileOpen(false)}
-                  className="rounded-2xl border border-ink/8 bg-white/38 px-3 py-3 text-center text-xs font-semibold text-ink-soft transition-colors hover:bg-white/70 hover:text-ink"
-                >
-                  Compartir
-                </Link>
+                {!isPlatformAdmin && (
+                  <Link
+                    to="/subir"
+                    onClick={() => setMobileOpen(false)}
+                    className="rounded-2xl border border-ink/8 bg-white/38 px-3 py-3 text-center text-xs font-semibold text-ink-soft transition-colors hover:bg-white/70 hover:text-ink"
+                  >
+                    Compartir
+                  </Link>
+                )}
                 <button
                   type="button"
                   onClick={handleMobileLogout}
