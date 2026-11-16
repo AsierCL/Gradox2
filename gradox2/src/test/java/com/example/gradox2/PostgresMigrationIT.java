@@ -216,6 +216,19 @@ class PostgresMigrationIT {
                 "select count(*) from audit_records where action_type = 'DEGREE_CHANGE'"))
                 .as("la auditoría acepta DEGREE_CHANGE").isEqualTo(1);
 
+        // ── actor de sistema (V14): la auditoría sin sesión no puede violar NOT NULL ──
+        try (Connection connection = DriverManager.getConnection(url, user, pass);
+                Statement statement = connection.createStatement()) {
+            statement.execute("set search_path to " + schema);
+            statement.executeUpdate("""
+                    insert into audit_records (action_type, target_entity, target_id, details, timestamp, actor_id)
+                    values ('POLICY_CHANGE', 'Proposal', 1, 'cierre por expiración sin sesión', now(), null)
+                    """);
+        }
+        assertThat(queryLong(url, user, pass, schema,
+                "select count(*) from audit_records where actor_id is null"))
+                .as("el scheduler debe poder auditar sin actor").isEqualTo(1);
+
         dropSchema(url, user, pass, schema);
     }
 
