@@ -136,17 +136,52 @@ class PostgresMigrationIT {
         assertThat(queryLong(url, user, pass, schema, "select subject_id from temp_files order by id limit 1"))
                 .as("la propuesta debe seguir apuntando a la misma asignatura").isEqualTo(tempFileSubjectBefore);
 
+        // ── catálogo completo (V11) ────────────────────────────────────────────
+        assertThat(queryLong(url, user, pass, schema, "select count(*) from subjects"))
+                .as("49 de Informática + 47 de Química + 50 de IA").isEqualTo(146);
+        assertThat(queryLong(url, user, pass, schema,
+                "select count(*) from subjects s join courses c on c.id = s.course_id "
+                        + "join degrees d on d.id = c.degree_id where d.code = 'G4012'"))
+                .as("asignaturas de Informática").isEqualTo(49);
+        assertThat(queryLong(url, user, pass, schema,
+                "select count(*) from subjects s join courses c on c.id = s.course_id "
+                        + "join degrees d on d.id = c.degree_id where d.code = 'G4022'"))
+                .as("asignaturas de Química").isEqualTo(47);
+        assertThat(queryLong(url, user, pass, schema,
+                "select count(*) from subjects s join courses c on c.id = s.course_id "
+                        + "join degrees d on d.id = c.degree_id where d.code = 'G4121'"))
+                .as("asignaturas de IA").isEqualTo(50);
+        assertThat(queryLong(url, user, pass, schema, "select count(*) from courses"))
+                .as("cuatro cursos por cada uno de los tres grados").isEqualTo(12);
+        assertThat(queryString(url, user, pass, schema,
+                "select code from subjects where id = " + fileSubjectBefore))
+                .as("la asignatura del archivo se renombra en su misma fila, no se recrea")
+                .isEqualTo("G4012101");
+        assertThat(queryLong(url, user, pass, schema, "select count(*) from subjects where code = 'FMAT1'"))
+                .as("el código antiguo ya no existe").isZero();
+        assertThat(queryString(url, user, pass, schema,
+                "select credits from subjects where code = 'G4012226'"))
+                .as("los créditos con decimal del plan oficial se conservan").isEqualTo("4.5");
+        assertThat(queryString(url, user, pass, schema,
+                "select coalesce(semester, 'null') from subjects where code = 'G4121450'"))
+                .as("una asignatura anual no tiene semestre").isEqualTo("null");
+
+        assertThat(queryLong(url, user, pass, schema, "select count(*) from courses where code = '1'"))
+                .as("el código de curso ya no es único global: '1' existe en los tres grados").isEqualTo(3);
+
+        boolean duplicateRejected = false;
         try (Connection connection = DriverManager.getConnection(url, user, pass);
                 Statement statement = connection.createStatement()) {
             statement.execute("set search_path to " + schema);
             statement.executeUpdate("""
                     insert into courses (code, name, degree_id)
-                    select '1', 'Primer curso', id from degrees where code = 'G4022'
+                    select '1', 'Primer curso', id from degrees where code = 'G4012'
                     """);
+        } catch (SQLException expected) {
+            duplicateRejected = true;
         }
-        assertThat(queryLong(url, user, pass, schema,
-                "select count(*) from courses where code = '1'")).as("el código de curso ya no es único global")
-                .isEqualTo(2);
+        assertThat(duplicateRejected)
+                .as("el mismo código de curso sigue prohibido dentro del mismo grado").isTrue();
 
         dropSchema(url, user, pass, schema);
     }

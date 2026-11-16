@@ -312,9 +312,10 @@ public class DataLoader {
                 .enabled(true)
                 .build());
 
-                // El catálogo de cursos y asignaturas lo siembra la migración Flyway V8.
+                // El catálogo de cursos y asignaturas lo siembra la migración Flyway (V8 + V11).
                 User demoUploader = userRepository.findByUsername("juan123").orElseThrow();
-                Subject subject1 = subjectRepository.findByCode("FMAT1").orElse(null);
+                // Código oficial de la USC para «Fundamentos de Matemáticas» (antes FMAT1).
+                Subject subject1 = subjectRepository.findByCode("G4012101").orElse(null);
                 if (subject1 == null) {
                     System.out.println("ℹ️ Catálogo de asignaturas no disponible; se omite el seed de archivos demo.");
                 } else {
