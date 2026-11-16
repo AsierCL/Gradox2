@@ -13,6 +13,8 @@ import org.springframework.validation.BindException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 import com.example.gradox2.presentation.dto.auth.ErrorDTO;
+import com.example.gradox2.service.exceptions.DegreeNotFoundException;
+import com.example.gradox2.service.exceptions.DegreeRequiredException;
 import com.example.gradox2.service.exceptions.UnauthenticatedAccessException;
 import com.example.gradox2.service.exceptions.AlreadyExistsException;
 import com.example.gradox2.service.exceptions.InternalServerErrorException;
@@ -37,6 +39,24 @@ public class GlobalExceptionHandler {
                 .errorCode("ALREADY_EXIST_ERROR")
                 .build();
         return new ResponseEntity<>(error, HttpStatus.CONFLICT);
+    }
+
+    @ExceptionHandler(DegreeRequiredException.class)
+    public ResponseEntity<ErrorDTO> handleDegreeRequired(DegreeRequiredException ex) {
+        ErrorDTO error = ErrorDTO.builder()
+                .errorMessage(ex.getMessage())
+                .errorCode("DEGREE_REQUIRED")
+                .build();
+        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(DegreeNotFoundException.class)
+    public ResponseEntity<ErrorDTO> handleDegreeNotFound(DegreeNotFoundException ex) {
+        ErrorDTO error = ErrorDTO.builder()
+                .errorMessage(ex.getMessage())
+                .errorCode("DEGREE_NOT_FOUND")
+                .build();
+        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
     }
 
     @ExceptionHandler(UnauthenticatedAccessException.class)

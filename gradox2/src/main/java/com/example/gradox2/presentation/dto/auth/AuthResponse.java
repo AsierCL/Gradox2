@@ -20,6 +20,15 @@ public class AuthResponse {
     @Schema(description = "Rol del usuario (USER, MASTER, GUEST)", example = "USER")
     public String role;
 
+    @Schema(description = "ID del grado del usuario", example = "1")
+    public Long degreeId;
+
+    @Schema(description = "Código oficial del grado", example = "G4012")
+    public String degreeCode;
+
+    @Schema(description = "Nombre del grado", example = "Ingeniería Informática")
+    public String degreeName;
+
     public AuthResponse(String token, String refreshToken, String username, String role) {
         this.token = token;
         this.refreshToken = refreshToken;

@@ -9,8 +9,10 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
+import com.example.gradox2.persistence.entities.Degree;
 import com.example.gradox2.persistence.entities.User;
 import com.example.gradox2.persistence.entities.enums.UserRole;
+import com.example.gradox2.persistence.repository.DegreeRepository;
 import com.example.gradox2.persistence.repository.UserRepository;
 
 import lombok.RequiredArgsConstructor;
@@ -28,7 +30,10 @@ public class MasterBootstrap implements CommandLineRunner {
 
     private static final Logger log = LoggerFactory.getLogger(MasterBootstrap.class);
 
+    private static final String DEFAULT_DEGREE_CODE = "G4012";
+
     private final UserRepository userRepository;
+    private final DegreeRepository degreeRepository;
     private final PasswordEncoder passwordEncoder;
 
     @Override
@@ -48,11 +53,20 @@ public class MasterBootstrap implements CommandLineRunner {
             return;
         }
 
+        // El grado lo siembra la migración V10; todos los usuarios de arranque son de Informática (D8).
+        // El acceso al panel de administración no se da acá: se promueve a ADMIN por SQL (GRADOS.md §6.4).
+        Degree degree = degreeRepository.findByCode(DEFAULT_DEGREE_CODE).orElse(null);
+        if (degree == null) {
+            log.warn("No existe el grado {}; se omite la creacion del primer MASTER.", DEFAULT_DEGREE_CODE);
+            return;
+        }
+
         userRepository.save(User.builder()
                 .username(username.trim())
                 .email(email.trim())
                 .passwordHash(passwordEncoder.encode(password))
                 .role(UserRole.MASTER)
+                .degree(degree)
                 .reputation(100.0)
                 .createdAt(Instant.now())
                 .lastLogin(Instant.now())

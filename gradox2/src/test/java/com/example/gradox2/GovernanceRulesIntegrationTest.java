@@ -22,6 +22,9 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
+import com.example.gradox2.persistence.entities.Degree;
+import com.example.gradox2.persistence.repository.DegreeRepository;
+import com.example.gradox2.support.TestDegrees;
 import com.example.gradox2.persistence.entities.Course;
 import com.example.gradox2.persistence.entities.Proposal;
 import com.example.gradox2.persistence.entities.PromotionProposal;
@@ -570,7 +573,7 @@ class GovernanceRulesIntegrationTest {
     }
 
     private User createEnabledUser(String username, String email, String password, UserRole role) {
-        User user = User.builder()
+        User user = User.builder().degree(degree())
                 .username(username)
                 .email(email)
                 .passwordHash(passwordEncoder.encode(password))
@@ -600,7 +603,7 @@ class GovernanceRulesIntegrationTest {
     }
 
     private Long createSubject() {
-        Course course = courseRepository.save(Course.builder()
+        Course course = courseRepository.save(Course.builder().degree(degree())
                 .code("C" + System.nanoTime())
                 .name("Curso Test")
                 .build());
@@ -661,5 +664,12 @@ class GovernanceRulesIntegrationTest {
 
     private String json(Object value) throws Exception {
         return objectMapper.writeValueAsString(value);
+    }
+
+    @Autowired
+    private DegreeRepository degreeRepository;
+
+    private Degree degree() {
+        return TestDegrees.informatica(degreeRepository);
     }
 }

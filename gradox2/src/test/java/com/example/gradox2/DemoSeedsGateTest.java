@@ -8,6 +8,7 @@ import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import com.example.gradox2.init.DataLoader;
+import com.example.gradox2.persistence.repository.DegreeRepository;
 import com.example.gradox2.persistence.repository.FileRepository;
 import com.example.gradox2.persistence.repository.SubjectRepository;
 import com.example.gradox2.persistence.repository.UserRepository;
@@ -27,6 +28,7 @@ class DemoSeedsGateTest {
             .withUserConfiguration(DataLoader.class)
             .withBean(PasswordEncoder.class, () -> mock(PasswordEncoder.class))
             .withBean(UserRepository.class, () -> mock(UserRepository.class))
+            .withBean(DegreeRepository.class, () -> mock(DegreeRepository.class))
             .withBean(SubjectRepository.class, () -> mock(SubjectRepository.class))
             .withBean(VoteConfigRepository.class, () -> mock(VoteConfigRepository.class))
             .withBean(FileRepository.class, () -> mock(FileRepository.class))

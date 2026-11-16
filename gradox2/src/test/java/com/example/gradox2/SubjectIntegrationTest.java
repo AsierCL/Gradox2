@@ -16,6 +16,9 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.test.web.servlet.MockMvc;
 
+import com.example.gradox2.persistence.entities.Degree;
+import com.example.gradox2.persistence.repository.DegreeRepository;
+import com.example.gradox2.support.TestDegrees;
 import com.example.gradox2.persistence.entities.Course;
 import com.example.gradox2.persistence.entities.Subject;
 import com.example.gradox2.persistence.repository.CourseRepository;
@@ -47,8 +50,8 @@ class SubjectIntegrationTest {
 
     @Test
     void getAllSubjectsReturnsSeededSubjectsOrderedByCourseAndCode() throws Exception {
-        Course primerCurso = courseRepository.save(Course.builder().code("1").name("Primer curso").build());
-        Course segundo = courseRepository.save(Course.builder().code("2").name("Segundo curso").build());
+        Course primerCurso = courseRepository.save(Course.builder().degree(degree()).code("1").name("Primer curso").build());
+        Course segundo = courseRepository.save(Course.builder().degree(degree()).code("2").name("Segundo curso").build());
 
         subjectRepository.save(Subject.builder().code("MAT1").name("Matemáticas I").course(primerCurso).build());
         subjectRepository.save(Subject.builder().code("LEN1").name("Lengua Castellana I").course(primerCurso).build());
@@ -66,7 +69,7 @@ class SubjectIntegrationTest {
 
     @Test
     void getSubjectReturnsDetail() throws Exception {
-        Course curso = courseRepository.save(Course.builder().code("1").name("Primer curso").build());
+        Course curso = courseRepository.save(Course.builder().degree(degree()).code("1").name("Primer curso").build());
         Subject subject = subjectRepository.save(
                 Subject.builder().code("MAT1").name("Matemáticas I").course(curso).build());
 
@@ -86,7 +89,7 @@ class SubjectIntegrationTest {
 
     @Test
     void getAllSubjectsIsServedFromCacheOnSecondRequest() throws Exception {
-        Course curso = courseRepository.save(Course.builder().code("1").name("Primer curso").build());
+        Course curso = courseRepository.save(Course.builder().degree(degree()).code("1").name("Primer curso").build());
         subjectRepository.save(Subject.builder().code("MAT1").name("Matemáticas I").course(curso).build());
 
         mockMvc.perform(get("/subjects")).andExpect(status().isOk());
@@ -99,7 +102,7 @@ class SubjectIntegrationTest {
 
     @Test
     void getAllSubjectsRehitsDatabaseAfterCacheEviction() throws Exception {
-        Course curso = courseRepository.save(Course.builder().code("1").name("Primer curso").build());
+        Course curso = courseRepository.save(Course.builder().degree(degree()).code("1").name("Primer curso").build());
         subjectRepository.save(Subject.builder().code("MAT1").name("Matemáticas I").course(curso).build());
 
         mockMvc.perform(get("/subjects")).andExpect(status().isOk());
@@ -113,7 +116,7 @@ class SubjectIntegrationTest {
 
     @Test
     void getSubjectIsServedFromCacheOnSecondRequest() throws Exception {
-        Course curso = courseRepository.save(Course.builder().code("1").name("Primer curso").build());
+        Course curso = courseRepository.save(Course.builder().degree(degree()).code("1").name("Primer curso").build());
         Subject subject = subjectRepository.save(
                 Subject.builder().code("MAT1").name("Matemáticas I").course(curso).build());
 
@@ -121,5 +124,12 @@ class SubjectIntegrationTest {
         mockMvc.perform(get("/subjects/{id}", subject.getId())).andExpect(status().isOk());
 
         verify(subjectRepository, times(1)).findById(subject.getId());
+    }
+
+    @Autowired
+    private DegreeRepository degreeRepository;
+
+    private Degree degree() {
+        return TestDegrees.informatica(degreeRepository);
     }
 }

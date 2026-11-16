@@ -26,6 +26,9 @@ import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 
+import com.example.gradox2.persistence.entities.Degree;
+import com.example.gradox2.persistence.repository.DegreeRepository;
+import com.example.gradox2.support.TestDegrees;
 import com.example.gradox2.persistence.entities.Course;
 import com.example.gradox2.persistence.entities.File;
 import com.example.gradox2.persistence.entities.Subject;
@@ -708,7 +711,7 @@ class ForumThreadIntegrationTest {
     }
 
     private User createEnabledUser(String username, String email, String password, UserRole role) {
-        User user = User.builder()
+        User user = User.builder().degree(degree())
                 .username(username)
                 .email(email)
                 .passwordHash(passwordEncoder.encode(password))
@@ -719,7 +722,7 @@ class ForumThreadIntegrationTest {
     }
 
     private File createPublishedFile(User uploader, FileVisibility visibility) {
-        Course course = courseRepository.save(Course.builder()
+        Course course = courseRepository.save(Course.builder().degree(degree())
                 .code("TC" + System.nanoTime())
                 .name("Curso Thread")
                 .build());
@@ -740,7 +743,7 @@ class ForumThreadIntegrationTest {
     }
 
     private Long createSubject() {
-        Course course = courseRepository.save(Course.builder()
+        Course course = courseRepository.save(Course.builder().degree(degree())
                 .code("TC" + System.nanoTime())
                 .name("Curso Test")
                 .build());
@@ -812,5 +815,12 @@ class ForumThreadIntegrationTest {
 
     private String nextTestIp() {
         return "203.0.113." + IP_COUNTER.incrementAndGet();
+    }
+
+    @Autowired
+    private DegreeRepository degreeRepository;
+
+    private Degree degree() {
+        return TestDegrees.informatica(degreeRepository);
     }
 }

@@ -18,6 +18,9 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
+import com.example.gradox2.persistence.entities.Degree;
+import com.example.gradox2.persistence.repository.DegreeRepository;
+import com.example.gradox2.support.TestDegrees;
 import com.example.gradox2.persistence.entities.User;
 import com.example.gradox2.persistence.entities.enums.UserRole;
 import com.example.gradox2.persistence.repository.UserRepository;
@@ -96,7 +99,7 @@ class AuthErrorContractTest {
     }
 
     private String createUserAndLogin(String username, String email, UserRole role) throws Exception {
-        userRepository.save(User.builder()
+        userRepository.save(User.builder().degree(degree())
                 .username(username)
                 .email(email)
                 .passwordHash(passwordEncoder.encode("SecurePass1!"))
@@ -116,5 +119,12 @@ class AuthErrorContractTest {
 
     private String bearer(String token) {
         return "Bearer " + token;
+    }
+
+    @Autowired
+    private DegreeRepository degreeRepository;
+
+    private Degree degree() {
+        return TestDegrees.informatica(degreeRepository);
     }
 }

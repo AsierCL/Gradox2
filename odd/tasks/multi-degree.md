@@ -66,6 +66,16 @@ Ordenadas; cada una es un commit de unidad de trabajo. «Superficie» es el lím
 | **T15** | S13 | Actualizar `OpenApiContractTest` con `/degrees`, regenerar contrato y dejar constancia del breaking change | `src/test/java/**/OpenApiContractTest.java`, `Documentation/ENDPOINTS.md` | suite completa verde; `/degrees` en el spec | `test(openapi): update contract for multi-degree` |
 | **T16** | S13 | Docs: `OVERVIEW`, `ARCHITECTURE`, `REPUTACION`, `README`; marcar `GRADOS.md` como implementado | `Documentation/*.md`, `README.md` | sin afirmaciones desactualizadas (§13 de la spec) | `docs: document multi-degree implementation` |
 
+### Ajustes de ejecución
+
+* **T4, T5 y T14 se ejecutaron en un único commit.** No eran separables: en cuanto `users.degree_id` es
+  `NOT NULL`, `register` no puede terminar sin grado, y `MasterBootstrap` no compila sin él. Separarlos
+  habría dejado un commit intermedio con el registro asignando Informática por defecto, que es justo la
+  conducta que D1 prohíbe.
+* Los fixtures de los 14 tests de integración se resolvieron con `support/TestDegrees` (crea el grado bajo
+  demanda), porque en el perfil `test` Flyway está desactivado y Hibernate genera el schema: el catálogo de
+  la V10/V11 no existe ahí.
+
 ### Dependencias
 
 ```plaintext
@@ -129,6 +139,11 @@ distintas), y el catálogo se extrae de las tres fichas oficiales de la USC sin 
 
 **L4** — Cierre de pendientes: comentar cuenta como participar; la configuración global la proponen masters de
 cualquier grado y la votan todos; `ADMIN` no vota; persistir créditos/semestre/tipo.
+
+**L7** — Ejecución: T1 `0b3a8a0`, T2 `f1dd0cb`, T3 `a744077`. T4+T5+T14 en un commit (el `NOT NULL` de
+`users.degree_id` hace inseparable el modelo de la API de registro). Verificado con la suite H2 completa
+(141 tests) y con `PostgresMigrationIT` contra PostgreSQL 16 real, que corre las migraciones V1→V11 sobre
+una base con datos previos y valida el mapeo JPA con `ddl-auto=validate`.
 
 **L6** — A1 resuelto: el `ADMIN` y el primer master de cada grado se asignan por acceso directo a base de
 datos, **sin** implementar endpoint ni cambio en el bootstrap. T14 se reduce a la asignación de grado en

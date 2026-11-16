@@ -25,6 +25,14 @@ public class Course {
     @Column(nullable = false)
     private String name;
 
+    /**
+     * Grado al que pertenece el curso. El código de curso ({@code '1'..'4'}) solo es único dentro de un
+     * grado: cada grado tiene su propio «Primer curso».
+     */
+    @ManyToOne
+    @JoinColumn(name = "degree_id", nullable = false)
+    private Degree degree;
+
     @OneToMany(mappedBy = "course")
     @Builder.Default
     private Set<Subject> subjects = new HashSet<>();

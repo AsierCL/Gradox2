@@ -1,5 +1,6 @@
 package com.example.gradox2;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
@@ -22,6 +23,10 @@ import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
+import com.example.gradox2.persistence.entities.Degree;
+import com.example.gradox2.security.InMemoryRateLimiter;
+import com.example.gradox2.persistence.repository.DegreeRepository;
+import com.example.gradox2.support.TestDegrees;
 import com.example.gradox2.persistence.entities.User;
 import com.example.gradox2.persistence.entities.VerificationToken;
 import com.example.gradox2.persistence.entities.enums.UserRole;
@@ -83,8 +88,13 @@ class AuthRegistrationIntegrationTest {
         @MockitoBean
     private EmailService emailService;
 
+    @Autowired
+    private InMemoryRateLimiter rateLimiter;
+
     @BeforeEach
     void setUp() {
+        // El registro admite 3 intentos por hora y por IP; sin esto la propia clase se bloquea.
+        rateLimiter.clear();
         // La BD H2 se comparte entre clases de test; borrar en orden FK-safe
         // (hijos antes que padres) para no romper users por la FK de files.
         scoreRepository.deleteAll();
@@ -101,7 +111,7 @@ class AuthRegistrationIntegrationTest {
 
     @Test
     void registerShouldRejectDuplicateUsername() throws Exception {
-        User existing = User.builder()
+        User existing = User.builder().degree(degree())
                 .username("dupeuser")
                 .email("other@rai.usc.es")
                 .passwordHash("hash")
@@ -115,14 +125,15 @@ class AuthRegistrationIntegrationTest {
                         .content(json(Map.of(
                                 "username", "dupeuser",
                                 "email", "newmail@rai.usc.es",
-                                "password", "SecurePass1!"))))
+                                "password", "SecurePass1!",
+                                "degreeId", degree().getId()))))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.errorCode").value("ALREADY_EXIST_ERROR"));
     }
 
     @Test
     void registerShouldRejectDuplicateEmail() throws Exception {
-        User existing = User.builder()
+        User existing = User.builder().degree(degree())
                 .username("olduser")
                 .email("dupe@rai.usc.es")
                 .passwordHash("hash")
@@ -136,7 +147,8 @@ class AuthRegistrationIntegrationTest {
                         .content(json(Map.of(
                                 "username", "newuser",
                                 "email", "dupe@rai.usc.es",
-                                "password", "SecurePass1!"))))
+                                "password", "SecurePass1!",
+                                "degreeId", degree().getId()))))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.errorCode").value("ALREADY_EXIST_ERROR"));
     }
@@ -148,7 +160,8 @@ class AuthRegistrationIntegrationTest {
                         .content(json(Map.of(
                                 "username", "freshuser",
                                 "email", "fresh@rai.usc.es",
-                                "password", "SecurePass1!"))))
+                                "password", "SecurePass1!",
+                                "degreeId", degree().getId()))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.username").value("freshuser"))
                 .andExpect(jsonPath("$.role").value("USER"));
@@ -167,7 +180,7 @@ class AuthRegistrationIntegrationTest {
 
     @Test
     void verifyShouldEnableUserForValidToken() throws Exception {
-        User user = User.builder()
+        User user = User.builder().degree(degree())
                 .username("pending")
                 .email("pending@rai.usc.es")
                 .passwordHash("hash")
@@ -189,7 +202,7 @@ class AuthRegistrationIntegrationTest {
 
     @Test
     void verifyShouldRejectExpiredTokenAndDeleteIt() throws Exception {
-        User user = User.builder()
+        User user = User.builder().degree(degree())
                 .username("expireduser")
                 .email("expired@rai.usc.es")
                 .passwordHash("hash")
@@ -218,5 +231,78 @@ class AuthRegistrationIntegrationTest {
 
     private String json(Object value) throws Exception {
         return objectMapper.writeValueAsString(value);
+    }
+
+    @Autowired
+    private DegreeRepository degreeRepository;
+
+    private Degree degree() {
+        return TestDegrees.informatica(degreeRepository);
+    }
+
+    // ── grado en el registro (S1, S2) ────────────────────────────────────────
+
+    @Test
+    void registerShouldRejectMissingDegree() throws Exception {
+        mockMvc.perform(post("/api/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json(Map.of(
+                                "username", "nodegree",
+                                "email", "nodegree@rai.usc.es",
+                                "password", "SecurePass1!"))))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errorCode").value("DEGREE_REQUIRED"));
+
+        assertThat(userRepository.findByUsername("nodegree"))
+                .as("no se debe persistir el usuario").isEmpty();
+        assertThat(verificationTokenRepository.count())
+                .as("no se debe emitir token de verificación").isZero();
+    }
+
+    @Test
+    void registerShouldRejectUnknownDegree() throws Exception {
+        mockMvc.perform(post("/api/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json(Map.of(
+                                "username", "baddegree",
+                                "email", "baddegree@rai.usc.es",
+                                "password", "SecurePass1!",
+                                "degreeId", 999_999))))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errorCode").value("DEGREE_NOT_FOUND"));
+
+        assertThat(userRepository.findByUsername("baddegree")).isEmpty();
+    }
+
+    @Test
+    void registerShouldPersistAndReturnTheChosenDegree() throws Exception {
+        long quimicaId = TestDegrees.quimica(degreeRepository).getId();
+
+        mockMvc.perform(post("/api/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json(Map.of(
+                                "username", "quimicauser",
+                                "email", "quimica@rai.usc.es",
+                                "password", "SecurePass1!",
+                                "degreeId", quimicaId))))
+                .andExpect(status().isOk());
+
+        User created = userRepository.findByUsername("quimicauser").orElseThrow();
+        assertThat(created.getDegree().getCode())
+                .as("el grado queda asociado al perfil").isEqualTo("G4022");
+
+        // El registro no emite tokens; el grado se comprueba en el login, donde es dato de salida (D1).
+        created.setEnabled(true);
+        userRepository.save(created);
+
+        mockMvc.perform(post("/api/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json(Map.of(
+                                "username", "quimicauser",
+                                "password", "SecurePass1!"))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.degreeId").value(quimicaId))
+                .andExpect(jsonPath("$.degreeCode").value("G4022"))
+                .andExpect(jsonPath("$.degreeName").value("Ingeniería Química"));
     }
 }
