@@ -35,6 +35,8 @@ import com.example.gradox2.persistence.entities.enums.UserRole;
 import com.example.gradox2.persistence.repository.CourseRepository;
 import com.example.gradox2.persistence.repository.DegreeRepository;
 import com.example.gradox2.persistence.repository.FileProposalRepository;
+import com.example.gradox2.persistence.repository.ForumThreadRepository;
+import com.example.gradox2.persistence.repository.ThreadCommentRepository;
 import com.example.gradox2.persistence.repository.FileRepository;
 import com.example.gradox2.persistence.repository.ScoreRepository;
 import com.example.gradox2.persistence.repository.SubjectRepository;
@@ -87,6 +89,12 @@ class DegreeScopeIntegrationTest {
 
     @Autowired
     private ScoreRepository scoreRepository;
+
+    @Autowired
+    private ForumThreadRepository forumThreadRepository;
+
+    @Autowired
+    private ThreadCommentRepository threadCommentRepository;
 
     @Autowired
     private PasswordEncoder passwordEncoder;
@@ -212,6 +220,30 @@ class DegreeScopeIntegrationTest {
 
         assertThat(fileRepository.findById(file.getId()).orElseThrow().getVisibilityLevel())
                 .as("la visibilidad no cambia").isEqualTo(FileVisibility.PUBLIC);
+    }
+
+
+    // ── comentarios (D10) ───────────────────────────────────────────────────
+
+    @Test
+    void commentingOnAFileFromAnotherDegreeIsForbidden() throws Exception {
+        Degree informatica = TestDegrees.informatica(degreeRepository);
+        Degree quimica = TestDegrees.quimica(degreeRepository);
+        User uploader = createUser("owner", informatica, UserRole.USER);
+        createUser("foreign", quimica, UserRole.USER);
+        File file = createPublishedFile(uploader, createSubject(informatica, "G4012101"));
+        String token = loginAndGetToken("foreign");
+
+        // Puede leer el hilo (lectura pública), pero no participar en él.
+        mockMvc.perform(post("/files/{id}/comments", file.getId())
+                        .header("Authorization", bearer(token))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of("content", "Comentario ajeno"))))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.errorCode").value("DEGREE_SCOPE_FORBIDDEN"));
+
+        assertThat(threadCommentRepository.count()).as("no debe persistirse el comentario").isZero();
+        assertThat(forumThreadRepository.count()).as("no debe crearse el hilo").isZero();
     }
 
     // ── helpers ─────────────────────────────────────────────────────────────
