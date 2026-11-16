@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -27,6 +28,7 @@ import com.example.gradox2.persistence.repository.AuditRecordRepository;
 import com.example.gradox2.persistence.repository.UserRepository;
 import com.example.gradox2.persistence.entities.enums.ActionType;
 import com.example.gradox2.security.InMemoryRateLimiter;
+import com.example.gradox2.support.TestDatabaseCleaner;
 import com.example.gradox2.support.TestDegrees;
 import com.example.gradox2.persistence.repository.DegreeRepository;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -68,11 +70,13 @@ class PlatformAdminSecurityIntegrationTest {
     @Autowired
     private AuditRecordRepository auditRecordRepository;
 
+    @Autowired
+    private TestDatabaseCleaner databaseCleaner;
+
     @BeforeEach
     void setUp() {
         rateLimiter.clear();
-        auditRecordRepository.deleteAll();
-        userRepository.deleteAll();
+        databaseCleaner.clean();
     }
 
     @Test
@@ -260,5 +264,24 @@ class PlatformAdminSecurityIntegrationTest {
 
         assertThat(userRepository.findByUsername("noreasonuser").orElseThrow().getDegree().getCode())
                 .isEqualTo(TestDegrees.INFORMATICA);
+    }
+
+    @Test
+    void profileUpdateCannotChangeTheDegree() throws Exception {
+        createUser("studentuser", UserRole.USER);
+        String token = loginAndGetToken("studentuser");
+        long quimicaId = TestDegrees.quimica(degreeRepository).getId();
+
+        mockMvc.perform(put("/users/me")
+                        .header("Authorization", bearer(token))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "username", "studentuser",
+                                "degreeId", quimicaId))))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.errorCode").value("DEGREE_IMMUTABLE"));
+
+        assertThat(userRepository.findByUsername("studentuser").orElseThrow().getDegree().getCode())
+                .as("el grado almacenado no cambia").isEqualTo(TestDegrees.INFORMATICA);
     }
 }

@@ -28,6 +28,7 @@ import com.example.gradox2.service.exceptions.InvalidFileOperation;
 import com.example.gradox2.service.exceptions.InvalidRoleOperationException;
 import com.example.gradox2.service.exceptions.NotFoundException;
 import com.example.gradox2.service.exceptions.AlreadyExistsException;
+import com.example.gradox2.service.exceptions.DegreeImmutableException;
 import com.example.gradox2.service.exceptions.DegreeNotFoundException;
 import com.example.gradox2.service.interfaces.FileUrlSigner;
 import com.example.gradox2.service.interfaces.IAuditService;
@@ -113,6 +114,12 @@ public class UserServiceImpl implements IUserService {
     public MyProfileResponse updateCurrentUser(UpdateMyProfileRequest userProfile) {
         // 1. Obtener el usuario actual
         User user = GetAuthUser.getAuthUser();
+
+        // D2: el grado es permanente. Se rechaza explícitamente en vez de ignorar el campo, para que el
+        // cliente no crea que el cambio se aplicó.
+        if (userProfile.getDegreeId() != null) {
+            throw new DegreeImmutableException("El grado de un usuario no se puede modificar");
+        }
 
         // 2. Actualizar los campos necesarios
         if (userProfile.getUsername() != null && !userProfile.getUsername().isBlank()) {

@@ -246,6 +246,41 @@ class DegreeScopeIntegrationTest {
         assertThat(forumThreadRepository.count()).as("no debe crearse el hilo").isZero();
     }
 
+
+    @Test
+    void foreignMasterCannotModerateTheForumOfAnotherDegree() throws Exception {
+        Degree informatica = TestDegrees.informatica(degreeRepository);
+        Degree quimica = TestDegrees.quimica(degreeRepository);
+        User owner = createUser("owner", informatica, UserRole.USER);
+        createUser("foreignmaster", quimica, UserRole.MASTER);
+        File file = createPublishedFile(owner, createSubject(informatica, "G4012101"));
+
+        MvcResult created = mockMvc.perform(post("/files/{id}/comments", file.getId())
+                        .header("Authorization", bearer(loginAndGetToken("owner")))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of("content", "comentario propio"))))
+                .andExpect(status().isOk())
+                .andReturn();
+        long commentId = objectMapper.readTree(created.getResponse().getContentAsString())
+                .get("id").asLong();
+
+        String foreignToken = loginAndGetToken("foreignmaster");
+
+        mockMvc.perform(post("/files/{id}/thread/lock", file.getId())
+                        .header("Authorization", bearer(foreignToken)))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.errorCode").value("DEGREE_SCOPE_FORBIDDEN"));
+
+        mockMvc.perform(delete("/files/{id}/comments/{commentId}", file.getId(), commentId)
+                        .header("Authorization", bearer(foreignToken)))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.errorCode").value("DEGREE_SCOPE_FORBIDDEN"));
+
+        assertThat(threadCommentRepository.count()).as("el comentario sigue existiendo").isEqualTo(1);
+        assertThat(forumThreadRepository.findByFileId(file.getId()).orElseThrow().isLocked())
+                .as("el hilo no quedó bloqueado").isFalse();
+    }
+
     // ── helpers ─────────────────────────────────────────────────────────────
 
     private MockHttpServletRequestBuilder uploadRequest(String token, Long subjectId, String title) {

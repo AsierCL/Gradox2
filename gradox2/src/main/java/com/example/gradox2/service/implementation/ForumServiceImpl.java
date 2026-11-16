@@ -98,7 +98,11 @@ public class ForumServiceImpl implements IForumService {
     @Transactional
     public CommentResponse editComment(Long fileId, Long commentId, String newContent) {
         User author = GetAuthUser.getAuthUser();
-        requireViewableFile(fileId, author);
+        File file = requireViewableFile(fileId, author);
+
+        // D10: editar un comentario es seguir participando en esa comunidad.
+        degreeAccessGuard.requireSameDegree(file.getSubject().getDegree());
+
         ThreadComment comment = requireComment(fileId, commentId);
 
         if (!IdentityVisibility.isSameUser(comment.getAuthor(), author)) {
@@ -114,7 +118,11 @@ public class ForumServiceImpl implements IForumService {
     @Transactional
     public void deleteComment(Long fileId, Long commentId) {
         User requester = GetAuthUser.getAuthUser();
-        requireViewableFile(fileId, requester);
+        File file = requireViewableFile(fileId, requester);
+
+        // Un master modera su grado: sin esto, un master de otro grado podría borrar comentarios ajenos.
+        degreeAccessGuard.requireSameDegree(file.getSubject().getDegree());
+
         ThreadComment comment = requireComment(fileId, commentId);
 
         if (!IdentityVisibility.isSameUser(comment.getAuthor(), requester) && !IdentityVisibility.isMaster(requester)) {
@@ -156,6 +164,8 @@ public class ForumServiceImpl implements IForumService {
     public void setThreadLocked(Long fileId, boolean locked) {
         User requester = GetAuthUser.getAuthUser();
         File file = requireViewableFile(fileId, requester);
+
+        degreeAccessGuard.requireSameDegree(file.getSubject().getDegree());
 
         if (!IdentityVisibility.isSameUser(file.getUploader(), requester) && !IdentityVisibility.isMaster(requester)) {
             throw new InvalidFileOperation("Only the uploader or a master can lock the thread");

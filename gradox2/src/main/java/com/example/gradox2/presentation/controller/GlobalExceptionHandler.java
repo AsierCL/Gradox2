@@ -14,6 +14,7 @@ import org.springframework.web.method.annotation.HandlerMethodValidationExceptio
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 import com.example.gradox2.presentation.dto.auth.ErrorDTO;
+import com.example.gradox2.service.exceptions.DegreeImmutableException;
 import com.example.gradox2.service.exceptions.DegreeNotFoundException;
 import com.example.gradox2.service.exceptions.DegreeRequiredException;
 import com.example.gradox2.service.exceptions.DegreeScopeException;
@@ -52,6 +53,15 @@ public class GlobalExceptionHandler {
                 .errorCode("DEGREE_REQUIRED")
                 .build();
         return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(DegreeImmutableException.class)
+    public ResponseEntity<ErrorDTO> handleDegreeImmutable(DegreeImmutableException ex) {
+        ErrorDTO error = ErrorDTO.builder()
+                .errorMessage(ex.getMessage())
+                .errorCode("DEGREE_IMMUTABLE")
+                .build();
+        return new ResponseEntity<>(error, HttpStatus.FORBIDDEN);
     }
 
     @ExceptionHandler(DegreeScopeException.class)

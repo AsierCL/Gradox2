@@ -52,6 +52,7 @@ si alguna cambia, este documento se actualiza antes que el código.
 | **D11** | ¿Quién decide la configuración global? | La proponen masters de **cualquier** grado y la votan **todos** los masters | Quórum sobre el total de masters de la plataforma, no sobre un grado |
 | **D12** | ¿El `ADMIN` vota? | **No** | Rol operativo: no vota, no propone, no es candidato a promoción |
 | **D13** | ¿Se persisten `credits`, `semester` y `type` de la asignatura? | **Sí** | Columnas informadas desde el catálogo oficial (ver §3.5) |
+| **D14** | ¿Se bloquean los **retiros** (deshacer el propio voto o borrar la propia propuesta) en otro grado? | **No** | Un retiro solo quita la contribución del actor y nunca suma participación; bloquearlo dejaría filas viejas atrapadas tras un cambio de grado administrativo. El conteo ya las ignora (§6.2) |
 
 ---
 
@@ -459,6 +460,7 @@ Después de la migración (D8) no puede existir un usuario sin grado. Aun así, 
 | Proponer expulsión de un MASTER | ✅ (mismo grado) | ❌ `403` | ❌ `401` |
 | Proponer cambio de configuración global | ✅ solo `MASTER` | ❌ `403` | ❌ `401` |
 | Comentario en hilo de archivo | ✅ | ❌ `403` | ❌ `401` |
+| Retirar tu propio voto / borrar tu propia propuesta | ✅ | ✅ (D14: solo resta, nunca suma) | ❌ `401` |
 | Ver estadísticas | ✅ | ✅ | ✅ |
 | `/admin/**` | solo rol de plataforma | solo rol de plataforma | ❌ `401` |
 
@@ -816,7 +818,7 @@ Tests de integración (perfil `test`), uno por regla. Cada uno debe verificar ta
 | V9 | Voto en propuesta ajena | `403`, sin `Vote` |
 | V10 | Puntuación de archivo ajeno | `403`, sin `Vote` |
 | V11 | Expulsión cross-grado | `403` aunque el actor sea `MASTER` de otro grado |
-| V12 | Último master de un grado | `409 DEGREE_LAST_MASTER`; el mismo caso en otro grado no bloquea |
+| V12 | Último master de un grado | La votación de expulsión no deja el grado sin masters (propuesta `REJECTED`); el mismo caso con otro master vivo sí se aplica |
 | V13 | Quórum por grado | con votos suficientes repartidos entre dos grados, la propuesta **no** se cierra |
 | V14 | Lectura cross-grado | `GET /files/{id}` de otro grado → `200`, con visibilidad aplicada |
 | V15 | `/admin/**` | `MASTER` → `403`; `ADMIN` → `200` |
@@ -855,7 +857,7 @@ P5 y P6 no bloquean nada. A1 sí bloquea la tarea de bootstrap (T14), no el rest
 
 ## 14. As-built: qué se implementó y qué cambió respecto del plan
 
-Verificado con la suite completa en el perfil `test` (**176 tests**) y con `PostgresMigrationIT` contra
+Verificado con la suite completa en el perfil `test` (**178 tests**) y con `PostgresMigrationIT` contra
 PostgreSQL 16 real, que aplica V1→V13 sobre una base con datos previos y valida el mapeo JPA
 (`ddl-auto=validate`).
 
@@ -870,6 +872,14 @@ PostgreSQL 16 real, que aplica V1→V13 sobre una base con datos previos y valid
 | 7 | El rol `ADMIN` tampoco puntúa archivos | D12: puntuar es votar |
 | 8 | La expulsión aprobada por voto revalida que quede otro master | El conteo global anterior no veía que un grado quedaba sin representación |
 | 9 | No se creó el código `DEGREE_LAST_MASTER` | El guard del último master solo es alcanzable en estados inconsistentes: por API, expulsar exige dos masters del mismo grado. Se reutiliza `INVALID_ROLE_OPERATION` (400) en lugar de ampliar el contrato con un código inalcanzable |
+
+Hallazgos de la **verificación independiente** posterior, ya corregidos:
+
+| # | Hallazgo | Corrección |
+|---|---|---|
+| 10 | `ForumServiceImpl` permitía a un master de otro grado borrar comentarios ajenos y bloquear hilos (`editComment`, `deleteComment`, `setThreadLocked`) | Los tres pasan por `DegreeAccessGuard`; es la moderación de la comunidad (§5.1) |
+| 11 | `PUT /users/me` ignoraba un `degreeId` enviado en vez de rechazarlo | `UpdateMyProfileRequest` lo declara solo para responder `403 DEGREE_IMMUTABLE` |
+| 12 | El cleaner de tests no borraba `audit_records` ni `degrees` | Se agregaron; era la causa de fallos intermitentes entre clases |
 
 Los números de verificación `V1`–`V16` de §11 se convirtieron en tests reales, en
 `AuthRegistrationIntegrationTest`, `PlatformAdminSecurityIntegrationTest`, `DegreeScopeIntegrationTest`,
