@@ -6,6 +6,7 @@ import {
   ArrowLeft,
   ArrowSquareOut,
   Check,
+  Copy,
   DownloadSimple,
   Eye,
   EyeSlash,
@@ -77,6 +78,7 @@ export function FileDetailPage() {
   const { isAuthenticated, isMaster, profile } = useAuth()
   const [myVote, setMyVote] = useState(null)
   const [deleteOpen, setDeleteOpen] = useState(false)
+  const [hashCopied, setHashCopied] = useState(false)
 
   const fileQuery = useQuery({
     queryKey: ['file', String(fileId)],
@@ -94,12 +96,41 @@ export function FileDetailPage() {
   const file = fileQuery.data
   const subjectInfo = subjectQuery.data
   const scope = useDegreeScope(file?.degreeId)
+  const voteCount = Number(file?.voteCount || 0)
+  const shortHash = file?.fileHash
+    ? `${file.fileHash.slice(0, 8)}…${file.fileHash.slice(-8)}`
+    : null
 
   useEffect(() => {
     if (file?.fileName) {
       document.title = `${file.fileName} · Gradox`
     }
   }, [file?.fileName])
+
+  const copyHash = async () => {
+    if (!file?.fileHash) return
+    try {
+      if (navigator.clipboard?.writeText && window.isSecureContext) {
+        await navigator.clipboard.writeText(file.fileHash)
+      } else {
+        const textarea = document.createElement('textarea')
+        textarea.value = file.fileHash
+        textarea.setAttribute('readonly', '')
+        textarea.style.position = 'fixed'
+        textarea.style.opacity = '0'
+        document.body.appendChild(textarea)
+        textarea.select()
+        const copied = document.execCommand('copy')
+        document.body.removeChild(textarea)
+        if (!copied) throw new Error('copy failed')
+      }
+      setHashCopied(true)
+      toast.success('Hash copiado')
+      window.setTimeout(() => setHashCopied(false), 2000)
+    } catch {
+      toast.error('No se pudo copiar el hash')
+    }
+  }
 
   const downloadMutation = useMutation({
     mutationFn: () => api.files.download(fileId),
@@ -360,6 +391,33 @@ export function FileDetailPage() {
                   <span className="text-right text-xs font-semibold text-ink">{value}</span>
                 </div>
               ))}
+              <div className="flex items-start justify-between gap-4 py-3">
+                <span className="text-xs text-ink-faint">SHA-256</span>
+                {file.fileHash ? (
+                  <button
+                    type="button"
+                    onClick={copyHash}
+                    className="group flex min-w-0 items-center gap-1.5 text-right"
+                    title={file.fileHash}
+                    aria-label="Copiar hash SHA-256"
+                  >
+                    <code className="truncate text-[0.65rem] font-semibold text-ink">
+                      {shortHash}
+                    </code>
+                    {hashCopied ? (
+                      <Check size={12} weight="bold" className="shrink-0 text-aqua-700" aria-hidden="true" />
+                    ) : (
+                      <Copy
+                        size={12}
+                        className="shrink-0 text-ink-faint transition-colors group-hover:text-ink"
+                        aria-hidden="true"
+                      />
+                    )}
+                  </button>
+                ) : (
+                  <span className="text-right text-xs font-semibold text-ink-faint">—</span>
+                )}
+              </div>
             </div>
 
             <div className="mt-5 flex items-center gap-3 rounded-3xl border border-ink/8 bg-white/40 p-3.5">
@@ -432,7 +490,9 @@ export function FileDetailPage() {
               />
             </div>
             <p className="mt-3 text-[0.62rem] leading-5 text-ink-faint">
-              Media de los votos de la comunidad.
+              {voteCount > 0
+                ? `Media de ${voteCount} ${voteCount === 1 ? 'voto' : 'votos'} de la comunidad.`
+                : 'Todavía no hay votos.'}
             </p>
           </div>
 

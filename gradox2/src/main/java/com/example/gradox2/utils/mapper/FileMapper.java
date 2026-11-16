@@ -36,6 +36,8 @@ public final class FileMapper {
                     file.getUploader(), viewer, file.getVisibilityLevel()))
             .visibilityLevel(file.getVisibilityLevel())
             .score(file.calculateTotalScore())
+            .voteCount(file.getScores() != null ? file.getScores().size() : 0)
+            .fileHash(file.getFileHash())
             .build();
     }
 }

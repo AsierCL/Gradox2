@@ -55,4 +55,11 @@ public class FileResponse {
 
     @Schema(description = "Puntuación media (0.0 - 10.0)", example = "8.5")
     private Double score;
+
+    @Schema(description = "Número de valoraciones del archivo", example = "12")
+    private Integer voteCount;
+
+    @Schema(description = "Hash SHA-256 del contenido del archivo, en hexadecimal",
+            example = "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08")
+    private String fileHash;
 }

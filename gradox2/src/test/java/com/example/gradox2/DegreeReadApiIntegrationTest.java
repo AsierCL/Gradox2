@@ -204,7 +204,9 @@ class DegreeReadApiIntegrationTest {
                 .andExpect(jsonPath("$.subjectId").value(subject.getId()))
                 .andExpect(jsonPath("$.subjectCode").value("G4012101"))
                 .andExpect(jsonPath("$.degreeId").value(informatica.getId()))
-                .andExpect(jsonPath("$.degreeCode").value("G4012"));
+                .andExpect(jsonPath("$.degreeCode").value("G4012"))
+                .andExpect(jsonPath("$.voteCount").value(0))
+                .andExpect(jsonPath("$.fileHash").value("hash-G4012101"));
 
         // Y también sin sesión: la lectura es pública (D6).
         mockMvc.perform(get("/files/{id}", file.getId()))

@@ -256,8 +256,10 @@ export function Navbar() {
   const { isAuthenticated, isMaster, isPlatformAdmin, logout } = useAuth()
   const navigate = useNavigate()
   const reduceMotion = useReducedMotion()
+  const barRef = useRef(null)
   const [searchOpen, setSearchOpen] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [ripple, setRipple] = useState(null)
   const menuItemMotion = (index) => ({
     initial: reduceMotion ? false : { opacity: 0, y: 8 },
     animate: { opacity: 1, y: 0 },
@@ -309,32 +311,92 @@ export function Navbar() {
     navigate('/')
   }
 
+  const startNavRipple = (event) => {
+    if (reduceMotion || !barRef.current) return
+    const barRect = barRef.current.getBoundingClientRect()
+    const linkRect = event.currentTarget.getBoundingClientRect()
+    const x = linkRect.left + linkRect.width / 2 - barRect.left
+    const y = linkRect.top + linkRect.height / 2 - barRect.top
+    const radius = Math.hypot(
+      Math.max(x, barRect.width - x),
+      Math.max(y, barRect.height - y),
+    )
+    setRipple({
+      id: `${Date.now()}-${Math.random()}`,
+      x,
+      y,
+      size: radius * 2,
+    })
+  }
+
   return (
     <>
       <header className="sticky top-0 z-50 pt-3">
         <div className="site-shell">
-          <div className="glass-nav flex h-[4.25rem] items-center justify-between gap-3 rounded-full px-4 pl-5 sm:px-5">
-            <Logo />
+          <div
+            ref={barRef}
+            className="glass-nav relative flex h-[4.25rem] items-center justify-between gap-3 rounded-full px-4 pl-5 sm:px-5"
+          >
+            {ripple && (
+              <div
+                className="pointer-events-none absolute inset-0 z-0 overflow-hidden rounded-full"
+                aria-hidden="true"
+              >
+                <motion.span
+                  key={ripple.id}
+                  className="absolute block rounded-full bg-[radial-gradient(circle,rgba(29,29,31,0.10)_0%,rgba(29,29,31,0.04)_42%,transparent_72%)]"
+                  style={{
+                    left: ripple.x - ripple.size / 2,
+                    top: ripple.y - ripple.size / 2,
+                    width: ripple.size,
+                    height: ripple.size,
+                  }}
+                  initial={{ scale: 0.06, opacity: 0.55 }}
+                  animate={{ scale: 1, opacity: 0 }}
+                  transition={{ duration: 1.05, ease: [0.16, 1, 0.3, 1] }}
+                  onAnimationComplete={() =>
+                    setRipple((current) => (current?.id === ripple.id ? null : current))
+                  }
+                />
+              </div>
+            )}
 
-            <nav aria-label="Navegación principal" className="hidden items-center gap-1 lg:flex">
+            <div className="relative z-10">
+              <Logo />
+            </div>
+
+            <nav
+              aria-label="Navegación principal"
+              className="relative z-10 hidden items-center gap-1 lg:flex"
+            >
               {links.map((link) => (
-                <NavLink key={link.to} to={link.to} end={link.end} className="nav-link">
+                <NavLink
+                  key={link.to}
+                  to={link.to}
+                  end={link.end}
+                  className="nav-link"
+                  onClick={startNavRipple}
+                >
                   {link.label}
                 </NavLink>
               ))}
               {isMaster && (
-                <NavLink to="/gobernanza" className="nav-link">
+                <NavLink to="/gobernanza" className="nav-link" onClick={startNavRipple}>
                   Gobernanza
                 </NavLink>
               )}
               {isPlatformAdmin && (
-                <NavLink to="/administracion" className="nav-link">
+                <NavLink
+                  to="/administracion"
+                  className="nav-link"
+                  onClick={startNavRipple}
+                >
                   Administración
                 </NavLink>
               )}
             </nav>
 
-            <div className="flex items-center gap-2">
+            <div className="relative z-10 flex items-center gap-2">
               <button
                 type="button"
                 onClick={() => setSearchOpen(true)}
