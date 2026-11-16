@@ -2,7 +2,14 @@ package com.example.gradox2;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
+
 import org.flywaydb.core.Flyway;
+import org.flywaydb.core.api.MigrationVersion;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -54,6 +61,131 @@ class PostgresMigrationIT {
                 .isEmpty();
         assertThat(flyway.info().current()).isNotNull();
         assertThat(flyway.info().current().getVersion()).isNotNull();
+    }
+
+    /**
+     * Ensaya la migración multi-grado (V10) sobre una base que ya está en V9 con datos: comprueba que el
+     * backfill asigna Informática a todo lo existente, que el código de curso deja de ser único global y,
+     * sobre todo, que los archivos siguen apuntando a la misma asignatura (el renombrado de códigos llega
+     * en la V11 y no puede re-apuntar `files.subject_id`).
+     *
+     * <p>Se ejecuta en un schema propio para no interferir con el schema que migra el contexto de Spring.
+     */
+    @Test
+    void multiDegreeMigrationBackfillsExistingData() throws SQLException {
+        String url = requireEnv("POSTGRES_TEST_URL");
+        String user = envOrDefault("POSTGRES_TEST_USER", "postgres");
+        String pass = envOrDefault("POSTGRES_TEST_PASSWORD", "postgres");
+        String schema = "multi_degree_backfill";
+
+        dropSchema(url, user, pass, schema);
+
+        Flyway.configure()
+                .dataSource(url, user, pass)
+                .schemas(schema)
+                .defaultSchema(schema)
+                .target(MigrationVersion.fromVersion("9"))
+                .load()
+                .migrate();
+
+        try (Connection connection = DriverManager.getConnection(url, user, pass);
+                Statement statement = connection.createStatement()) {
+            statement.execute("set search_path to " + schema);
+            statement.executeUpdate("""
+                    insert into users (enabled, reputation, created_at, email, password_hash, role, username)
+                    values (true, 10.0, now(), 'legacy@rai.usc.es', 'hash', 'USER', 'legacyuser')
+                    """);
+            statement.executeUpdate("""
+                    insert into files (subject_id, uploader_id, object_key, title, type, visibility_level)
+                    select s.id, u.id, 'legacy/file.pdf', 'Apuntes previos', 'APUNTES', 'PUBLIC'
+                      from subjects s, users u
+                     where s.code = 'FMAT1' and u.username = 'legacyuser'
+                    """);
+            statement.executeUpdate("""
+                    insert into temp_files (subject_id, uploader_id, object_key, title, type, visibility_level)
+                    select s.id, u.id, 'legacy/temp.pdf', 'Propuesta previa', 'EXAMEN', 'RESTRICTED'
+                      from subjects s, users u
+                     where s.code = 'FMAT1' and u.username = 'legacyuser'
+                    """);
+        }
+
+        long fileSubjectBefore = queryLong(url, user, pass, schema,
+                "select subject_id from files order by id limit 1");
+        long tempFileSubjectBefore = queryLong(url, user, pass, schema,
+                "select subject_id from temp_files order by id limit 1");
+
+        Flyway.configure()
+                .dataSource(url, user, pass)
+                .schemas(schema)
+                .defaultSchema(schema)
+                .load()
+                .migrate();
+
+        assertThat(queryLong(url, user, pass, schema, "select count(*) from degrees"))
+                .as("deben existir los tres grados").isEqualTo(3);
+        assertThat(queryLong(url, user, pass, schema, "select count(*) from users where degree_id is null"))
+                .as("ningún usuario puede quedar sin grado").isZero();
+        assertThat(queryString(url, user, pass, schema,
+                "select d.code from users u join degrees d on d.id = u.degree_id where u.username = 'legacyuser'"))
+                .as("los usuarios existentes pasan a Ingeniería Informática").isEqualTo("G4012");
+        assertThat(queryLong(url, user, pass, schema,
+                "select count(*) from courses c join degrees d on d.id = c.degree_id where d.code = 'G4012'"))
+                .as("los cuatro cursos existentes pasan a Ingeniería Informática").isEqualTo(4);
+        assertThat(queryLong(url, user, pass, schema, "select subject_id from files order by id limit 1"))
+                .as("el archivo debe seguir apuntando a la misma asignatura").isEqualTo(fileSubjectBefore);
+        assertThat(queryLong(url, user, pass, schema, "select subject_id from temp_files order by id limit 1"))
+                .as("la propuesta debe seguir apuntando a la misma asignatura").isEqualTo(tempFileSubjectBefore);
+
+        try (Connection connection = DriverManager.getConnection(url, user, pass);
+                Statement statement = connection.createStatement()) {
+            statement.execute("set search_path to " + schema);
+            statement.executeUpdate("""
+                    insert into courses (code, name, degree_id)
+                    select '1', 'Primer curso', id from degrees where code = 'G4022'
+                    """);
+        }
+        assertThat(queryLong(url, user, pass, schema,
+                "select count(*) from courses where code = '1'")).as("el código de curso ya no es único global")
+                .isEqualTo(2);
+
+        dropSchema(url, user, pass, schema);
+    }
+
+    private static void dropSchema(String url, String user, String pass, String schema) throws SQLException {
+        try (Connection connection = DriverManager.getConnection(url, user, pass);
+                Statement statement = connection.createStatement()) {
+            statement.execute("drop schema if exists " + schema + " cascade");
+        }
+    }
+
+    private static long queryLong(String url, String user, String pass, String schema, String sql)
+            throws SQLException {
+        try (Connection connection = DriverManager.getConnection(url, user, pass);
+                Statement statement = connection.createStatement()) {
+            statement.execute("set search_path to " + schema);
+            try (ResultSet rs = statement.executeQuery(sql)) {
+                assertThat(rs.next()).as("la consulta debe devolver una fila: %s", sql).isTrue();
+                return rs.getLong(1);
+            }
+        }
+    }
+
+    private static String queryString(String url, String user, String pass, String schema, String sql)
+            throws SQLException {
+        try (Connection connection = DriverManager.getConnection(url, user, pass);
+                Statement statement = connection.createStatement()) {
+            statement.execute("set search_path to " + schema);
+            try (ResultSet rs = statement.executeQuery(sql)) {
+                assertThat(rs.next()).as("la consulta debe devolver una fila: %s", sql).isTrue();
+                return rs.getString(1);
+            }
+        }
+    }
+
+    private static String requireEnv(String name) {
+        String value = System.getenv(name);
+        assertThat(value).as("la variable %s debe estar definida", name).isNotBlank();
+        return value;
     }
 
     private static String envOrDefault(String name, String fallback) {

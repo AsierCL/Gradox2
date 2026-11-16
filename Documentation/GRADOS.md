@@ -109,8 +109,10 @@ degrees                     (nueva)
 
 users                       (+ degree_id FK NOT NULL → degrees)
 courses                     (+ degree_id FK NOT NULL → degrees; UNIQUE (degree_id, code))
-subjects                    (+ degree_id FK NOT NULL → degrees; UNIQUE (degree_id, code)
-                             + credits NUMERIC, semester VARCHAR, type VARCHAR)   ← D13
+subjects                    (+ credits DOUBLE PRECISION, semester VARCHAR,
+                               subject_type VARCHAR)   ← D13
+                             (sin degree_id: se deriva de course, ver §2.3;
+                              su code oficial USC ya es único global)
 vote_config                 (sin cambios: sigue siendo global, D5)
 delegations                 (sin cambios: sin uso, D7)
 ```
