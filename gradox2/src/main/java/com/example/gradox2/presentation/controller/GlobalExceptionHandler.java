@@ -16,6 +16,7 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
 import com.example.gradox2.presentation.dto.auth.ErrorDTO;
 import com.example.gradox2.service.exceptions.DegreeNotFoundException;
 import com.example.gradox2.service.exceptions.DegreeRequiredException;
+import com.example.gradox2.service.exceptions.DegreeScopeException;
 import com.example.gradox2.service.exceptions.UnauthenticatedAccessException;
 import com.example.gradox2.service.exceptions.AlreadyExistsException;
 import com.example.gradox2.service.exceptions.InternalServerErrorException;
@@ -51,6 +52,15 @@ public class GlobalExceptionHandler {
                 .errorCode("DEGREE_REQUIRED")
                 .build();
         return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(DegreeScopeException.class)
+    public ResponseEntity<ErrorDTO> handleDegreeScope(DegreeScopeException ex) {
+        ErrorDTO error = ErrorDTO.builder()
+                .errorMessage(ex.getMessage())
+                .errorCode("DEGREE_SCOPE_FORBIDDEN")
+                .build();
+        return new ResponseEntity<>(error, HttpStatus.FORBIDDEN);
     }
 
     @ExceptionHandler(DegreeNotFoundException.class)
