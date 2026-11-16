@@ -313,7 +313,13 @@ public class VoteServiceImpl implements IVoteService {
     private boolean isCandidateEligible(PromotionProposal promotionProposal) {
         User candidate = promotionProposal.getCandidate();
         if (promotionProposal.getActionType() == ActionType.EXPULSION) {
-            return candidate.getRole() == UserRole.MASTER;
+            if (candidate.getRole() != UserRole.MASTER) {
+                return false;
+            }
+            // D3/§6.2: un grado no puede quedar sin representación aunque la votación lo apruebe. El
+            // conteo es del grado del candidato, no de la plataforma.
+            return userRepository.countByRoleAndEnabledAndDegree(
+                    UserRole.MASTER, true, candidate.getDegree()) > 1;
         }
         return candidate.getRole() == UserRole.USER && candidate.isEnabled();
     }

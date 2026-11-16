@@ -316,4 +316,74 @@ class DegreeVotingIntegrationTest {
     private String bearer(String token) {
         return "Bearer " + token;
     }
+
+    // ── expulsiones (T11) ───────────────────────────────────────────────────
+
+    @Test
+    void masterOfAnotherDegreeCannotRequestAnExpulsion() throws Exception {
+        Degree informatica = TestDegrees.informatica(degreeRepository);
+        Degree quimica = TestDegrees.quimica(degreeRepository);
+
+        createUser("informaster", informatica, UserRole.MASTER);
+        User target = createUser("victim", informatica, UserRole.MASTER);
+        createUser("quimicamaster", quimica, UserRole.MASTER);
+
+        mockMvc.perform(post("/promoteProposal/demote/{id}", target.getId())
+                        .header("Authorization", bearer(loginAndGetToken("quimicamaster"))))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.errorCode").value("DEGREE_SCOPE_FORBIDDEN"));
+
+        assertThat(promotionProposalRepository.count())
+                .as("no debe crearse la propuesta de expulsión").isZero();
+    }
+
+    @Test
+    void expulsionVoteCannotLeaveADegreeWithoutMasters() throws Exception {
+        Degree informatica = TestDegrees.informatica(degreeRepository);
+        User loneMaster = createUser("lonemaster", informatica, UserRole.MASTER);
+        User voter = createUser("voter", informatica, UserRole.USER);
+
+        PromotionProposal proposal = expulsionProposal(voter, loneMaster);
+        promotionProposalRepository.save(proposal);
+
+        mockMvc.perform(post("/vote/{id}/{upvote}", proposal.getId(), true)
+                        .header("Authorization", bearer(loginAndGetToken("voter"))))
+                .andExpect(status().isOk());
+
+        assertThat(promotionProposalRepository.findById(proposal.getId()).orElseThrow().getStatus())
+                .as("la propuesta se rechaza aunque la votación la apruebe").isEqualTo(ProposalStatus.REJECTED);
+        assertThat(userRepository.findByUsername("lonemaster").orElseThrow().getRole())
+                .as("el grado no puede quedar sin masters").isEqualTo(UserRole.MASTER);
+    }
+
+    @Test
+    void expulsionWithAnotherMasterRemainingDemotesTheCandidate() throws Exception {
+        Degree informatica = TestDegrees.informatica(degreeRepository);
+        createUser("remainingmaster", informatica, UserRole.MASTER);
+        User target = createUser("targetmaster", informatica, UserRole.MASTER);
+        User voter = createUser("voter", informatica, UserRole.USER);
+
+        PromotionProposal proposal = expulsionProposal(voter, target);
+        promotionProposalRepository.save(proposal);
+
+        mockMvc.perform(post("/vote/{id}/{upvote}", proposal.getId(), true)
+                        .header("Authorization", bearer(loginAndGetToken("voter"))))
+                .andExpect(status().isOk());
+
+        assertThat(promotionProposalRepository.findById(proposal.getId()).orElseThrow().getStatus())
+                .isEqualTo(ProposalStatus.APPROVED);
+        assertThat(userRepository.findByUsername("targetmaster").orElseThrow().getRole())
+                .as("con otro master en el grado la expulsión sí se aplica").isEqualTo(UserRole.USER);
+    }
+
+    private PromotionProposal expulsionProposal(User proposer, User candidate) {
+        PromotionProposal proposal = new PromotionProposal();
+        proposal.setProposer(proposer);
+        proposal.setCandidate(candidate);
+        proposal.setStatus(ProposalStatus.PENDING);
+        proposal.setActionType(ActionType.EXPULSION);
+        proposal.setQuorumRequired(1);
+        proposal.setApprovalThreshold(0.5);
+        return proposal;
+    }
 }
