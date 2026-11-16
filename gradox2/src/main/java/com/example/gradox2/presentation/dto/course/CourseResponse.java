@@ -23,6 +23,15 @@ public class CourseResponse {
     @Schema(description = "Nombre del curso", example = "Primer curso")
     private String name;
 
+    @Schema(description = "ID del grado al que pertenece el curso", example = "1")
+    private Long degreeId;
+
+    @Schema(description = "Código oficial del grado", example = "G4012")
+    private String degreeCode;
+
+    @Schema(description = "Nombre del grado", example = "Ingeniería Informática")
+    private String degreeName;
+
     @Schema(description = "Asignaturas del curso")
     private List<CourseSubjectResponse> subjects;
 }

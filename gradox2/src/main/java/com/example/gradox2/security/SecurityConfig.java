@@ -71,6 +71,7 @@ public class SecurityConfig {
                                 .requestMatchers(HttpMethod.GET, "/files/**").permitAll()
                                 .requestMatchers(HttpMethod.GET, "/subjects/**").permitAll()
                                 .requestMatchers(HttpMethod.GET, "/courses/**").permitAll()
+                                .requestMatchers(HttpMethod.GET, "/degrees/**").permitAll()
                                 .requestMatchers(HttpMethod.GET, "/badges/**").permitAll()
                                 .requestMatchers(HttpMethod.GET, "/stats/**").permitAll()
                                 .requestMatchers("/api/auth/**").permitAll()

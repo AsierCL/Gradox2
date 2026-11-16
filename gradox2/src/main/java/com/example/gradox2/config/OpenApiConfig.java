@@ -108,6 +108,9 @@ public class OpenApiConfig {
             "GET /subjects/{id}",
             "GET /courses",
             "GET /courses/{id}",
+            "GET /degrees",
+            "GET /degrees/{id}",
+            "GET /degrees/{id}/courses",
             "GET /badges",
             "GET /stats",
             "GET /health");

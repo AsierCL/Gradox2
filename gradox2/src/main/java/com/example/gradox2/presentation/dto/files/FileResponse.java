@@ -30,6 +30,23 @@ public class FileResponse {
     @Schema(description = "Nombre de la asignatura", example = "Matemáticas")
     private String subject;
 
+    // El nombre de la asignatura NO es único entre grados (hay dos "Álgebra"): el cliente debe agrupar
+    // por subjectId y nunca por subject (§2.2).
+    @Schema(description = "ID de la asignatura", example = "12")
+    private Long subjectId;
+
+    @Schema(description = "Código oficial de la asignatura", example = "G4012102")
+    private String subjectCode;
+
+    @Schema(description = "ID del grado del archivo", example = "1")
+    private Long degreeId;
+
+    @Schema(description = "Código oficial del grado", example = "G4012")
+    private String degreeCode;
+
+    @Schema(description = "Nombre del grado", example = "Ingeniería Informática")
+    private String degreeName;
+
     @Schema(description = "Nombre del uploader (según visibilidad puede ser 'anonymous')", example = "aliceuser")
     private String uploaderUsername;
 

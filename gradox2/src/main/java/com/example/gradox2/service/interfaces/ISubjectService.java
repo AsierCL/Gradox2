@@ -8,4 +8,6 @@ public interface ISubjectService {
     List<SubjectResponse> listAll();
 
     SubjectResponse getById(Long id);
+
+    List<SubjectResponse> listByDegree(Long degreeId);
 }

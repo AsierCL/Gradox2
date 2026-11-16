@@ -3,6 +3,7 @@ package com.example.gradox2.support;
 import org.springframework.stereotype.Component;
 
 import com.example.gradox2.persistence.repository.CourseRepository;
+import com.example.gradox2.persistence.repository.DegreeRepository;
 import com.example.gradox2.persistence.repository.FileProposalRepository;
 import com.example.gradox2.persistence.repository.FileRepository;
 import com.example.gradox2.persistence.repository.ForumThreadRepository;
@@ -47,6 +48,7 @@ public class TestDatabaseCleaner {
     private final VoteConfigRepository voteConfigRepository;
     private final SubjectRepository subjectRepository;
     private final CourseRepository courseRepository;
+    private final DegreeRepository degreeRepository;
     private final UserRepository userRepository;
 
     public TestDatabaseCleaner(ThreadCommentRepository threadCommentRepository,
@@ -64,6 +66,7 @@ public class TestDatabaseCleaner {
             VoteConfigRepository voteConfigRepository,
             SubjectRepository subjectRepository,
             CourseRepository courseRepository,
+            DegreeRepository degreeRepository,
             UserRepository userRepository) {
         this.threadCommentRepository = threadCommentRepository;
         this.forumThreadRepository = forumThreadRepository;
@@ -80,6 +83,7 @@ public class TestDatabaseCleaner {
         this.voteConfigRepository = voteConfigRepository;
         this.subjectRepository = subjectRepository;
         this.courseRepository = courseRepository;
+        this.degreeRepository = degreeRepository;
         this.userRepository = userRepository;
     }
 
@@ -101,5 +105,6 @@ public class TestDatabaseCleaner {
         subjectRepository.deleteAll();
         courseRepository.deleteAll();
         userRepository.deleteAll();
+        degreeRepository.deleteAll();
     }
 }
