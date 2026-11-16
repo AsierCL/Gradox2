@@ -3,6 +3,9 @@ package com.example.gradox2.security;
 import org.springframework.stereotype.Component;
 
 import com.example.gradox2.persistence.entities.Degree;
+import com.example.gradox2.persistence.entities.FileProposal;
+import com.example.gradox2.persistence.entities.Proposal;
+import com.example.gradox2.persistence.entities.PromotionProposal;
 import com.example.gradox2.persistence.entities.User;
 import com.example.gradox2.service.exceptions.DegreeRequiredException;
 import com.example.gradox2.service.exceptions.DegreeScopeException;
@@ -54,5 +57,36 @@ public class DegreeAccessGuard {
         }
 
         return actor;
+    }
+
+    /**
+     * Grado del recurso votable, derivado del propio recurso: {@code tempFile/subject} para una subida,
+     * {@code file/subject} para un borrado y {@code candidate.degree} para una promoción o expulsión.
+     *
+     * @return {@code null} solo para propuestas globales ({@code ConfigProposal}), que afectan a todos los
+     *         grados y por eso las votan todos los masters (D11).
+     */
+    public static Degree degreeOf(Proposal proposal) {
+        if (proposal instanceof FileProposal fileProposal) {
+            if (fileProposal.getTempFile() != null) {
+                return fileProposal.getTempFile().getSubject().getDegree();
+            }
+            if (fileProposal.getFile() != null) {
+                return fileProposal.getFile().getSubject().getDegree();
+            }
+            return null;
+        }
+
+        if (proposal instanceof PromotionProposal promotionProposal) {
+            return promotionProposal.getCandidate() != null
+                    ? promotionProposal.getCandidate().getDegree()
+                    : null;
+        }
+
+        return null;
+    }
+
+    public User requireSameDegreeOf(Proposal proposal) {
+        return requireSameDegree(degreeOf(proposal));
     }
 }

@@ -15,6 +15,7 @@ import com.example.gradox2.persistence.entities.GlobalConfig;
 import com.example.gradox2.persistence.entities.Score;
 import com.example.gradox2.persistence.entities.enums.ActionType;
 import com.example.gradox2.persistence.entities.enums.FileVisibility;
+import com.example.gradox2.persistence.entities.enums.UserRole;
 import com.example.gradox2.persistence.entities.enums.ProposalStatus;
 import com.example.gradox2.persistence.repository.FileRepository;
 import com.example.gradox2.persistence.repository.ScoreRepository;
@@ -25,6 +26,7 @@ import com.example.gradox2.presentation.dto.files.FileDownloadResponse;
 import com.example.gradox2.presentation.dto.files.FileResponse;
 import com.example.gradox2.presentation.dto.vote.VoteResponse;
 import com.example.gradox2.service.exceptions.InvalidFileOperation;
+import com.example.gradox2.service.exceptions.InvalidRoleOperationException;
 import com.example.gradox2.service.exceptions.NotFoundException;
 import com.example.gradox2.service.interfaces.FileUrlSigner;
 import com.example.gradox2.service.interfaces.IAuditService;
@@ -138,6 +140,12 @@ public class FileServiceImpl implements IFileService {
                 .orElseThrow(() -> new NotFoundException("File not found"));
 
         User user = degreeAccessGuard.requireSameDegree(file.getSubject().getDegree());
+
+        // D12: puntuar un archivo también es votar, y el ADMIN no vota.
+        if (user.getRole() == UserRole.ADMIN) {
+            throw new InvalidRoleOperationException(
+                    "El administrador de plataforma no participa en las votaciones.");
+        }
 
         // Comprobar si ya existe voto
         Score existingScore = scoreRepository.findByFileAndUser(file, user);
