@@ -15,6 +15,7 @@ Backend **Spring Boot (Java 21)** con **PostgreSQL gestionado (Supabase)** y alm
 - [Instalación en desarrollo](./Documentation/INSTALL.md)
 - [Despliegue y operación (DevOps)](./Documentation/DEVOPS.md)
 - [Endpoints de la API](./Documentation/ENDPOINTS.md)
+- [Multi-grado: especificación backend + catálogo](./Documentation/GRADOS.md)
 - [Sistema de reputación y votaciones](./Documentation/REPUTACION.md)
 - [Testing](./Documentation/TESTING.md)
 - [Guía de contribución](./Documentation/CONTRIBUTING.md)
