@@ -9,7 +9,7 @@ export function DegreeSwitcher({ degrees = [], activeCode, className }) {
     <nav
       aria-label="Cambiar de grado"
       className={cn(
-        'flex max-w-full flex-wrap gap-1 rounded-4xl border border-white/75 bg-white/42 p-1 backdrop-blur-xl',
+        'mx-auto grid w-full max-w-3xl grid-cols-1 gap-1 rounded-4xl border border-white/75 bg-white/42 p-1 backdrop-blur-xl sm:grid-cols-3',
         className,
       )}
     >
@@ -22,7 +22,7 @@ export function DegreeSwitcher({ degrees = [], activeCode, className }) {
             to={degreePath(degree)}
             aria-current={active ? 'page' : undefined}
             className={cn(
-              'shrink-0 rounded-full px-4 py-2 text-xs font-semibold transition-all duration-300',
+              'w-full rounded-2xl px-4 py-2.5 text-center text-xs font-semibold transition-all duration-300 sm:rounded-full',
               active
                 ? 'bg-white text-ink shadow-soft'
                 : 'text-ink-soft hover:bg-white/50 hover:text-ink',

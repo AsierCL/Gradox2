@@ -29,10 +29,6 @@ export function Footer() {
         <div className="grid gap-10 lg:grid-cols-[1.5fr_1fr_1fr_1.2fr]">
           <div>
             <Logo />
-            <p className="mt-4 max-w-xs text-sm leading-6 text-ink-soft">
-              Material de los grados de la Escuela de Ingeniería de la Universidad de Santiago de
-              Compostela.
-            </p>
           </div>
 
           {columns.map((column) => (
@@ -55,7 +51,9 @@ export function Footer() {
 
           <div>
             <p className="eyebrow text-ink-faint">Código abierto</p>
-            <p className="mt-4 text-sm leading-6 text-ink-soft">Gradox es software libre bajo GPL-3.0.</p>
+            <p className="mt-4 text-sm leading-6 text-ink-soft">
+              Gradox2 es software libre bajo GPL-3.0.
+            </p>
             <div className="mt-4 flex items-center gap-3">
               <a
                 href="https://github.com/AsierCL/Gradox2"
@@ -88,7 +86,7 @@ export function Footer() {
         </div>
 
         <div className="mt-10 flex flex-col gap-2 border-t border-ink/8 pt-5 text-[0.7rem] text-ink-faint sm:flex-row sm:items-center sm:justify-between">
-          <p>© {new Date().getFullYear()} Gradox</p>
+          <p>© {new Date().getFullYear()} Gradox2</p>
           <p>GPL-3.0 · Universidad de Santiago de Compostela</p>
         </div>
       </div>

@@ -1,13 +1,18 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { ArrowRight, MagnifyingGlass } from '@phosphor-icons/react'
+import { MagnifyingGlass } from '@phosphor-icons/react'
 import { Button } from '../ui/Button'
+import { useAuth } from '../../context/AuthContext'
 import { formatNumber } from '../../lib/format'
 
 export function Hero({ stats, degrees = [] }) {
+  const { isAuthenticated, profile, session } = useAuth()
   const [query, setQuery] = useState('')
   const navigate = useNavigate()
+  const username = profile?.username || session?.username
+  const greeting =
+    isAuthenticated && username ? `Bienvenido, ${username}` : 'Bienvenido'
 
   const handleSubmit = (event) => {
     event.preventDefault()
@@ -27,13 +32,9 @@ export function Hero({ stats, degrees = [] }) {
         transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
         className="relative z-10 mx-auto max-w-3xl text-center"
       >
-        <p className="text-xs font-semibold text-ink-soft">Escuela de Ingeniería · USC</p>
-        <h1 className="display mt-3 text-balance text-[clamp(2.4rem,5vw,4rem)] text-ink">
-          Material de la Escuela de Ingeniería
+        <h1 className="display text-balance text-[clamp(2.4rem,5vw,4rem)] text-ink">
+          {greeting}
         </h1>
-        <p className="mx-auto mt-4 max-w-xl text-base leading-7 text-ink-soft">
-          Apuntes, exámenes y ejercicios de Informática, Química e Inteligencia Artificial.
-        </p>
 
         <form onSubmit={handleSubmit} className="mx-auto mt-7 max-w-2xl">
           <div className="glass glass-sheen flex items-center gap-2 rounded-2xl p-1.5 pl-4 transition-shadow focus-within:shadow-float">
@@ -46,8 +47,7 @@ export function Hero({ stats, degrees = [] }) {
               className="h-11 min-w-0 flex-1 bg-transparent text-sm text-ink outline-none placeholder:text-ink-faint"
             />
             <Button type="submit" className="min-h-11 shrink-0 rounded-xl px-5" aria-label="Buscar">
-              <span className="hidden sm:inline">Buscar</span>
-              <ArrowRight size={16} weight="bold" aria-hidden="true" />
+              Buscar
             </Button>
           </div>
         </form>

@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, NavLink, useNavigate } from 'react-router-dom'
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { toast } from 'sonner'
 import {
-  ArrowRight,
   BookOpenText,
   MagnifyingGlass,
   ShieldCheck,
@@ -245,9 +245,7 @@ function SearchDialog({ open, onClose }) {
           >
             <BookOpenText size={15} aria-hidden="true" /> Ver todo el catálogo
           </Link>
-          <Button type="submit" icon={<ArrowRight size={16} weight="bold" />}>
-            Buscar
-          </Button>
+          <Button type="submit">Buscar</Button>
         </div>
       </form>
     </Modal>
@@ -257,8 +255,18 @@ function SearchDialog({ open, onClose }) {
 export function Navbar() {
   const { isAuthenticated, isMaster, isPlatformAdmin, logout } = useAuth()
   const navigate = useNavigate()
+  const reduceMotion = useReducedMotion()
   const [searchOpen, setSearchOpen] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
+  const menuItemMotion = (index) => ({
+    initial: reduceMotion ? false : { opacity: 0, y: 8 },
+    animate: { opacity: 1, y: 0 },
+    transition: {
+      duration: reduceMotion ? 0 : 0.3,
+      delay: reduceMotion ? 0 : 0.06 + index * 0.035,
+      ease: [0.16, 1, 0.3, 1],
+    },
+  })
 
   useEffect(() => {
     const handler = (event) => {
@@ -291,6 +299,8 @@ export function Navbar() {
         ...(isPlatformAdmin ? [] : [{ to: '/subir', label: 'Subir' }]),
       ]
     : publicLinks
+  const mobileItemCount =
+    links.length + (isMaster ? 1 : 0) + (isPlatformAdmin ? 1 : 0)
 
   const handleMobileLogout = async () => {
     setMobileOpen(false)
@@ -333,9 +343,6 @@ export function Navbar() {
               >
                 <MagnifyingGlass size={15} aria-hidden="true" />
                 <span>Buscar</span>
-                <kbd className="rounded-md border border-ink/8 bg-white/55 px-1.5 py-0.5 text-[0.6rem] text-ink-faint">
-                  ⌘ K
-                </kbd>
               </button>
 
               {isAuthenticated ? (
@@ -379,101 +386,132 @@ export function Navbar() {
         </div>
       </header>
 
-      {mobileOpen && (
-        <div
-          id="mobile-nav"
-          className="glass-nav fixed inset-x-3 top-[5.35rem] z-40 max-h-[calc(100dvh-6.5rem)] overflow-y-auto overscroll-contain rounded-4xl p-6 lg:hidden"
-        >
-          <nav aria-label="Navegación móvil" className="flex flex-col">
-            {links.map((link) => (
-              <NavLink
-                key={link.to}
-                to={link.to}
-                end={link.end}
-                onClick={() => setMobileOpen(false)}
-                className={({ isActive }) =>
-                  cn(
-                    'border-b border-ink/8 py-4 text-2xl tracking-tight text-ink-soft last:border-0',
-                    isActive && 'text-ink',
-                  )
-                }
-              >
-                {link.label}
-              </NavLink>
-            ))}
-            {isMaster && (
-              <NavLink
-                to="/gobernanza"
-                onClick={() => setMobileOpen(false)}
-                className="border-b border-ink/8 py-4 text-2xl tracking-tight text-ink-soft"
-              >
-                Gobernanza
-              </NavLink>
-            )}
-            {isPlatformAdmin && (
-              <NavLink
-                to="/administracion"
-                onClick={() => setMobileOpen(false)}
-                className="border-b border-ink/8 py-4 text-2xl tracking-tight text-ink-soft"
-              >
-                Administración
-              </NavLink>
-            )}
-          </nav>
-          <div className="mt-6 flex flex-col gap-2">
-            <Button
-              onClick={() => {
-                setMobileOpen(false)
-                setSearchOpen(true)
-              }}
-              variant="ghost"
-              icon={<MagnifyingGlass size={17} />}
-            >
-              Buscar material
-            </Button>
-            {isAuthenticated ? (
-              <div className="mt-2 grid grid-cols-2 gap-2 border-t border-ink/8 pt-4">
-                <Link
-                  to="/perfil"
-                  onClick={() => setMobileOpen(false)}
-                  className="rounded-2xl border border-ink/8 bg-white/38 px-3 py-3 text-center text-xs font-semibold text-ink-soft transition-colors hover:bg-white/70 hover:text-ink"
+      <AnimatePresence>
+        {mobileOpen && (
+          <motion.div
+            id="mobile-nav"
+            initial={reduceMotion ? false : { opacity: 0, y: -14, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={
+              reduceMotion
+                ? { opacity: 0 }
+                : { opacity: 0, y: -10, scale: 0.985 }
+            }
+            transition={{
+              duration: reduceMotion ? 0 : 0.34,
+              ease: [0.16, 1, 0.3, 1],
+            }}
+            className="glass-nav fixed inset-x-3 top-[5.35rem] z-40 max-h-[calc(100dvh-6.5rem)] overflow-y-auto overscroll-contain rounded-4xl p-6 lg:hidden"
+          >
+            <nav aria-label="Navegación móvil" className="flex flex-col">
+              {links.map((link, index) => (
+                <motion.div
+                  key={link.to}
+                  {...menuItemMotion(index)}
+                  className="border-b border-ink/8"
                 >
-                  Mi perfil
-                </Link>
-                {!isPlatformAdmin && (
+                  <NavLink
+                    to={link.to}
+                    end={link.end}
+                    onClick={() => setMobileOpen(false)}
+                    className={({ isActive }) =>
+                      cn(
+                        'block py-4 text-2xl tracking-tight text-ink-soft',
+                        isActive && 'text-ink',
+                      )
+                    }
+                  >
+                    {link.label}
+                  </NavLink>
+                </motion.div>
+              ))}
+              {isMaster && (
+                <motion.div
+                  {...menuItemMotion(links.length)}
+                  className="border-b border-ink/8"
+                >
+                  <NavLink
+                    to="/gobernanza"
+                    onClick={() => setMobileOpen(false)}
+                    className="block py-4 text-2xl tracking-tight text-ink-soft"
+                  >
+                    Gobernanza
+                  </NavLink>
+                </motion.div>
+              )}
+              {isPlatformAdmin && (
+                <motion.div
+                  {...menuItemMotion(links.length + (isMaster ? 1 : 0))}
+                  className="border-b border-ink/8"
+                >
+                  <NavLink
+                    to="/administracion"
+                    onClick={() => setMobileOpen(false)}
+                    className="block py-4 text-2xl tracking-tight text-ink-soft"
+                  >
+                    Administración
+                  </NavLink>
+                </motion.div>
+              )}
+            </nav>
+            <motion.div
+              {...menuItemMotion(mobileItemCount)}
+              className="mt-6 flex flex-col gap-2"
+            >
+              <Button
+                onClick={() => {
+                  setMobileOpen(false)
+                  setSearchOpen(true)
+                }}
+                variant="ghost"
+                icon={<MagnifyingGlass size={17} />}
+              >
+                Buscar material
+              </Button>
+              {isAuthenticated ? (
+                <div className="mt-2 grid grid-cols-2 gap-2 border-t border-ink/8 pt-4">
                   <Link
-                    to="/subir"
+                    to="/perfil"
                     onClick={() => setMobileOpen(false)}
                     className="rounded-2xl border border-ink/8 bg-white/38 px-3 py-3 text-center text-xs font-semibold text-ink-soft transition-colors hover:bg-white/70 hover:text-ink"
                   >
-                    Compartir
+                    Mi perfil
                   </Link>
-                )}
-                <button
-                  type="button"
-                  onClick={handleMobileLogout}
-                  className="col-span-2 rounded-2xl px-3 py-2 text-xs font-semibold text-[#8b4b43] transition-colors hover:bg-[#f8e9e7]"
-                >
-                  Cerrar sesión
-                </button>
-              </div>
-            ) : (
-              <>
-                <Button to="/registro" onClick={() => setMobileOpen(false)}>
-                  Crear cuenta USC
-                </Button>
-                <Button
-                  to="/acceso"
-                  variant="ghost"
-                  onClick={() => setMobileOpen(false)}
-                >
-                  Ya tengo cuenta
-                </Button>
-              </>
-            )}
-          </div>
-        </div>
-      )}
+                  {!isPlatformAdmin && (
+                    <Link
+                      to="/subir"
+                      onClick={() => setMobileOpen(false)}
+                      className="rounded-2xl border border-ink/8 bg-white/38 px-3 py-3 text-center text-xs font-semibold text-ink-soft transition-colors hover:bg-white/70 hover:text-ink"
+                    >
+                      Compartir
+                    </Link>
+                  )}
+                  <button
+                    type="button"
+                    onClick={handleMobileLogout}
+                    className="col-span-2 rounded-2xl px-3 py-2 text-xs font-semibold text-[#8b4b43] transition-colors hover:bg-[#f8e9e7]"
+                  >
+                    Cerrar sesión
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <Button to="/registro" onClick={() => setMobileOpen(false)}>
+                    Crear cuenta USC
+                  </Button>
+                  <Button
+                    to="/acceso"
+                    variant="ghost"
+                    onClick={() => setMobileOpen(false)}
+                  >
+                    Ya tengo cuenta
+                  </Button>
+                </>
+              )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <SearchDialog
         key={searchOpen ? 'search-open' : 'search-closed'}
