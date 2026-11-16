@@ -140,6 +140,14 @@ distintas), y el catálogo se extrae de las tres fichas oficiales de la USC sin 
 **L4** — Cierre de pendientes: comentar cuenta como participar; la configuración global la proponen masters de
 cualquier grado y la votan todos; `ADMIN` no vota; persistir créditos/semestre/tipo.
 
+**L8** — Verificación independiente (`gentle-ai-verify`) sobre el diff `main..feat/multi-degree`: suite 176
+verde en copia aislada. Encontró dos bloqueantes, corregidos en `e1d9e7b`:
+(a) `editComment`/`deleteComment`/`setThreadLocked` no comprobaban grado —un master de otro grado podía
+moderar una comunidad ajena—; (b) `PUT /users/me` ignoraba un `degreeId` en lugar de responder
+`DEGREE_IMMUTABLE`. Decisión derivada **D14**: los retiros (deshacer voto propio, borrar propuesta propia) no
+se bloquean, porque solo restan participación y bloquearlos dejaría filas viejas atrapadas tras un cambio de
+grado. Estado final: **178 tests** verdes y `PostgresMigrationIT` aplicando V1→V13 sobre PostgreSQL 16 real.
+
 **L7** — Ejecución: T1 `0b3a8a0`, T2 `f1dd0cb`, T3 `a744077`. T4+T5+T14 en un commit (el `NOT NULL` de
 `users.degree_id` hace inseparable el modelo de la API de registro). Verificado con la suite H2 completa
 (141 tests) y con `PostgresMigrationIT` contra PostgreSQL 16 real, que corre las migraciones V1→V11 sobre
