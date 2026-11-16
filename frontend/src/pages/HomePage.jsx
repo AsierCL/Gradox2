@@ -104,8 +104,8 @@ export function HomePage() {
                 Elige tu grado
               </h2>
               <p className="mt-1 max-w-2xl text-sm text-ink-soft">
-                Tres planes de la Escuela de Ingeniería. El grado define dónde puedes participar;
-                el material de cualquier grado se puede leer.
+                El grado define dónde puedes participar; el material de cualquier grado se puede
+                leer.
               </p>
             </div>
             <TextLink to="/grados" className="shrink-0">

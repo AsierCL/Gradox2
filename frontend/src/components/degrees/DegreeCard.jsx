@@ -1,10 +1,25 @@
 import { Link } from 'react-router-dom'
-import { ArrowUpRight, BookOpenText, GraduationCap } from '@phosphor-icons/react'
+import {
+  ArrowUpRight,
+  BookOpenText,
+  Brain,
+  Code,
+  Flask,
+  GraduationCap,
+} from '@phosphor-icons/react'
 import { cn } from '../../lib/cn'
 import { degreePath } from '../../lib/degree'
 import { formatNumber } from '../../lib/format'
 
+const DEGREE_ICONS = {
+  G4012: Code,
+  G4022: Flask,
+  G4121: Brain,
+}
+
 export function DegreeCard({ degree, own = false, fileCount = 0, subjectCount }) {
+  const DegreeIcon = DEGREE_ICONS[degree.code] || GraduationCap
+
   return (
     <Link
       to={degreePath(degree)}
@@ -26,7 +41,7 @@ export function DegreeCard({ degree, own = false, fileCount = 0, subjectCount })
       </div>
 
       <span className="mt-7 grid size-11 place-items-center rounded-2xl bg-white/65 text-aqua-700">
-        <GraduationCap size={22} weight="duotone" aria-hidden="true" />
+        <DegreeIcon size={22} weight="duotone" aria-hidden="true" />
       </span>
 
       <h3 className="mt-5 text-balance text-xl font-semibold leading-snug tracking-[-0.03em] text-ink">
