@@ -245,7 +245,7 @@ public class AuthServiceImpl implements IAuthService {
             response.setDegreeCode(user.getDegree().getCode());
             response.setDegreeName(user.getDegree().getName());
         }
-        response.setPlatformAdmin(user.getRole() == UserRole.ADMIN);
+        response.setIsPlatformAdmin(user.getRole() == UserRole.ADMIN);
         return response;
     }
 

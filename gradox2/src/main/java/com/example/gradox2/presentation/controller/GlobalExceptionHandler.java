@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.validation.BindException;
+import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 import com.example.gradox2.presentation.dto.auth.ErrorDTO;
@@ -23,6 +24,8 @@ import com.example.gradox2.service.exceptions.InvalidFileOperation;
 import com.example.gradox2.service.exceptions.NotFoundException;
 import com.example.gradox2.service.exceptions.ProposalClosedException;
 import com.example.gradox2.service.exceptions.RateLimitExceededException;
+
+import org.springframework.context.MessageSourceResolvable;
 
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
@@ -151,7 +154,8 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler({MethodArgumentNotValidException.class, BindException.class,
             ConstraintViolationException.class, HttpMessageNotReadableException.class,
-            MissingServletRequestParameterException.class, MethodArgumentTypeMismatchException.class})
+            MissingServletRequestParameterException.class, MethodArgumentTypeMismatchException.class,
+            HandlerMethodValidationException.class})
     public ResponseEntity<ErrorDTO> handleValidationErrors(Exception ex) {
         ErrorDTO error = ErrorDTO.builder()
                 .errorMessage(validationMessage(ex))
@@ -184,6 +188,17 @@ public class GlobalExceptionHandler {
 
         if (ex instanceof MissingServletRequestParameterException missingParameterException) {
             return "Missing required parameter: " + missingParameterException.getParameterName();
+        }
+
+        if (ex instanceof HandlerMethodValidationException methodValidationException) {
+            // Spring 6.2 valida también los parámetros de la firma (por ejemplo @Positive en un
+            // @PathVariable). Sin este caso el cliente recibía un 400 con body vacío y sin código.
+            return methodValidationException.getAllValidationResults().stream()
+                    .flatMap(result -> result.getResolvableErrors().stream())
+                    .map(MessageSourceResolvable::getDefaultMessage)
+                    .filter(message -> message != null && !message.isBlank())
+                    .findFirst()
+                    .orElse("Invalid request data");
         }
 
         if (ex instanceof MethodArgumentTypeMismatchException typeMismatchException) {

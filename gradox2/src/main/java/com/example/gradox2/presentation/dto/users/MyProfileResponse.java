@@ -50,5 +50,5 @@ public class MyProfileResponse {
     public String degreeName;
 
     @Schema(description = "El usuario administra la plataforma (rol ADMIN)", example = "false")
-    public boolean isPlatformAdmin;
+    public Boolean isPlatformAdmin;
 }

@@ -34,7 +34,7 @@ public class AuthResponse {
      * {@code role == "MASTER"}— para decidir si muestra el panel de administración (§9.3).
      */
     @Schema(description = "El usuario administra la plataforma (rol ADMIN)", example = "false")
-    public boolean isPlatformAdmin;
+    public Boolean isPlatformAdmin;
 
     public AuthResponse(String token, String refreshToken, String username, String role) {
         this.token = token;

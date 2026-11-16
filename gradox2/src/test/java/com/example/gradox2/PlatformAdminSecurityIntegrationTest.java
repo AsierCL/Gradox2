@@ -2,6 +2,7 @@ package com.example.gradox2;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -22,7 +23,9 @@ import org.springframework.test.web.servlet.MvcResult;
 
 import com.example.gradox2.persistence.entities.User;
 import com.example.gradox2.persistence.entities.enums.UserRole;
+import com.example.gradox2.persistence.repository.AuditRecordRepository;
 import com.example.gradox2.persistence.repository.UserRepository;
+import com.example.gradox2.persistence.entities.enums.ActionType;
 import com.example.gradox2.security.InMemoryRateLimiter;
 import com.example.gradox2.support.TestDegrees;
 import com.example.gradox2.persistence.repository.DegreeRepository;
@@ -62,9 +65,13 @@ class PlatformAdminSecurityIntegrationTest {
     @Autowired
     private InMemoryRateLimiter rateLimiter;
 
+    @Autowired
+    private AuditRecordRepository auditRecordRepository;
+
     @BeforeEach
     void setUp() {
         rateLimiter.clear();
+        auditRecordRepository.deleteAll();
         userRepository.deleteAll();
     }
 
@@ -115,6 +122,8 @@ class PlatformAdminSecurityIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.role").value("ADMIN"))
                 .andExpect(jsonPath("$.isPlatformAdmin").value(true))
+                // Lombok + Jackson pueden duplicar el par campo/getter: el contrato tiene un solo nombre.
+                .andExpect(jsonPath("$.platformAdmin").doesNotExist())
                 .andExpect(jsonPath("$.degreeCode").value(TestDegrees.INFORMATICA));
     }
 
@@ -151,5 +160,105 @@ class PlatformAdminSecurityIntegrationTest {
 
     private String bearer(String token) {
         return "Bearer " + token;
+    }
+
+    // ── override administrativo de grado (D2, §4.3) ──────────────────────────
+
+    @Test
+    void adminCanChangeUserDegreeAndInvalidatesOpenSessions() throws Exception {
+        createUser("moveduser", UserRole.USER);
+        String oldToken = loginAndGetToken("moveduser");
+        createUser("opsadmin", UserRole.ADMIN);
+        String adminToken = loginAndGetToken("opsadmin");
+
+        long quimicaId = TestDegrees.quimica(degreeRepository).getId();
+        long movedId = userRepository.findByUsername("moveduser").orElseThrow().getId();
+
+        mockMvc.perform(patch("/admin/users/{id}/degree", movedId)
+                        .header("Authorization", bearer(adminToken))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "degreeId", quimicaId,
+                                "reason", "Se registró en el grado equivocado"))))
+                .andExpect(status().isOk());
+
+        User moved = userRepository.findByUsername("moveduser").orElseThrow();
+        assertThat(moved.getDegree().getCode()).isEqualTo(TestDegrees.QUIMICA);
+        assertThat(moved.getTokenVersion())
+                .as("el cambio de grado rota las sesiones vigentes").isEqualTo(2);
+
+        mockMvc.perform(get("/users/me").header("Authorization", bearer(oldToken)))
+                .andExpect(status().isUnauthorized());
+
+        assertThat(auditRecordRepository.findAll())
+                .filteredOn(a -> a.getActionType() == ActionType.DEGREE_CHANGE)
+                .as("el cambio de grado queda auditado con actor y motivo")
+                .hasSize(1)
+                .allSatisfy(a -> {
+                    assertThat(a.getActor().getUsername()).isEqualTo("opsadmin");
+                    assertThat(a.getDetails()).contains("G4012").contains("G4022")
+                            .contains("Se registró en el grado equivocado");
+                });
+    }
+
+    @Test
+    void masterCannotChangeAUserDegree() throws Exception {
+        createUser("targetuser", UserRole.USER);
+        createUser("masteractor", UserRole.MASTER);
+        String masterToken = loginAndGetToken("masteractor");
+
+        long quimicaId = TestDegrees.quimica(degreeRepository).getId();
+        long targetId = userRepository.findByUsername("targetuser").orElseThrow().getId();
+
+        mockMvc.perform(patch("/admin/users/{id}/degree", targetId)
+                        .header("Authorization", bearer(masterToken))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "degreeId", quimicaId,
+                                "reason", "intento"))))
+                .andExpect(status().isForbidden());
+
+        assertThat(userRepository.findByUsername("targetuser").orElseThrow().getDegree().getCode())
+                .as("el grado no cambia si el actor no es ADMIN").isEqualTo(TestDegrees.INFORMATICA);
+    }
+
+    @Test
+    void changingToTheSameDegreeIsRejected() throws Exception {
+        createUser("sameuser", UserRole.USER);
+        createUser("opsadmin2", UserRole.ADMIN);
+        String adminToken = loginAndGetToken("opsadmin2");
+
+        long informaticaId = TestDegrees.informatica(degreeRepository).getId();
+        long sameId = userRepository.findByUsername("sameuser").orElseThrow().getId();
+
+        mockMvc.perform(patch("/admin/users/{id}/degree", sameId)
+                        .header("Authorization", bearer(adminToken))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "degreeId", informaticaId,
+                                "reason", "sin cambio"))))
+                .andExpect(status().isConflict());
+    }
+
+    @Test
+    void degreeChangeRequiresAReason() throws Exception {
+        createUser("noreasonuser", UserRole.USER);
+        createUser("opsadmin3", UserRole.ADMIN);
+        String adminToken = loginAndGetToken("opsadmin3");
+
+        long quimicaId = TestDegrees.quimica(degreeRepository).getId();
+        long userId = userRepository.findByUsername("noreasonuser").orElseThrow().getId();
+
+        mockMvc.perform(patch("/admin/users/{id}/degree", userId)
+                        .header("Authorization", bearer(adminToken))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "degreeId", quimicaId,
+                                "reason", " "))))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errorCode").value("VALIDATION_ERROR"));
+
+        assertThat(userRepository.findByUsername("noreasonuser").orElseThrow().getDegree().getCode())
+                .isEqualTo(TestDegrees.INFORMATICA);
     }
 }

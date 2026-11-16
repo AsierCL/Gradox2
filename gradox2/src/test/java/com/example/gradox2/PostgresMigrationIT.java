@@ -202,6 +202,20 @@ class PostgresMigrationIT {
         assertThat(invalidRoleRejected)
                 .as("el check de role debe seguir rechazando valores fuera del enum").isTrue();
 
+        // ── auditoría de cambio de grado (V13) ──
+        try (Connection connection = DriverManager.getConnection(url, user, pass);
+                Statement statement = connection.createStatement()) {
+            statement.execute("set search_path to " + schema);
+            statement.executeUpdate("""
+                    insert into audit_records (action_type, target_entity, target_id, details, timestamp, actor_id)
+                    select 'DEGREE_CHANGE', 'User', 1, 'cambio de grado', now(), id
+                      from users where username = 'legacyuser'
+                    """);
+        }
+        assertThat(queryLong(url, user, pass, schema,
+                "select count(*) from audit_records where action_type = 'DEGREE_CHANGE'"))
+                .as("la auditoría acepta DEGREE_CHANGE").isEqualTo(1);
+
         dropSchema(url, user, pass, schema);
     }
 

@@ -13,9 +13,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.example.gradox2.persistence.entities.Degree;
 import com.example.gradox2.persistence.entities.User;
 import com.example.gradox2.persistence.entities.enums.ActionType;
 import com.example.gradox2.persistence.entities.enums.UserRole;
+import com.example.gradox2.persistence.repository.DegreeRepository;
 import com.example.gradox2.persistence.repository.UserRepository;
 import com.example.gradox2.presentation.dto.admin.BannedUserResponse;
 import com.example.gradox2.presentation.dto.users.MyProfileResponse;
@@ -26,6 +28,7 @@ import com.example.gradox2.service.exceptions.InvalidFileOperation;
 import com.example.gradox2.service.exceptions.InvalidRoleOperationException;
 import com.example.gradox2.service.exceptions.NotFoundException;
 import com.example.gradox2.service.exceptions.AlreadyExistsException;
+import com.example.gradox2.service.exceptions.DegreeNotFoundException;
 import com.example.gradox2.service.interfaces.FileUrlSigner;
 import com.example.gradox2.service.interfaces.IAuditService;
 import com.example.gradox2.service.interfaces.IUserService;
@@ -49,16 +52,19 @@ public class UserServiceImpl implements IUserService {
             "enabled");
 
     private final UserRepository userRepository;
+    private final DegreeRepository degreeRepository;
     private final PasswordEncoder passwordEncoder;
     private final S3StorageService s3StorageService;
     private final FileUrlSigner fileUrlSigner;
     private final ImageProcessingService imageProcessingService;
     private final IAuditService auditService;
 
-    public UserServiceImpl(UserRepository userRepository, PasswordEncoder passwordEncoder,
+    public UserServiceImpl(UserRepository userRepository, DegreeRepository degreeRepository,
+            PasswordEncoder passwordEncoder,
             S3StorageService s3StorageService, FileUrlSigner fileUrlSigner,
             ImageProcessingService imageProcessingService, IAuditService auditService) {
         this.userRepository = userRepository;
+        this.degreeRepository = degreeRepository;
         this.passwordEncoder = passwordEncoder;
         this.s3StorageService = s3StorageService;
         this.fileUrlSigner = fileUrlSigner;
@@ -226,6 +232,33 @@ public class UserServiceImpl implements IUserService {
         user.setEnabled(true);
         userRepository.save(user);
         auditService.record(ActionType.UNBAN, "User", user.getId(), "Usuario rehabilitado");
+    }
+
+
+    @Override
+    @Transactional
+    public void changeUserDegree(Long id, Long degreeId, String reason) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Usuario no encontrado"));
+
+        Degree degree = degreeRepository.findById(degreeId)
+                .orElseThrow(() -> new DegreeNotFoundException("El grado seleccionado no existe"));
+
+        String previous = user.getDegree() != null ? user.getDegree().getCode() : "sin grado";
+        if (degree.getCode().equals(previous)) {
+            throw new AlreadyExistsException("El usuario ya pertenece a ese grado.");
+        }
+
+        // Un cambio de grado mueve el rol y los permisos: si el usuario es MASTER, cambia también la
+        // comunidad que gobierna. Queda explícito en la auditoría a quién se movió y con qué rol (D2).
+        user.setDegree(degree);
+        // Invalida las sesiones abiertas: un grado viejo no puede sobrevivir en un token ya emitido.
+        user.setTokenVersion(user.getTokenVersion() + 1);
+        userRepository.save(user);
+
+        auditService.record(ActionType.DEGREE_CHANGE, "User", user.getId(),
+                "Grado cambiado de " + previous + " a " + degree.getCode()
+                        + " (rol " + user.getRole().name() + "). Motivo: " + reason);
     }
 
     @Override
