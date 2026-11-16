@@ -46,7 +46,7 @@ Siguiente paso: desarrollo de un **MVP** con hilos de discusión, herramientas a
 
 El script `run.sh` vive en `gradox2/`. Ejecuta desde esa carpeta:
 
-1. **Entorno de desarrollo completo** (PostgreSQL + MinIO + app con hot-reload): `./run.sh dev`
+1. **Entorno de desarrollo completo** (PostgreSQL + MinIO + API + web con hot-reload): `./run.sh dev`
 2. Detener el entorno de desarrollo: `./run.sh dev-down`
 3. **Probar**: `./run.sh test`
 4. **Ejecutar solo la app** contra una BD local ya levantada y con MinIO accesible: `./run.sh run`

@@ -34,6 +34,8 @@ load_env_file() {
 load_env_file "$PROJECT_ROOT/.env"
 
 export SPRING_PROFILES_ACTIVE="${SPRING_PROFILES_ACTIVE:-local}"
+export GRADOX_API_PORT="${GRADOX_API_PORT:-8080}"
+export GRADOX_WEB_PORT="${GRADOX_WEB_PORT:-5173}"
 
 case "${1:-dev}" in
   run)
@@ -50,7 +52,17 @@ case "${1:-dev}" in
   dev)
     export APP_UID="$(id -u)" APP_GID="$(id -g)"
     cd "$PROJECT_ROOT/../Docker"
+    echo "Gradox dev: API en http://localhost:${GRADOX_API_PORT} · web en http://localhost:${GRADOX_WEB_PORT}"
     exec docker compose -f docker-compose.dev.yml up --build
+    ;;
+  web)
+    cd "$PROJECT_ROOT/../frontend"
+    export VITE_API_URL="${VITE_API_URL:-http://localhost:${GRADOX_API_PORT}}"
+    exec npm run dev -- --host 0.0.0.0 --port "$GRADOX_WEB_PORT"
+    ;;
+  web-install)
+    cd "$PROJECT_ROOT/../frontend"
+    exec npm ci
     ;;
   docker-up)
     cd "$PROJECT_ROOT/../Docker"
@@ -65,7 +77,13 @@ case "${1:-dev}" in
     exec docker compose -f docker-compose.dev.yml down
     ;;
   *)
-    echo "Usage: $0 [dev|dev-down|run|test|docker-up|docker-down]"
+    echo "Usage: $0 [dev|dev-down|run|web|web-install|test|docker-up|docker-down]"
+    echo "  dev         Levanta API + PostgreSQL + MinIO + web (Docker)"
+    echo "  dev-down    Detiene el entorno de desarrollo"
+    echo "  run         Ejecuta solo la API contra PostgreSQL/MinIO locales"
+    echo "  web         Ejecuta solo el frontend con Vite"
+    echo "  web-install Instala las dependencias del frontend"
+    echo "  test        Ejecuta la suite del backend"
     exit 1
     ;;
 esac
