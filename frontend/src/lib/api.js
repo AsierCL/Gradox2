@@ -1,4 +1,10 @@
-const API_BASE = (import.meta.env.VITE_API_URL || 'http://localhost:8080').replace(/\/+$/, '')
+const configuredApiUrl = (import.meta.env.VITE_API_URL || '').trim()
+const apiPort = (import.meta.env.VITE_API_PORT || '8080').trim()
+const inferredApiUrl =
+  typeof window !== 'undefined' && window.location?.hostname
+    ? `${window.location.protocol}//${window.location.hostname}${apiPort ? `:${apiPort}` : ''}`
+    : `http://localhost${apiPort ? `:${apiPort}` : ''}`
+const API_BASE = (configuredApiUrl || inferredApiUrl).replace(/\/+$/, '')
 const SESSION_KEY = 'gradox.session'
 const SESSION_EVENT = 'gradox:session'
 

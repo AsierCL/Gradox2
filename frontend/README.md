@@ -26,9 +26,10 @@ La app queda en `http://localhost:5173`.
 
 | Variable | Descripción | Valor por defecto |
 |---|---|---|
-| `VITE_API_URL` | URL base de la API Spring Boot | `http://localhost:8080` |
+| `VITE_API_URL` | URL base de la API. Vacío = mismo host que la web. | vacío |
+| `VITE_API_PORT` | Puerto de la API cuando `VITE_API_URL` está vacío. | `8080` |
 
-El backend ya expone CORS para el entorno local. Si usas otro host o un túnel, cambia `VITE_API_URL`.
+El backend ya expone CORS para el entorno local. Con `VITE_API_URL` vacío, la web calcula la API a partir del host con el que se abre, así que también funciona desde otra máquina de la LAN (`http://192.168.x.x:5173`). Para una API remota o un túnel, define `VITE_API_URL`.
 
 ### Scripts
 

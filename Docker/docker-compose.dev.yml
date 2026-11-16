@@ -26,8 +26,8 @@ services:
       MINIO_ROOT_PASSWORD: minioadmin
     command: server /data --console-address ":9001"
     ports:
-      - "9000:9000"
-      - "9001:9001"
+      - "0.0.0.0:9000:9000"
+      - "0.0.0.0:9001:9001"
     volumes:
       - minio-data:/data
     healthcheck:
@@ -52,7 +52,7 @@ services:
       SPRING_DATASOURCE_USERNAME: gradox
       SPRING_DATASOURCE_PASSWORD: gradox-local-password
       S3_ENDPOINT: http://minio:9000
-      S3_PUBLIC_ENDPOINT: http://localhost:9000
+      S3_PUBLIC_ENDPOINT: http://${GRADOX_PUBLIC_HOST:-localhost}:9000
       S3_ACCESS_KEY: minioadmin
       S3_SECRET_KEY: minioadmin
       S3_BUCKET_NAME: gradox2-files
@@ -72,7 +72,7 @@ services:
       - ../gradox2:/workspace/gradox2
       - ${HOME}/.m2:/workspace/.m2
     ports:
-      - "${GRADOX_API_PORT:-8080}:8080"
+      - "0.0.0.0:${GRADOX_API_PORT:-8080}:8080"
 
   web:
     image: node:22-alpine
@@ -83,7 +83,9 @@ services:
         condition: service_started
     restart: unless-stopped
     environment:
-      VITE_API_URL: http://localhost:${GRADOX_API_PORT:-8080}
+      # Vacío = el navegador usa el mismo host desde el que se abre la web.
+      VITE_API_URL: ""
+      VITE_API_PORT: "${GRADOX_API_PORT:-8080}"
       CHOKIDAR_USEPOLLING: "true"
     command:
       [
@@ -95,7 +97,7 @@ services:
       - ../frontend:/workspace/frontend
       - frontend-node-modules:/workspace/frontend/node_modules
     ports:
-      - "${GRADOX_WEB_PORT:-5173}:5173"
+      - "0.0.0.0:${GRADOX_WEB_PORT:-5173}:5173"
 
 volumes:
   pgdata-dev:

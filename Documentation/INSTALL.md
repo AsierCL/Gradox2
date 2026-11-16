@@ -46,6 +46,11 @@ Con esto la web queda disponible en `http://localhost:5173`, la API en
 (usuario `minioadmin` / `minioadmin`). El bucket usado en desarrollo es
 `gradox2-files` (se auto-crea al arrancar).
 
+Los servicios se publican en `0.0.0.0`, así que la web también responde en la
+IP de la máquina (`http://192.168.x.x:5173`). `run.sh` detecta esa IP y la usa
+para la API y las URLs firmadas de MinIO. Si necesitas forzar otra, define
+`GRADOX_PUBLIC_HOST`.
+
 ## 4. Ejecución local sin Docker
 
 Si prefieres arrancar la app directamente desde Maven contra una BD y un MinIO ya
