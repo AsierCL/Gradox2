@@ -44,6 +44,28 @@ depende de un bean `S3Client` (AWS SDK v2) configurado en `S3Config`. En el perf
 
 ---
 
+## 🎓 Modelo de dominio multi-grado
+
+```plaintext
+Degree (grado)          G4012 Ingeniería Informática · G4022 Química · G4121 IA
+  └── Course (año)      1º..4º, único por grado   → UNIQUE (degree_id, code)
+        └── Subject     código oficial USC (G4012102), único global
+              └── File  apuntes, exámenes…
+```
+
+Reglas que sostienen el diseño (especificación completa en [GRADOS.md](GRADOS.md)):
+
+* **El grado de un recurso se deriva, no se duplica**: `file.subject.course.degree`. No hay `degree_id` en
+  `subjects` ni en `files`, así que no puede haber dos verdades que diverjan.
+* **El grado es un ámbito de escritura, no un muro de lectura**: los GET son públicos (`permitAll`).
+* **Un único punto de enforcement**: `security/DegreeAccessGuard`. Cada servicio que muta resuelve el grado
+  del recurso cargado y llama al guard antes de tocar nada; la lectura no pasa por él.
+* **Gobernanza por grado**: `MASTER` gobierna su grado; el quórum y el conteo de masters son por grado. La
+  única pieza global es `vote_config` (D5/D11).
+* **Rol de plataforma separado**: `ADMIN` para `/admin/**`, el catálogo y el override de grado. No vota.
+
+---
+
 ## 🏗️ Estructura General
 
 ```plaintext
@@ -64,8 +86,9 @@ gradox2/
 │   │   ├── Vote.java                # Registro de votos
 │   │   ├── Score.java               # Puntuación de archivos
 │   │   ├── GlobalConfig.java        # Configuración de votaciones
-│   │   ├── Course.java              # Curso académico
-│   │   ├── Subject.java             # Asignaturas
+│   │   ├── Degree.java              # Grado: raíz de la jerarquía Degree → Course → Subject → File
+│   │   ├── Course.java              # Curso académico (año), único por grado
+│   │   ├── Subject.java             # Asignatura: independiente por grado, con metadatos del plan
 │   │   ├── Delegation.java          # Delegación de voto
 │   │   ├── Badge.java               # Insignias (icon_key → S3)
 │   │   ├── Notification.java        # Notificaciones internas
@@ -78,7 +101,7 @@ gradox2/
 │   │       ├── FileType.java
 │   │       ├── FileVisibility.java
 │   │       ├── ProposalStatus.java
-│   │       └── UserRole.java
+│   │       └── UserRole.java        # GUEST, USER, MASTER (grado), ADMIN (plataforma)
 │   │
 │   └── repository/                  # Interfaces para CRUD con JPA
 │       ├── UserRepository.java
@@ -97,6 +120,7 @@ gradox2/
 │   │   ├── UserServiceImpl.java
 │   │   ├── FileServiceImpl.java
 │   │   ├── FileProposalServiceImpl.java
+│   │   ├── DegreeServiceImpl.java    # Catálogo público de grados
 │   │   ├── AuthServiceImpl.java
 │   │   ├── RoleServiceImpl.java
 │   │   ├── VoteServiceImpl.java

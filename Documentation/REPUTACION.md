@@ -4,6 +4,11 @@ El sistema de reputación de **Gradox2** tiene como objetivo incentivar la **par
 
 La reputación determina la fiabilidad de un usuario dentro del ecosistema y otorga mayor peso a sus acciones si alcanza niveles altos.
 
+> **Alcance en el modelo multi-grado:** la reputación es **global por usuario** (no hay reputación por grado),
+> pero **quién puede votar qué** sí está acotado: un voto solo cuenta en las propuestas del grado del votante.
+> Los pesos de voto (`masterVoteWeight`, `userVoteWeight`) son configuración global. Ver
+> [GRADOS.md](GRADOS.md) §6.
+
 ---
 
 ## 🎯 Objetivos principales

@@ -6,6 +6,11 @@ Esta propuesta define los principios funcionales, organizativos, técnicos y leg
 
 La plataforma original ha servido como repositorio colaborativo de **apuntes, exámenes, ejercicios resueltos y materiales de estudio** entre estudiantes del Grado en Ingeniería Informática.
 
+**Gradox 2.0 es multi-grado**: da servicio a toda la Escuela de Ingeniería con tres grados
+(Ingeniería Informática, Ingeniería Química e Inteligencia Artificial). Cada usuario pertenece a un grado de
+forma permanente, que define en qué comunidad puede **participar**; la **lectura es pública** para todos.
+La especificación completa está en [GRADOS.md](GRADOS.md).
+
 **Gradox 2.0** busca:
 - Modernizar la infraestructura.
 - Resolver los cuellos de botella existentes.
@@ -34,13 +39,21 @@ La plataforma original ha servido como repositorio colaborativo de **apuntes, ex
 
 ### 2.2 Usuarios Registrados
 - Registro restringido a correos institucionales `@rai.usc.es`.
-- Pueden subir materiales, votar y comentar.
-- Acumulan reputación en función de su actividad.
+- **El grado se elige en el registro** y es permanente: no hay endpoint para cambiarlo (solo un override
+  administrativo auditado).
+- Pueden subir materiales, votar y comentar **dentro de su grado**. En otros grados solo pueden leer.
+- Acumulan reputación en función de su actividad (la reputación es global, no por grado).
 
 ### 2.3 Masters
-- Usuarios con posibilidad de funciones extendidas: cierre de votaciones, aceptación manual, revisión de contenido.
-- Su voto tiene mayor peso (configurable).
-- Se eligen por votación.
+- **Son masters de su grado**: gobiernan únicamente esa comunidad (promociones, expulsiones, propuestas).
+- Su voto tiene mayor peso (configurable) y solo cuenta en las votaciones de su grado.
+- Se eligen por votación de su grado.
+- No tienen acceso al panel de administración de la plataforma.
+
+### 2.4 Administración de plataforma (`ADMIN`)
+- Rol operativo separado de `MASTER`: gestiona `/admin/**`, el catálogo y el override de grado.
+- **No vota**, no propone y no es candidato a promoción.
+- El primer `ADMIN` y el primer master de cada grado se asignan por acceso directo a la base de datos.
 
 ---
 
@@ -130,7 +143,7 @@ Los **logs completos** serán visibles para masters.
 
 ## 9. Proyección y Futuro
 
-- Apertura a otras titulaciones.
+- ~~Apertura a otras titulaciones~~ → **implementado** en la rama `feat/multi-degree` (ver [GRADOS.md](GRADOS.md)).
 - API para subida de contenido desde apps móviles.
 - Integración con Telegram o Discord para notificaciones.
 - Aplicación offline para descarga en local.

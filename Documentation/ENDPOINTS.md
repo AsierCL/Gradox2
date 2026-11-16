@@ -27,7 +27,35 @@ curl -X GET http://localhost:8080/users/me \
      -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsIn..."
 ```
 
-## 4. Roadmap y Tareas Pendientes (MVP)
+## 4. Multi-grado: catálogo de grados
+
+El grado de un usuario es permanente y define en qué comunidad puede **escribir**; la lectura es pública.
+La especificación completa está en [GRADOS.md](GRADOS.md).
+
+| Método | Ruta | Auth | Descripción |
+|---|---|---|---|
+| `GET` | `/degrees` | público | Grados ordenados por código oficial (`G4012`, `G4022`, `G4121`) |
+| `GET` | `/degrees/{id}` | público | Detalle de un grado |
+| `GET` | `/degrees/{id}/courses` | público | Cursos del grado con sus asignaturas (pantalla por defecto tras el login) |
+| `GET` | `/courses?degreeId=` | público | Filtro opcional por grado (sin filtro: todos) |
+| `GET` | `/subjects?degreeId=` | público | Filtro opcional por grado (sin filtro: todos) |
+| `PATCH` | `/admin/users/{id}/degree` | `ADMIN` | Override auditado del grado; invalida las sesiones del usuario |
+
+`POST /api/auth/register` exige `degreeId`. El login y `/users/me` devuelven `degreeId`, `degreeCode`,
+`degreeName` e `isPlatformAdmin`.
+
+### Códigos de error del ámbito de grado
+
+| Código | HTTP | Cuándo |
+|---|---|---|
+| `DEGREE_REQUIRED` | `400` | Registro sin grado, o escritura de un usuario sin grado |
+| `DEGREE_NOT_FOUND` | `400` | `degreeId` inexistente en el registro |
+| `DEGREE_SCOPE_FORBIDDEN` | `403` | Escritura sobre un recurso de otro grado |
+| `INVALID_ROLE_OPERATION` | `400` | Expulsión del último master activo de un grado (código compartido con otras operaciones de rol) |
+
+---
+
+## 5. Roadmap y Tareas Pendientes (MVP)
 
 El core de la aplicación (Autenticación, Usuarios, Archivos, Asignaturas, Votaciones e Hilos) ya está 100% implementado y documentado en el archivo OpenAPI.
 

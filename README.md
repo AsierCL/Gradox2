@@ -15,7 +15,7 @@ Backend **Spring Boot (Java 21)** con **PostgreSQL gestionado (Supabase)** y alm
 - [Instalación en desarrollo](./Documentation/INSTALL.md)
 - [Despliegue y operación (DevOps)](./Documentation/DEVOPS.md)
 - [Endpoints de la API](./Documentation/ENDPOINTS.md)
-- [Multi-grado: especificación backend + catálogo](./Documentation/GRADOS.md)
+- [Multi-grado: especificación, catálogo y as-built](./Documentation/GRADOS.md)
 - [Sistema de reputación y votaciones](./Documentation/REPUTACION.md)
 - [Testing](./Documentation/TESTING.md)
 - [Guía de contribución](./Documentation/CONTRIBUTING.md)
@@ -28,6 +28,8 @@ Backend **Spring Boot (Java 21)** con **PostgreSQL gestionado (Supabase)** y alm
 
 En fase de **base técnica y endurecimiento del entorno**. Funcionalidades completas:
 
+- **Multi-grado** (Ingeniería Informática, Ingeniería Química, Inteligencia Artificial): grado inmutable por
+  usuario, catálogo de 146 asignaturas del plan oficial de la USC y participación acotada al grado propio.
 - Autenticación de usuarios (registro, verificación por email, login, refresh token, logout, reset de contraseña).
 - Subida de archivos mediante **votaciones** y publicación.
 - Descarga de documentos servida desde **S3** (MinIO en dev / R2 en prod).

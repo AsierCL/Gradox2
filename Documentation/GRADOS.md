@@ -1,6 +1,7 @@
 # 🎓 Multi-grado — Especificación de backend
 
-> **Estado:** especificación aprobada en sus decisiones de producto, **no implementada**.
+> **Estado:** **implementada** en la rama `feat/multi-degree` (migraciones V10–V13, commits `0b3a8a0`…`4ab29b9`).
+> Las desviaciones respecto de esta especificación están en §14 (as-built).
 > **Alcance:** backend y documentación. El frontend se adapta en otra iteración (§9).
 > **Audiencia:** equipo de frontend (contrato y flujos), y quien implemente el backend.
 > **Catálogo:** extraído del plan oficial de la USC (Anexo A). Fecha de extracción: 2025-11-16.
@@ -651,7 +652,7 @@ contraseña, `logout`, `token/refresh`. Siguen funcionando igual; los tres prime
 | `DEGREE_NOT_FOUND` | `400` | `degreeId` inexistente en el registro | `El grado seleccionado no existe` |
 | `DEGREE_IMMUTABLE` | `403` | Intento de cambiar el grado por vía no administrativa | `El grado de un usuario no se puede modificar` |
 | `DEGREE_SCOPE_FORBIDDEN` | `403` | Escritura sobre un recurso de otro grado | `Solo puedes participar en tu grado` |
-| `DEGREE_LAST_MASTER` | `409` | Expulsión del último master activo de un grado | `No puedes dejar el grado sin masters` |
+| `INVALID_ROLE_OPERATION` | `400` | Expulsión del último master activo de un grado (se reutiliza el código existente; no se agregó `DEGREE_LAST_MASTER`) | `No puedes expulsar al último MASTER activo del grado...` |
 
 Formato: el mismo envelope de error que ya usa la API (`ErrorDTO`). El frontend debe discriminar por
 **código**, no por texto.
@@ -849,6 +850,31 @@ P5 y P6 no bloquean nada. A1 sí bloquea la tarea de bootstrap (T14), no el rest
 | `Documentation/REPUTACION.md` | Aclarar que reputación es global y que la papeleta es por grado |
 | `README.md` | Bullet de funcionalidades: multi-grado |
 | Contrato OpenAPI | Se regenera con `OpenApiContractTest` |
+
+---
+
+## 14. As-built: qué se implementó y qué cambió respecto del plan
+
+Verificado con la suite completa en el perfil `test` (**176 tests**) y con `PostgresMigrationIT` contra
+PostgreSQL 16 real, que aplica V1→V13 sobre una base con datos previos y valida el mapeo JPA
+(`ddl-auto=validate`).
+
+| # | Diferencia con la especificación | Por qué |
+|---|---|---|
+| 1 | **No existe** `POST /admin/degrees/{id}/masters` | A1 se resolvió operativamente: el `ADMIN` y el primer master de cada grado se asignan por SQL (§6.4) |
+| 2 | `subjects` **no** tiene `degree_id` | El grado se deriva de `course`; el código oficial USC ya es único global (§2.3) |
+| 3 | `AuthResponse` y `/users/me` exponen `isPlatformAdmin` | El frontend no debe inferir administración de `role == "MASTER"` (§9.3) |
+| 4 | `GET /courses` y `GET /subjects` aceptan `?degreeId=` | Compatibilidad con el frontend actual: sin filtro siguen devolviendo todo |
+| 5 | `Course.code` dejó de ser único global **también en la entidad** | Divergencia entidad/BD que solo aparecía en H2: la unicidad real es `(degree_id, code)` |
+| 6 | Se agregó manejo de `HandlerMethodValidationException` | Un fallo de validación de firma devolvía `400` sin body ni código de error |
+| 7 | El rol `ADMIN` tampoco puntúa archivos | D12: puntuar es votar |
+| 8 | La expulsión aprobada por voto revalida que quede otro master | El conteo global anterior no veía que un grado quedaba sin representación |
+| 9 | No se creó el código `DEGREE_LAST_MASTER` | El guard del último master solo es alcanzable en estados inconsistentes: por API, expulsar exige dos masters del mismo grado. Se reutiliza `INVALID_ROLE_OPERATION` (400) en lugar de ampliar el contrato con un código inalcanzable |
+
+Los números de verificación `V1`–`V16` de §11 se convirtieron en tests reales, en
+`AuthRegistrationIntegrationTest`, `PlatformAdminSecurityIntegrationTest`, `DegreeScopeIntegrationTest`,
+`DegreeVotingIntegrationTest`, `DegreeReadApiIntegrationTest`, `DegreeAccessGuardTest` y
+`PostgresMigrationIT`.
 
 ---
 
