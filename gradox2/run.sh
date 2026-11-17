@@ -49,11 +49,21 @@ export GRADOX_API_PORT="${GRADOX_API_PORT:-8080}"
 export GRADOX_WEB_PORT="${GRADOX_WEB_PORT:-5173}"
 export GRADOX_PUBLIC_HOST="${GRADOX_PUBLIC_HOST:-$(detect_public_host)}"
 
+resolve_frontend_dir() {
+  local frontend_dir="${GRADOX_FRONTEND_DIR:-$PROJECT_ROOT/../../gradox2.github.io}"
+  if [[ ! -f "$frontend_dir/package.json" ]]; then
+    echo "No encuentro el frontend en: $frontend_dir" >&2
+    echo "Clona Gradox2/gradox2.github.io como repo hermano o define GRADOX_FRONTEND_DIR." >&2
+    return 1
+  fi
+  printf '%s\n' "$frontend_dir"
+}
+
 case "${1:-dev}" in
   run)
     if ! (echo > /dev/tcp/127.0.0.1/5432) >/dev/null 2>&1; then
       echo "PostgreSQL no está disponible en localhost:5432."
-      echo "Usa './run.sh dev' para levantar app + base de datos automáticamente."
+      echo "Usa './run.sh dev' para levantar API + base de datos + MinIO."
       exit 1
     fi
     exec "$PROJECT_ROOT/mvnw" spring-boot:run -Dspring-boot.run.profiles="$SPRING_PROFILES_ACTIVE"
@@ -64,18 +74,20 @@ case "${1:-dev}" in
   dev)
     export APP_UID="$(id -u)" APP_GID="$(id -g)"
     cd "$PROJECT_ROOT/../Docker"
-    echo "Gradox dev: web en http://${GRADOX_PUBLIC_HOST}:${GRADOX_WEB_PORT} · API en http://${GRADOX_PUBLIC_HOST}:${GRADOX_API_PORT}"
-    echo "Local: http://localhost:${GRADOX_WEB_PORT} · MinIO en http://${GRADOX_PUBLIC_HOST}:9001"
+    echo "Gradox API dev: http://${GRADOX_PUBLIC_HOST}:${GRADOX_API_PORT}"
+    echo "MinIO: http://${GRADOX_PUBLIC_HOST}:9001 · inicia el frontend aparte con ./run.sh web"
     exec docker compose -f docker-compose.dev.yml up --build
     ;;
   web)
-    cd "$PROJECT_ROOT/../frontend"
+    FRONTEND_DIR="$(resolve_frontend_dir)"
+    cd "$FRONTEND_DIR"
     export VITE_API_URL="${VITE_API_URL:-}"
     export VITE_API_PORT="${VITE_API_PORT:-$GRADOX_API_PORT}"
     exec npm run dev -- --host 0.0.0.0 --port "$GRADOX_WEB_PORT"
     ;;
   web-install)
-    cd "$PROJECT_ROOT/../frontend"
+    FRONTEND_DIR="$(resolve_frontend_dir)"
+    cd "$FRONTEND_DIR"
     exec npm ci
     ;;
   docker-up)
@@ -92,7 +104,7 @@ case "${1:-dev}" in
     ;;
   *)
     echo "Usage: $0 [dev|dev-down|run|web|web-install|test|docker-up|docker-down]"
-    echo "  dev         Levanta API + PostgreSQL + MinIO + web (Docker)"
+    echo "  dev         Levanta API + PostgreSQL + MinIO (Docker; web por separado)"
     echo "  dev-down    Detiene el entorno de desarrollo"
     echo "  run         Ejecuta solo la API contra PostgreSQL/MinIO locales"
     echo "  web         Ejecuta solo el frontend con Vite"

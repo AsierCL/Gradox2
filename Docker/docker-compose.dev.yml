@@ -74,32 +74,6 @@ services:
     ports:
       - "0.0.0.0:${GRADOX_API_PORT:-8080}:8080"
 
-  web:
-    image: node:22-alpine
-    container_name: gradox2_web_dev
-    working_dir: /workspace/frontend
-    depends_on:
-      app:
-        condition: service_started
-    restart: unless-stopped
-    environment:
-      # Vacío = el navegador usa el mismo host desde el que se abre la web.
-      VITE_API_URL: ""
-      VITE_API_PORT: "${GRADOX_API_PORT:-8080}"
-      CHOKIDAR_USEPOLLING: "true"
-    command:
-      [
-        "sh",
-        "-lc",
-        "npm ci --no-audit --no-fund && npm run dev -- --host 0.0.0.0 --port 5173",
-      ]
-    volumes:
-      - ../frontend:/workspace/frontend
-      - frontend-node-modules:/workspace/frontend/node_modules
-    ports:
-      - "0.0.0.0:${GRADOX_WEB_PORT:-5173}:5173"
-
 volumes:
   pgdata-dev:
   minio-data:
-  frontend-node-modules:

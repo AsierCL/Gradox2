@@ -18,6 +18,11 @@ Este documento describe cómo instalar y ejecutar **Gradox 2.0** en un entorno l
   docker --version
   docker compose version
   ```
+- **Node.js 22+ y npm** (para levantar el frontend por separado):
+  ```bash
+  node --version
+  npm --version
+  ```
 - **Git**:
   ```bash
   git --version
@@ -26,22 +31,36 @@ Este documento describe cómo instalar y ejecutar **Gradox 2.0** en un entorno l
 ## 2. Clonar el Proyecto
 
 ```bash
-git clone https://github.com/AsierCL/Gradox2.git
-cd Gradox2
+mkdir Gradox2-workspace
+cd Gradox2-workspace
+git clone https://github.com/Gradox2/gradox2-api.git
+git clone https://github.com/Gradox2/gradox2.github.io.git
 ```
 
 ## 3. Entorno de desarrollo (recomendado)
 
-El script `run.sh` vive en `gradox2/`. Levanta **PostgreSQL + MinIO + la app**
-con hot-reload en un stack Docker:
+El backend y el frontend se arrancan por separado. El script del backend vive en
+`gradox2-api/gradox2/` y levanta **PostgreSQL + MinIO + la API**:
 
 ```bash
-cd gradox2
-./run.sh dev        # levanta web + app + Postgres + MinIO
-./run.sh dev-down   # detiene el entorno de desarrollo
+cd gradox2-api/gradox2
+./run.sh dev        # API + Postgres + MinIO
+./run.sh dev-down   # detiene estos servicios
 ```
 
-Con esto la web queda disponible en `http://localhost:5173`, la API en
+En una segunda terminal, inicia la web desde el backend:
+
+```bash
+cd gradox2-api/gradox2
+./run.sh web-install  # una vez, instala dependencias en el repo web hermano
+./run.sh web          # arranca Vite por separado
+```
+
+También puedes ejecutar `npm ci && npm run dev` desde `gradox2.github.io/`.
+Si los repositorios no están en carpetas hermanas, define `GRADOX_FRONTEND_DIR`
+con la ruta absoluta del frontend antes de usar `./run.sh web`.
+
+La web queda disponible en `http://localhost:5173`, la API en
 `http://localhost:8080` y la consola de **MinIO** en `http://localhost:9001`
 (usuario `minioadmin` / `minioadmin`). El bucket usado en desarrollo es
 `gradox2-files` (se auto-crea al arrancar).
@@ -78,7 +97,8 @@ Esto levanta:
 - **PostgreSQL** en `localhost:5432` (usuario `gradox` / `gradox-local-password`, BD `gradoxdb`).
 - **MinIO** en `localhost:9000` (S3) y consola en `localhost:9001` (usuario `minioadmin`).
 - **La app** (Java 21, volúmenes del código fuente) en `http://localhost:8080`.
-- **La web** (Vite + React, volúmenes del código fuente) en `http://localhost:5173`.
+
+La web se inicia por separado siguiendo las instrucciones de la sección 3.
 
 ### 5.2 Variables de entorno
 
@@ -101,6 +121,10 @@ que usan por defecto (sin necesidad de `.env`) son:
 no lee archivos `.env` por sí solo, así que ese archivo es la forma de fijar
 credenciales locales (por ejemplo SMTP) sin exportarlas a mano en cada terminal.
 No se versiona (está en `.gitignore`).
+
+Puedes crearla desde la plantilla opcional con `cp gradox2/.env.example gradox2/.env`.
+No reutilices `Docker/.env` aquí: ese archivo contiene configuración sensible
+para el compose de producción/VPS.
 
 ## 6. Perfiles
 
