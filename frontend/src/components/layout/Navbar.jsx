@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, NavLink, useNavigate } from 'react-router-dom'
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { toast } from 'sonner'
 import {
-  ArrowRight,
   BookOpenText,
   MagnifyingGlass,
   ShieldCheck,
@@ -21,12 +21,21 @@ import { ROLES } from '../../lib/constants'
 
 const publicLinks = [
   { to: '/', label: 'Inicio', end: true },
+  { to: '/grados', label: 'Grados' },
   { to: '/explorar', label: 'Explorar' },
   { to: '/comunidad', label: 'Comunidad' },
 ]
 
 function UserMenu() {
-  const { profile, session, isMaster, logout } = useAuth()
+  const {
+    profile,
+    session,
+    isMaster,
+    isPlatformAdmin,
+    degreeCode,
+    degreeName,
+    logout,
+  } = useAuth()
   const [open, setOpen] = useState(false)
   const ref = useRef(null)
   const navigate = useNavigate()
@@ -82,7 +91,11 @@ function UserMenu() {
             <p className="truncate text-sm font-semibold text-ink">
               {profile?.username || session?.username}
             </p>
-            <p className="mt-0.5 text-[0.7rem] text-ink-faint">
+            <p className="mt-0.5 truncate text-[0.7rem] text-ink-soft">
+              {degreeName || 'Sin grado'}
+              {degreeCode && <span className="text-ink-faint"> · {degreeCode}</span>}
+            </p>
+            <p className="mt-0.5 text-[0.65rem] text-ink-faint">
               {ROLES[(profile?.role || session?.role || '').toUpperCase()] || 'Estudiante'} ·{' '}
               {Number(profile?.reputation || 0).toFixed(1)} de reputación
             </p>
@@ -96,6 +109,16 @@ function UserMenu() {
             >
               <UserCircle size={18} aria-hidden="true" /> Mi perfil
             </Link>
+            {degreeCode && (
+              <Link
+                to={`/grados/${degreeCode}`}
+                role="menuitem"
+                onClick={() => setOpen(false)}
+                className="flex items-center gap-2.5 rounded-2xl px-3 py-2.5 text-sm text-ink-soft transition-colors hover:bg-white/70 hover:text-ink"
+              >
+                <BookOpenText size={18} aria-hidden="true" /> Mi grado
+              </Link>
+            )}
             <Link
               to="/propuestas"
               role="menuitem"
@@ -104,15 +127,27 @@ function UserMenu() {
             >
               <ListBullets size={18} aria-hidden="true" /> Propuestas
             </Link>
-            <Link
-              to="/subir"
-              role="menuitem"
-              onClick={() => setOpen(false)}
-              className="flex items-center gap-2.5 rounded-2xl px-3 py-2.5 text-sm text-ink-soft transition-colors hover:bg-white/70 hover:text-ink"
-            >
-              <UploadSimple size={18} aria-hidden="true" /> Compartir material
-            </Link>
+            {!isPlatformAdmin && (
+              <Link
+                to="/subir"
+                role="menuitem"
+                onClick={() => setOpen(false)}
+                className="flex items-center gap-2.5 rounded-2xl px-3 py-2.5 text-sm text-ink-soft transition-colors hover:bg-white/70 hover:text-ink"
+              >
+                <UploadSimple size={18} aria-hidden="true" /> Compartir material
+              </Link>
+            )}
             {isMaster && (
+              <Link
+                to="/gobernanza"
+                role="menuitem"
+                onClick={() => setOpen(false)}
+                className="flex items-center gap-2.5 rounded-2xl px-3 py-2.5 text-sm text-ink-soft transition-colors hover:bg-white/70 hover:text-ink"
+              >
+                <ShieldCheck size={18} aria-hidden="true" /> Gobernanza
+              </Link>
+            )}
+            {isPlatformAdmin && (
               <Link
                 to="/administracion"
                 role="menuitem"
@@ -178,7 +213,7 @@ function SearchDialog({ open, onClose }) {
             onChange={(event) => setQuery(event.target.value)}
             placeholder="Ej. examen de Bases de Datos"
             aria-label="Buscar material"
-            className="h-14 w-full bg-transparent text-base text-ink outline-none placeholder:text-ink-faint"
+            className="h-14 w-full bg-transparent focus-ring text-base text-ink outline-none placeholder:text-ink-faint"
           />
           <kbd className="hidden rounded-lg border border-ink/10 bg-paper-50 px-2 py-1 text-[0.65rem] text-ink-faint sm:block">
             ↵
@@ -210,9 +245,7 @@ function SearchDialog({ open, onClose }) {
           >
             <BookOpenText size={15} aria-hidden="true" /> Ver todo el catálogo
           </Link>
-          <Button type="submit" icon={<ArrowRight size={16} weight="bold" />}>
-            Buscar
-          </Button>
+          <Button type="submit">Buscar</Button>
         </div>
       </form>
     </Modal>
@@ -220,10 +253,22 @@ function SearchDialog({ open, onClose }) {
 }
 
 export function Navbar() {
-  const { isAuthenticated, isMaster, logout } = useAuth()
+  const { isAuthenticated, isMaster, isPlatformAdmin, logout } = useAuth()
   const navigate = useNavigate()
+  const reduceMotion = useReducedMotion()
+  const barRef = useRef(null)
   const [searchOpen, setSearchOpen] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [ripple, setRipple] = useState(null)
+  const menuItemMotion = (index) => ({
+    initial: reduceMotion ? false : { opacity: 0, y: 8 },
+    animate: { opacity: 1, y: 0 },
+    transition: {
+      duration: reduceMotion ? 0 : 0.3,
+      delay: reduceMotion ? 0 : 0.06 + index * 0.035,
+      ease: [0.16, 1, 0.3, 1],
+    },
+  })
 
   useEffect(() => {
     const handler = (event) => {
@@ -237,22 +282,27 @@ export function Navbar() {
   }, [])
 
   useEffect(() => {
-    if (mobileOpen) {
-      document.body.style.overflow = 'hidden'
-      return () => {
-        document.body.style.overflow = ''
-      }
+    if (!mobileOpen) return undefined
+    document.body.style.overflow = 'hidden'
+    const handleKey = (event) => {
+      if (event.key === 'Escape') setMobileOpen(false)
     }
-    return undefined
+    document.addEventListener('keydown', handleKey)
+    return () => {
+      document.body.style.overflow = ''
+      document.removeEventListener('keydown', handleKey)
+    }
   }, [mobileOpen])
 
   const links = isAuthenticated
     ? [
         ...publicLinks,
         { to: '/propuestas', label: 'Propuestas' },
-        { to: '/subir', label: 'Subir' },
+        ...(isPlatformAdmin ? [] : [{ to: '/subir', label: 'Subir' }]),
       ]
     : publicLinks
+  const mobileItemCount =
+    links.length + (isMaster ? 1 : 0) + (isPlatformAdmin ? 1 : 0)
 
   const handleMobileLogout = async () => {
     setMobileOpen(false)
@@ -261,27 +311,92 @@ export function Navbar() {
     navigate('/')
   }
 
+  const startNavRipple = (event) => {
+    if (reduceMotion || !barRef.current) return
+    const barRect = barRef.current.getBoundingClientRect()
+    const linkRect = event.currentTarget.getBoundingClientRect()
+    const x = linkRect.left + linkRect.width / 2 - barRect.left
+    const y = linkRect.top + linkRect.height / 2 - barRect.top
+    const radius = Math.hypot(
+      Math.max(x, barRect.width - x),
+      Math.max(y, barRect.height - y),
+    )
+    setRipple({
+      id: `${Date.now()}-${Math.random()}`,
+      x,
+      y,
+      size: radius * 2,
+    })
+  }
+
   return (
     <>
       <header className="sticky top-0 z-50 pt-3">
         <div className="site-shell">
-          <div className="glass-nav flex h-[4.25rem] items-center justify-between gap-3 rounded-full px-4 pl-5 sm:px-5">
-            <Logo />
+          <div
+            ref={barRef}
+            className="glass-nav relative flex h-[4.25rem] items-center justify-between gap-3 rounded-full px-4 pl-5 sm:px-5"
+          >
+            {ripple && (
+              <div
+                className="pointer-events-none absolute inset-0 z-0 overflow-hidden rounded-full"
+                aria-hidden="true"
+              >
+                <motion.span
+                  key={ripple.id}
+                  className="absolute block rounded-full bg-[radial-gradient(circle,rgba(29,29,31,0.10)_0%,rgba(29,29,31,0.04)_42%,transparent_72%)]"
+                  style={{
+                    left: ripple.x - ripple.size / 2,
+                    top: ripple.y - ripple.size / 2,
+                    width: ripple.size,
+                    height: ripple.size,
+                  }}
+                  initial={{ scale: 0.06, opacity: 0.55 }}
+                  animate={{ scale: 1, opacity: 0 }}
+                  transition={{ duration: 1.05, ease: [0.16, 1, 0.3, 1] }}
+                  onAnimationComplete={() =>
+                    setRipple((current) => (current?.id === ripple.id ? null : current))
+                  }
+                />
+              </div>
+            )}
 
-            <nav aria-label="Navegación principal" className="hidden items-center gap-1 lg:flex">
+            <div className="relative z-10">
+              <Logo />
+            </div>
+
+            <nav
+              aria-label="Navegación principal"
+              className="relative z-10 hidden items-center gap-1 lg:flex"
+            >
               {links.map((link) => (
-                <NavLink key={link.to} to={link.to} end={link.end} className="nav-link">
+                <NavLink
+                  key={link.to}
+                  to={link.to}
+                  end={link.end}
+                  className="nav-link"
+                  onClick={startNavRipple}
+                >
                   {link.label}
                 </NavLink>
               ))}
               {isMaster && (
-                <NavLink to="/administracion" className="nav-link">
+                <NavLink to="/gobernanza" className="nav-link" onClick={startNavRipple}>
+                  Gobernanza
+                </NavLink>
+              )}
+              {isPlatformAdmin && (
+                <NavLink
+                  to="/administracion"
+                  className="nav-link"
+                  onClick={startNavRipple}
+                >
                   Administración
                 </NavLink>
               )}
             </nav>
 
-            <div className="flex items-center gap-2">
+            <div className="relative z-10 flex items-center gap-2">
               <button
                 type="button"
                 onClick={() => setSearchOpen(true)}
@@ -290,9 +405,6 @@ export function Navbar() {
               >
                 <MagnifyingGlass size={15} aria-hidden="true" />
                 <span>Buscar</span>
-                <kbd className="rounded-md border border-ink/8 bg-white/55 px-1.5 py-0.5 text-[0.6rem] text-ink-faint">
-                  ⌘ K
-                </kbd>
               </button>
 
               {isAuthenticated ? (
@@ -336,90 +448,132 @@ export function Navbar() {
         </div>
       </header>
 
-      {mobileOpen && (
-        <div
-          id="mobile-nav"
-          className="glass-nav fixed inset-x-3 top-[5.35rem] z-40 rounded-4xl p-6 lg:hidden"
-        >
-          <nav aria-label="Navegación móvil" className="flex flex-col">
-            {links.map((link) => (
-              <NavLink
-                key={link.to}
-                to={link.to}
-                end={link.end}
-                onClick={() => setMobileOpen(false)}
-                className={({ isActive }) =>
-                  cn(
-                    'border-b border-ink/8 py-4 text-2xl tracking-tight text-ink-soft last:border-0',
-                    isActive && 'text-ink',
-                  )
-                }
-              >
-                {link.label}
-              </NavLink>
-            ))}
-            {isMaster && (
-              <NavLink
-                to="/administracion"
-                onClick={() => setMobileOpen(false)}
-                className="border-b border-ink/8 py-4 text-2xl tracking-tight text-ink-soft"
-              >
-                Administración
-              </NavLink>
-            )}
-          </nav>
-          <div className="mt-6 flex flex-col gap-2">
-            <Button
-              onClick={() => {
-                setMobileOpen(false)
-                setSearchOpen(true)
-              }}
-              variant="ghost"
-              icon={<MagnifyingGlass size={17} />}
+      <AnimatePresence>
+        {mobileOpen && (
+          <motion.div
+            id="mobile-nav"
+            initial={reduceMotion ? false : { opacity: 0, y: -14, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={
+              reduceMotion
+                ? { opacity: 0 }
+                : { opacity: 0, y: -10, scale: 0.985 }
+            }
+            transition={{
+              duration: reduceMotion ? 0 : 0.34,
+              ease: [0.16, 1, 0.3, 1],
+            }}
+            className="glass-nav fixed inset-x-3 top-[5.35rem] z-40 max-h-[calc(100dvh-6.5rem)] overflow-y-auto overscroll-contain rounded-4xl p-6 lg:hidden"
+          >
+            <nav aria-label="Navegación móvil" className="flex flex-col">
+              {links.map((link, index) => (
+                <motion.div
+                  key={link.to}
+                  {...menuItemMotion(index)}
+                  className="border-b border-ink/8"
+                >
+                  <NavLink
+                    to={link.to}
+                    end={link.end}
+                    onClick={() => setMobileOpen(false)}
+                    className={({ isActive }) =>
+                      cn(
+                        'block py-4 text-2xl tracking-tight text-ink-soft',
+                        isActive && 'text-ink',
+                      )
+                    }
+                  >
+                    {link.label}
+                  </NavLink>
+                </motion.div>
+              ))}
+              {isMaster && (
+                <motion.div
+                  {...menuItemMotion(links.length)}
+                  className="border-b border-ink/8"
+                >
+                  <NavLink
+                    to="/gobernanza"
+                    onClick={() => setMobileOpen(false)}
+                    className="block py-4 text-2xl tracking-tight text-ink-soft"
+                  >
+                    Gobernanza
+                  </NavLink>
+                </motion.div>
+              )}
+              {isPlatformAdmin && (
+                <motion.div
+                  {...menuItemMotion(links.length + (isMaster ? 1 : 0))}
+                  className="border-b border-ink/8"
+                >
+                  <NavLink
+                    to="/administracion"
+                    onClick={() => setMobileOpen(false)}
+                    className="block py-4 text-2xl tracking-tight text-ink-soft"
+                  >
+                    Administración
+                  </NavLink>
+                </motion.div>
+              )}
+            </nav>
+            <motion.div
+              {...menuItemMotion(mobileItemCount)}
+              className="mt-6 flex flex-col gap-2"
             >
-              Buscar material
-            </Button>
-            {isAuthenticated ? (
-              <div className="mt-2 grid grid-cols-2 gap-2 border-t border-ink/8 pt-4">
-                <Link
-                  to="/perfil"
-                  onClick={() => setMobileOpen(false)}
-                  className="rounded-2xl border border-ink/8 bg-white/38 px-3 py-3 text-center text-xs font-semibold text-ink-soft transition-colors hover:bg-white/70 hover:text-ink"
-                >
-                  Mi perfil
-                </Link>
-                <Link
-                  to="/subir"
-                  onClick={() => setMobileOpen(false)}
-                  className="rounded-2xl border border-ink/8 bg-white/38 px-3 py-3 text-center text-xs font-semibold text-ink-soft transition-colors hover:bg-white/70 hover:text-ink"
-                >
-                  Compartir
-                </Link>
-                <button
-                  type="button"
-                  onClick={handleMobileLogout}
-                  className="col-span-2 rounded-2xl px-3 py-2 text-xs font-semibold text-[#8b4b43] transition-colors hover:bg-[#f8e9e7]"
-                >
-                  Cerrar sesión
-                </button>
-              </div>
-            ) : (
-              <>
-                <Button to="/registro" onClick={() => setMobileOpen(false)}>
-                  Crear cuenta USC
-                </Button>
-                <Button
-                  to="/acceso"
-                  variant="ghost"
-                  onClick={() => setMobileOpen(false)}
-                >
-                  Ya tengo cuenta
-                </Button>
-              </>
-            )}
-          </div>
-        </div>
-      )}
+              <Button
+                onClick={() => {
+                  setMobileOpen(false)
+                  setSearchOpen(true)
+                }}
+                variant="ghost"
+                icon={<MagnifyingGlass size={17} />}
+              >
+                Buscar material
+              </Button>
+              {isAuthenticated ? (
+                <div className="mt-2 grid grid-cols-2 gap-2 border-t border-ink/8 pt-4">
+                  <Link
+                    to="/perfil"
+                    onClick={() => setMobileOpen(false)}
+                    className="rounded-2xl border border-ink/8 bg-white/38 px-3 py-3 text-center text-xs font-semibold text-ink-soft transition-colors hover:bg-white/70 hover:text-ink"
+                  >
+                    Mi perfil
+                  </Link>
+                  {!isPlatformAdmin && (
+                    <Link
+                      to="/subir"
+                      onClick={() => setMobileOpen(false)}
+                      className="rounded-2xl border border-ink/8 bg-white/38 px-3 py-3 text-center text-xs font-semibold text-ink-soft transition-colors hover:bg-white/70 hover:text-ink"
+                    >
+                      Compartir
+                    </Link>
+                  )}
+                  <button
+                    type="button"
+                    onClick={handleMobileLogout}
+                    className="col-span-2 rounded-2xl px-3 py-2 text-xs font-semibold text-[#8b4b43] transition-colors hover:bg-[#f8e9e7]"
+                  >
+                    Cerrar sesión
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <Button to="/registro" onClick={() => setMobileOpen(false)}>
+                    Crear cuenta
+                  </Button>
+                  <Button
+                    to="/acceso"
+                    variant="ghost"
+                    onClick={() => setMobileOpen(false)}
+                  >
+                    Ya tengo cuenta
+                  </Button>
+                </>
+              )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <SearchDialog
         key={searchOpen ? 'search-open' : 'search-closed'}

@@ -63,30 +63,51 @@ export function AuthProvider({ children }) {
     [queryClient, session?.username],
   )
 
-  const value = useMemo(
-    () => ({
+  const value = useMemo(() => {
+    const profile = profileQuery.data || null
+    const role = (profile?.role || session?.role || '').toUpperCase()
+    const degreeId = profile?.degreeId ?? session?.degreeId ?? null
+    const degreeCode = profile?.degreeCode ?? session?.degreeCode ?? null
+    const degreeName = profile?.degreeName ?? session?.degreeName ?? null
+    const isPlatformAdmin = Boolean(
+      profile ? profile.isPlatformAdmin : session?.isPlatformAdmin,
+    )
+
+    return {
       session,
-      profile: profileQuery.data || null,
+      profile,
       profileLoading: profileQuery.isLoading,
       profileError: profileQuery.error,
       isAuthenticated: Boolean(session?.token),
-      isMaster: (session?.role || '').toUpperCase() === 'MASTER',
+      role,
+      isMaster: role === 'MASTER',
+      isPlatformAdmin,
+      degreeId,
+      degreeCode,
+      degreeName,
+      degree: degreeId || degreeCode || degreeName
+        ? { id: degreeId, code: degreeCode, name: degreeName }
+        : null,
+      belongsToDegree: (candidateId) =>
+        degreeId !== null &&
+        candidateId !== null &&
+        candidateId !== undefined &&
+        String(degreeId) === String(candidateId),
       login,
       logout,
       refreshProfile,
       updateProfile,
-    }),
-    [
-      session,
-      profileQuery.data,
-      profileQuery.isLoading,
-      profileQuery.error,
-      login,
-      logout,
-      refreshProfile,
-      updateProfile,
-    ],
-  )
+    }
+  }, [
+    session,
+    profileQuery.data,
+    profileQuery.isLoading,
+    profileQuery.error,
+    login,
+    logout,
+    refreshProfile,
+    updateProfile,
+  ])
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }

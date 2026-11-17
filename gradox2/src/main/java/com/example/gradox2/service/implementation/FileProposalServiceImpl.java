@@ -37,6 +37,7 @@ import com.example.gradox2.service.interfaces.IFileProposalService;
 import com.example.gradox2.service.interfaces.IGlobalConfigService;
 import com.example.gradox2.utils.ContentDisposition;
 import com.example.gradox2.utils.FileNames;
+import com.example.gradox2.security.DegreeAccessGuard;
 import com.example.gradox2.utils.GetAuthUser;
 import com.example.gradox2.utils.SortUtils;
 import com.example.gradox2.utils.mapper.FileProposalMapper;
@@ -62,11 +63,13 @@ public class FileProposalServiceImpl implements IFileProposalService {
     private final S3StorageService s3StorageService;
     private final FileUrlSigner fileUrlSigner;
     private final IAuditService auditService;
+    private final DegreeAccessGuard degreeAccessGuard;
 
     public FileProposalServiceImpl(TempFileRepository tempFileRepository,
             FileProposalRepository fileProposalRepository, SubjectRepository subjectRepository,
             IGlobalConfigService voteConfigService, S3StorageService s3StorageService,
-            FileUrlSigner fileUrlSigner, IAuditService auditService) {
+            FileUrlSigner fileUrlSigner, IAuditService auditService,
+            DegreeAccessGuard degreeAccessGuard) {
         this.tempFileRepository = tempFileRepository;
         this.fileProposalRepository = fileProposalRepository;
         this.subjectRepository = subjectRepository;
@@ -74,6 +77,7 @@ public class FileProposalServiceImpl implements IFileProposalService {
         this.s3StorageService = s3StorageService;
         this.fileUrlSigner = fileUrlSigner;
         this.auditService = auditService;
+        this.degreeAccessGuard = degreeAccessGuard;
     }
 
     @Transactional
@@ -81,7 +85,8 @@ public class FileProposalServiceImpl implements IFileProposalService {
         Subject subject = subjectRepository.findById(dto.getSubjectId())
                 .orElseThrow(() -> new NotFoundException("Subject not found"));
 
-        User uploader = GetAuthUser.getAuthUser();
+        // Antes de tocar S3 o consumir cuota: si la asignatura es de otro grado, no hay propuesta.
+        User uploader = degreeAccessGuard.requireSameDegree(subject.getDegree());
         GlobalConfig config = voteConfigService.getConfig();
         ensurePendingUploadLimit(uploader, config.getMaxPendingUploads());
 

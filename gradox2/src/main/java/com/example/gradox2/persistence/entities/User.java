@@ -43,6 +43,14 @@ public class User implements UserDetails{
     @Column(nullable = false)
     private UserRole role;
 
+    /**
+     * Grado del usuario. Se elige en el registro y es permanente (D1/D2): define en qué comunidad puede
+     * escribir. Ningún endpoint de usuario permite cambiarlo; solo un override administrativo auditado.
+     */
+    @ManyToOne
+    @JoinColumn(name = "degree_id", nullable = false)
+    private Degree degree;
+
     @Builder.Default
     @Column(nullable = false)
     private Double reputation = 10.0;

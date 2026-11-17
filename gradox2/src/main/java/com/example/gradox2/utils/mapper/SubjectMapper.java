@@ -20,6 +20,12 @@ public final class SubjectMapper {
             .courseId(subject.getCourse() != null ? subject.getCourse().getId() : null)
             .courseCode(subject.getCourse() != null ? subject.getCourse().getCode() : null)
             .courseName(subject.getCourse() != null ? subject.getCourse().getName() : null)
+            .degreeId(subject.getDegree() != null ? subject.getDegree().getId() : null)
+            .degreeCode(subject.getDegree() != null ? subject.getDegree().getCode() : null)
+            .degreeName(subject.getDegree() != null ? subject.getDegree().getName() : null)
+            .credits(subject.getCredits())
+            .semester(subject.getSemester())
+            .subjectType(subject.getSubjectType())
             .build();
     }
 }

@@ -7,6 +7,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.example.gradox2.persistence.entities.ConfigProposal;
+import com.example.gradox2.persistence.entities.Degree;
 import com.example.gradox2.persistence.entities.File;
 import com.example.gradox2.persistence.entities.FileProposal;
 import com.example.gradox2.persistence.entities.GlobalConfig;
@@ -29,6 +30,7 @@ import com.example.gradox2.service.exceptions.ProposalClosedException;
 import com.example.gradox2.service.interfaces.IAuditService;
 import com.example.gradox2.service.interfaces.IGlobalConfigService;
 import com.example.gradox2.service.interfaces.IVoteService;
+import com.example.gradox2.security.DegreeAccessGuard;
 import com.example.gradox2.utils.GetAuthUser;
 import com.example.gradox2.utils.mapper.VoteMapper;
 
@@ -46,13 +48,15 @@ public class VoteServiceImpl implements IVoteService {
     private final IGlobalConfigService globalConfigService;
     private final S3StorageService s3StorageService;
     private final IAuditService auditService;
+    private final DegreeAccessGuard degreeAccessGuard;
 
     public VoteServiceImpl(VoteRepository voteRepository, ProposalRepository proposalRepository,
             FileProposalRepository fileProposalRepository,
             PromotionProposalRepository promotionProposalRepository, UserRepository userRepository,
             FileRepository fileRepository, ForumThreadRepository forumThreadRepository,
             IGlobalConfigService globalConfigService,
-            S3StorageService s3StorageService, IAuditService auditService) {
+            S3StorageService s3StorageService, IAuditService auditService,
+            DegreeAccessGuard degreeAccessGuard) {
         this.voteRepository = voteRepository;
         this.proposalRepository = proposalRepository;
         this.fileProposalRepository = fileProposalRepository;
@@ -63,6 +67,7 @@ public class VoteServiceImpl implements IVoteService {
         this.globalConfigService = globalConfigService;
         this.s3StorageService = s3StorageService;
         this.auditService = auditService;
+        this.degreeAccessGuard = degreeAccessGuard;
     }
 
     @Override
@@ -80,8 +85,21 @@ public class VoteServiceImpl implements IVoteService {
             throw new ProposalClosedException("This proposal has expired.");
         }
 
-        if (proposal instanceof ConfigProposal && auth.getRole() != UserRole.MASTER) {
-            throw new InvalidRoleOperationException("Solo los usuarios MASTER pueden votar cambios de política.");
+        // D12: el ADMIN es un rol operativo de plataforma y no participa en ninguna votación.
+        if (auth.getRole() == UserRole.ADMIN) {
+            throw new InvalidRoleOperationException(
+                    "El administrador de plataforma no participa en las votaciones.");
+        }
+
+        if (proposal instanceof ConfigProposal) {
+            // D11: la configuración de votación es global, así que la deciden los masters de todos los
+            // grados; por eso acá no se exige pertenecer al grado de ningún recurso.
+            if (auth.getRole() != UserRole.MASTER) {
+                throw new InvalidRoleOperationException("Solo los usuarios MASTER pueden votar cambios de política.");
+            }
+        } else {
+            // D4: cada grado vota lo suyo. El grado se deriva de la propuesta, nunca del cliente.
+            degreeAccessGuard.requireSameDegreeOf(proposal);
         }
 
         if (voteRepository.findByVoterAndProposal(auth, proposal).isPresent()) {
@@ -190,7 +208,13 @@ public class VoteServiceImpl implements IVoteService {
             return;
         }
 
-        List<Vote> votes = voteRepository.findByProposalId(proposal.getId());
+        // D4: solo cuentan los votos de miembros del grado de la propuesta. La elegibilidad ya se
+        // comprobó al votar; este filtro es la red de seguridad para votos emitidos antes de un cambio de
+        // grado (override administrativo) o para datos inconsistentes.
+        Degree proposalDegree = DegreeAccessGuard.degreeOf(proposal);
+        List<Vote> votes = voteRepository.findByProposalId(proposal.getId()).stream()
+                .filter(vote -> isMemberOf(vote.getVoter(), proposalDegree))
+                .toList();
 
         // Usar pesos snapshotados de la propuesta
         double masterWeight = proposal.getMasterVoteWeight() != null
@@ -227,6 +251,8 @@ public class VoteServiceImpl implements IVoteService {
 
     private void checkConfigProposalStatus(Proposal proposal) {
         List<Vote> votes = voteRepository.findByProposalId(proposal.getId());
+        // D11: la configuración es global, así que el quórum se mide sobre TODOS los masters de la
+        // plataforma y no sobre un grado. Es el único conteo que sigue siendo global.
         long totalMasters = userRepository.countByRoleAndEnabled(UserRole.MASTER, true);
         
         if (totalMasters == 0) {
@@ -287,7 +313,13 @@ public class VoteServiceImpl implements IVoteService {
     private boolean isCandidateEligible(PromotionProposal promotionProposal) {
         User candidate = promotionProposal.getCandidate();
         if (promotionProposal.getActionType() == ActionType.EXPULSION) {
-            return candidate.getRole() == UserRole.MASTER;
+            if (candidate.getRole() != UserRole.MASTER) {
+                return false;
+            }
+            // D3/§6.2: un grado no puede quedar sin representación aunque la votación lo apruebe. El
+            // conteo es del grado del candidato, no de la plataforma.
+            return userRepository.countByRoleAndEnabledAndDegree(
+                    UserRole.MASTER, true, candidate.getDegree()) > 1;
         }
         return candidate.getRole() == UserRole.USER && candidate.isEnabled();
     }
@@ -353,5 +385,10 @@ public class VoteServiceImpl implements IVoteService {
         promotionProposal.setClosedAt(Instant.now());
         userRepository.save(candidate);
         promotionProposalRepository.save(promotionProposal);
+    }
+
+    private boolean isMemberOf(User voter, Degree degree) {
+        return voter.getDegree() != null && degree != null
+                && voter.getDegree().getId().equals(degree.getId());
     }
 }

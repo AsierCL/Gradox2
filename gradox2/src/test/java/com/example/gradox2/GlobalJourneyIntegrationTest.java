@@ -25,6 +25,9 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
+import com.example.gradox2.persistence.entities.Degree;
+import com.example.gradox2.persistence.repository.DegreeRepository;
+import com.example.gradox2.support.TestDegrees;
 import com.example.gradox2.persistence.entities.Course;
 import com.example.gradox2.persistence.entities.File;
 import com.example.gradox2.persistence.entities.Subject;
@@ -97,7 +100,8 @@ class GlobalJourneyIntegrationTest {
                         .content(json(Map.of(
                                 "username", "journeyuser",
                                 "email", "journey@rai.usc.es",
-                                "password", "SecurePass1!"))))
+                                "password", "SecurePass1!",
+                                "degreeId", degree().getId()))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.username").value("journeyuser"))
                 .andExpect(jsonPath("$.role").value("USER"))
@@ -305,24 +309,30 @@ class GlobalJourneyIntegrationTest {
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.errorCode").value("UNAUTHENTICATED_ACCESS"));
 
-        // 18. Admin: banear y desbanear al usuario normal.
+        // 18. Admin de plataforma: banear y desbanear al usuario normal.
+        String adminToken = createAndGetAdmin();
         mockMvc.perform(put("/admin/users/{id}/ban", renamedId)
-                        .header("Authorization", bearer(masterToken)))
+                        .header("Authorization", bearer(adminToken)))
                 .andExpect(status().isOk());
 
         mockMvc.perform(put("/admin/users/{id}/unban", renamedId)
-                        .header("Authorization", bearer(masterToken)))
+                        .header("Authorization", bearer(adminToken)))
                 .andExpect(status().isOk());
     }
 
     private String createUser(String username, String email, String password, UserRole role) {
-        return userRepository.save(User.builder()
+        return userRepository.save(User.builder().degree(degree())
                 .username(username)
                 .email(email)
                 .passwordHash(passwordEncoder.encode(password))
                 .enabled(true)
                 .role(role)
                 .build()).getUsername();
+    }
+
+    private String createAndGetAdmin() throws Exception {
+        createUser("globaladmin", "globaladmin@rai.usc.es", "SecurePass1!", UserRole.ADMIN);
+        return login("globaladmin", "SecurePass1!").get("token").asText();
     }
 
     private String createAndGetMaster() throws Exception {
@@ -358,7 +368,7 @@ class GlobalJourneyIntegrationTest {
     }
 
     private Long createSubject() {
-        Course course = courseRepository.save(Course.builder()
+        Course course = courseRepository.save(Course.builder().degree(degree())
                 .code("GJ" + System.nanoTime())
                 .name("Curso Global Journey")
                 .build());
@@ -406,5 +416,12 @@ class GlobalJourneyIntegrationTest {
 
     private String json(Object value) throws Exception {
         return objectMapper.writeValueAsString(value);
+    }
+
+    @Autowired
+    private DegreeRepository degreeRepository;
+
+    private Degree degree() {
+        return TestDegrees.informatica(degreeRepository);
     }
 }

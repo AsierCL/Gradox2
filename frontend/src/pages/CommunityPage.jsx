@@ -2,6 +2,7 @@ import {
   Check,
   Eye,
   EyeSlash,
+  GraduationCap,
   LockKey,
   Medal,
   Scales,
@@ -29,7 +30,17 @@ const faqs = [
   {
     question: '¿Quién puede usar Gradox?',
     answer:
-      'Cualquier persona puede consultar el catálogo público. Para votar, comentar o proponer material necesitas una cuenta verificada con correo @rai.usc.es o @rai.usc.gal.',
+      'Cualquier persona puede consultar el catálogo público de los tres grados y descargar el material visible. Para votar, comentar o proponer necesitas una cuenta verificada con correo @rai.usc.es o @rai.usc.gal y pertenecer al grado del recurso.',
+  },
+  {
+    question: '¿Puedo cambiar de grado?',
+    answer:
+      'No. El grado se elige al registrarse y es permanente, porque define en qué comunidad participas. Solo la administración de plataforma puede corregir un error de registro, con motivo y auditoría.',
+  },
+  {
+    question: '¿Puedo leer material de otro grado?',
+    answer:
+      'Sí. La lectura es libre entre grados. Lo que cambia es la escritura: votar, comentar, subir o proponer se limita al grado del recurso.',
   },
   {
     question: '¿Quién decide si un material se publica?',
@@ -78,7 +89,7 @@ export function CommunityPage() {
       <PageHeader
         eyebrow="Comunidad"
         title="Funcionamiento y reglas"
-        description="Cómo se publica material, cómo se vota y qué permisos tiene cada rol."
+        description="Cómo se publica material, cómo se vota por grado y qué permisos tiene cada rol."
       />
 
       <section id="gobernanza" className="scroll-mt-24 py-4 sm:py-8">
@@ -126,11 +137,46 @@ export function CommunityPage() {
                 ))}
               </div>
               <p className="mt-5 text-xs leading-5 text-ink-faint">
-                Los umbrales pueden modificarse mediante una propuesta de política.
+                El quórum se cuenta solo con votos del grado del recurso. La configuración de
+                votaciones es global y la modifican mediante propuesta todos los masters.
               </p>
             </div>
           </Reveal>
         </div>
+      </section>
+
+      <section id="grados" className="scroll-mt-24 py-8 sm:py-12">
+        <Reveal>
+          <div className="glass rounded-3xl p-6 sm:p-8">
+            <div className="grid gap-8 lg:grid-cols-[0.8fr_1.2fr] lg:items-center">
+              <div>
+                <span className="grid size-11 place-items-center rounded-2xl bg-white/65 text-aqua-700">
+                  <GraduationCap size={22} weight="duotone" aria-hidden="true" />
+                </span>
+                <h2 className="display-tight mt-5 text-2xl text-ink sm:text-3xl">
+                  El grado es un ámbito de escritura
+                </h2>
+                <p className="mt-3 max-w-md text-sm leading-6 text-ink-soft">
+                  Informática, Química e Inteligencia Artificial son comunidades independientes.
+                  Comparten catálogo y reglas, pero no votos ni gobierno.
+                </p>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                {[
+                  ['Lectura', 'Libre para todo el mundo, también entre grados.'],
+                  ['Escritura', 'Solo en el grado al que perteneces.'],
+                  ['Votaciones', 'Quórum y papeleta por grado.'],
+                  ['Configuración', 'Global: la votan todos los masters.'],
+                ].map(([title, copy]) => (
+                  <div key={title} className="rounded-2xl border border-ink/8 bg-white/38 p-4">
+                    <p className="text-xs font-semibold text-ink">{title}</p>
+                    <p className="mt-1 text-[0.65rem] leading-5 text-ink-soft">{copy}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </Reveal>
       </section>
 
       <section id="reputacion" className="scroll-mt-24 py-12 sm:py-16">
@@ -169,28 +215,35 @@ export function CommunityPage() {
             </h2>
           </div>
         </Reveal>
-        <div className="mt-8 grid gap-4 md:grid-cols-3">
+        <div className="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           {[
             {
               icon: Eye,
               role: ROLES.GUEST,
               tag: 'Solo lectura',
-              copy: 'Consulta el catálogo y descarga materiales visibles.',
+              copy: 'Consulta el catálogo de cualquier grado y descarga materiales visibles.',
               points: ['Acceso al catálogo', 'Descargas disponibles', 'Sin votos ni comentarios'],
             },
             {
               icon: UserCircle,
               role: ROLES.USER,
               tag: 'Participa',
-              copy: 'Propone materiales, vota y participa en los hilos.',
+              copy: 'Propone materiales, vota y participa en los hilos de su grado.',
               points: ['Proponer material', 'Votar y comentar', 'Acumular reputación'],
             },
             {
               icon: Medal,
               role: ROLES.MASTER,
-              tag: 'Modera',
-              copy: 'Revisa propuestas y modera conversaciones.',
-              points: ['Voto con más peso', 'Moderación', 'Acceso a administración'],
+              tag: 'Gobierna su grado',
+              copy: 'Revisa propuestas, modera y representa a su comunidad.',
+              points: ['Voto con más peso', 'Moderación de su grado', 'Gobernanza de su grado'],
+            },
+            {
+              icon: ShieldCheck,
+              role: ROLES.ADMIN,
+              tag: 'Plataforma',
+              copy: 'Gestiona el catálogo, los usuarios y la auditoría de toda la plataforma.',
+              points: ['Panel de administración', 'Corrección de grados', 'No vota'],
             },
           ].map((item, index) => (
             <Reveal key={item.role} delay={index * 0.04}>

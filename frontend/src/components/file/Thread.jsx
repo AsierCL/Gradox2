@@ -18,6 +18,7 @@ import { Textarea } from '../ui/Field'
 import { Skeleton } from '../ui/Spinner'
 import { formatDateTime, timeAgo } from '../../lib/format'
 import { cn } from '../../lib/cn'
+import { ReadOnlyNotice } from '../common/ReadOnlyNotice'
 
 function buildTree(comments) {
   const byParent = new Map()
@@ -29,8 +30,8 @@ function buildTree(comments) {
   return byParent
 }
 
-function CommentItem({ comment, byParent, depth, fileId, onReply }) {
-  const { profile, isMaster, isAuthenticated } = useAuth()
+function CommentItem({ comment, byParent, depth, fileId, onReply, canWrite, canModerate }) {
+  const { profile } = useAuth()
   const queryClient = useQueryClient()
   const [editing, setEditing] = useState(false)
   const [content, setContent] = useState(comment.content)
@@ -128,7 +129,7 @@ function CommentItem({ comment, byParent, depth, fileId, onReply }) {
 
             {!editing && (
               <div className="mt-2 flex items-center gap-3">
-                {isAuthenticated && depth < 2 && (
+                {canWrite && depth < 2 && (
                   <button
                     type="button"
                     onClick={() => onReply(comment.id)}
@@ -137,7 +138,7 @@ function CommentItem({ comment, byParent, depth, fileId, onReply }) {
                     <ArrowBendDownRight size={13} aria-hidden="true" /> Responder
                   </button>
                 )}
-                {own && (
+                {own && canWrite && (
                   <button
                     type="button"
                     onClick={() => setEditing(true)}
@@ -146,7 +147,7 @@ function CommentItem({ comment, byParent, depth, fileId, onReply }) {
                     <PencilSimple size={12} aria-hidden="true" /> Editar
                   </button>
                 )}
-                {(own || isMaster) && (
+                {((own && canWrite) || canModerate) && (
                   <button
                     type="button"
                     onClick={() => {
@@ -183,13 +184,15 @@ function CommentItem({ comment, byParent, depth, fileId, onReply }) {
           depth={depth + 1}
           fileId={fileId}
           onReply={onReply}
+          canWrite={canWrite}
+          canModerate={canModerate}
         />
       ))}
     </div>
   )
 }
 
-export function Thread({ fileId }) {
+export function Thread({ fileId, canWrite = false, canModerate = false, readOnly = false }) {
   const { isAuthenticated } = useAuth()
   const queryClient = useQueryClient()
   const [content, setContent] = useState('')
@@ -243,7 +246,14 @@ export function Thread({ fileId }) {
         </span>
       </div>
 
-      {isAuthenticated ? (
+      {readOnly ? (
+        <ReadOnlyNotice
+          className="mt-6"
+          icon="lock"
+          title="Conversación en modo lectura"
+          description="Solo los estudiantes de este grado pueden comentar y moderar el hilo."
+        />
+      ) : isAuthenticated ? (
         <form onSubmit={submit} className="mt-6">
           {parentId && (
             <div className="mb-2 flex items-center justify-between gap-3 rounded-xl bg-aqua-50 px-3 py-2 text-[0.68rem] text-aqua-800">
@@ -264,7 +274,7 @@ export function Thread({ fileId }) {
               placeholder="Escribe un comentario o una duda…"
               maxLength={2000}
               aria-label="Escribir comentario"
-              className="min-h-28 border-transparent bg-transparent shadow-none focus:border-transparent focus:bg-transparent focus:shadow-none"
+              className="focus-ring min-h-28 border-transparent bg-transparent shadow-none focus:border-transparent focus:bg-transparent focus:shadow-none"
             />
             <div className="flex items-center justify-between gap-3 px-2 pb-1">
               <span className="text-[0.62rem] text-ink-faint">{content.length} / 2000</span>
@@ -284,7 +294,7 @@ export function Thread({ fileId }) {
           <div>
             <p className="text-sm font-semibold text-ink">Inicia sesión para comentar</p>
             <p className="mt-1 text-xs leading-5 text-ink-soft">
-              Necesitas una cuenta de la USC.
+              Necesitas una cuenta verificada.
             </p>
           </div>
           <Button to="/acceso" variant="ghost" className="shrink-0">
@@ -330,6 +340,8 @@ export function Thread({ fileId }) {
                   .querySelector('textarea[aria-label="Escribir comentario"]')
                   ?.focus()
               }}
+              canWrite={canWrite}
+              canModerate={canModerate}
             />
           ))
         ) : (

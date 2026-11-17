@@ -19,6 +19,7 @@ import com.example.gradox2.persistence.entities.User;
 import com.example.gradox2.persistence.repository.FileRepository;
 import com.example.gradox2.persistence.repository.ForumThreadRepository;
 import com.example.gradox2.persistence.repository.ThreadCommentRepository;
+import com.example.gradox2.security.DegreeAccessGuard;
 import com.example.gradox2.presentation.dto.thread.CommentResponse;
 import com.example.gradox2.presentation.dto.thread.CreateCommentRequest;
 import com.example.gradox2.service.exceptions.InvalidFileOperation;
@@ -36,12 +37,15 @@ public class ForumServiceImpl implements IForumService {
     private final ForumThreadRepository forumThreadRepository;
     private final ThreadCommentRepository commentRepository;
     private final FileRepository fileRepository;
+    private final DegreeAccessGuard degreeAccessGuard;
 
     public ForumServiceImpl(ForumThreadRepository forumThreadRepository,
-            ThreadCommentRepository commentRepository, FileRepository fileRepository) {
+            ThreadCommentRepository commentRepository, FileRepository fileRepository,
+            DegreeAccessGuard degreeAccessGuard) {
         this.forumThreadRepository = forumThreadRepository;
         this.commentRepository = commentRepository;
         this.fileRepository = fileRepository;
+        this.degreeAccessGuard = degreeAccessGuard;
     }
 
     @Override
@@ -49,6 +53,9 @@ public class ForumServiceImpl implements IForumService {
     public CommentResponse createComment(Long fileId, CreateCommentRequest request) {
         User author = GetAuthUser.getAuthUser();
         File file = requireViewableFile(fileId, author);
+
+        // D10: comentar cuenta como participar. Se puede leer el hilo de otro grado, no escribir en él.
+        degreeAccessGuard.requireSameDegree(file.getSubject().getDegree());
 
         ForumThread thread = forumThreadRepository.findByFileId(fileId)
                 .orElseGet(() -> forumThreadRepository.save(ForumThread.builder().file(file).build()));
@@ -91,7 +98,11 @@ public class ForumServiceImpl implements IForumService {
     @Transactional
     public CommentResponse editComment(Long fileId, Long commentId, String newContent) {
         User author = GetAuthUser.getAuthUser();
-        requireViewableFile(fileId, author);
+        File file = requireViewableFile(fileId, author);
+
+        // D10: editar un comentario es seguir participando en esa comunidad.
+        degreeAccessGuard.requireSameDegree(file.getSubject().getDegree());
+
         ThreadComment comment = requireComment(fileId, commentId);
 
         if (!IdentityVisibility.isSameUser(comment.getAuthor(), author)) {
@@ -107,7 +118,11 @@ public class ForumServiceImpl implements IForumService {
     @Transactional
     public void deleteComment(Long fileId, Long commentId) {
         User requester = GetAuthUser.getAuthUser();
-        requireViewableFile(fileId, requester);
+        File file = requireViewableFile(fileId, requester);
+
+        // Un master modera su grado: sin esto, un master de otro grado podría borrar comentarios ajenos.
+        degreeAccessGuard.requireSameDegree(file.getSubject().getDegree());
+
         ThreadComment comment = requireComment(fileId, commentId);
 
         if (!IdentityVisibility.isSameUser(comment.getAuthor(), requester) && !IdentityVisibility.isMaster(requester)) {
@@ -149,6 +164,8 @@ public class ForumServiceImpl implements IForumService {
     public void setThreadLocked(Long fileId, boolean locked) {
         User requester = GetAuthUser.getAuthUser();
         File file = requireViewableFile(fileId, requester);
+
+        degreeAccessGuard.requireSameDegree(file.getSubject().getDegree());
 
         if (!IdentityVisibility.isSameUser(file.getUploader(), requester) && !IdentityVisibility.isMaster(requester)) {
             throw new InvalidFileOperation("Only the uploader or a master can lock the thread");

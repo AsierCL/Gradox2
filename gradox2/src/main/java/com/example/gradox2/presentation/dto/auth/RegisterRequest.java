@@ -33,4 +33,13 @@ public class RegisterRequest {
     @Size(min = 8, max = 72, message = "Password must be between 8 and 72 characters")
     @Schema(description = "Contraseña (mín 8 caracteres)", example = "SecurePass1!")
     public String password;
+
+    /**
+     * Grado que cursa el usuario. Obligatorio (D1) e inmutable después del alta (D2): define en qué
+     * comunidad puede escribir. La validación de presencia vive en el servicio para devolver el código
+     * estable {@code DEGREE_REQUIRED} en lugar de un error de validación genérico.
+     */
+    @Schema(description = "ID del grado elegido (obligatorio e inmutable)", example = "1",
+            requiredMode = Schema.RequiredMode.REQUIRED)
+    public Long degreeId;
 }

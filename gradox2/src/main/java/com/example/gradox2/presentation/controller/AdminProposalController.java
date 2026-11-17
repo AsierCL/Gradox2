@@ -35,7 +35,7 @@ public class AdminProposalController {
     }
 
     @GetMapping
-    @PreAuthorize("hasRole('MASTER')")
+    @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Listar todas las propuestas", description = "Devuelve todas las propuestas (subidas, borrados, promociones, cambios de política) paginadas (solo MASTER)")
     @ApiResponses({
         @ApiResponse(responseCode = "200", description = "Listado de propuestas"),

@@ -1,4 +1,5 @@
 package com.example.gradox2.init;
+import com.example.gradox2.persistence.entities.Degree;
 import com.example.gradox2.persistence.entities.File;
 import com.example.gradox2.persistence.entities.GlobalConfig;
 import com.example.gradox2.persistence.entities.Subject;
@@ -6,6 +7,7 @@ import com.example.gradox2.persistence.entities.User;
 import com.example.gradox2.persistence.entities.enums.FileType;
 import com.example.gradox2.persistence.entities.enums.FileVisibility;
 import com.example.gradox2.persistence.entities.enums.UserRole;
+import com.example.gradox2.persistence.repository.DegreeRepository;
 import com.example.gradox2.persistence.repository.FileRepository;
 import com.example.gradox2.persistence.repository.SubjectRepository;
 import com.example.gradox2.persistence.repository.UserRepository;
@@ -28,6 +30,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 @RequiredArgsConstructor
 public class DataLoader {
     private final PasswordEncoder passwordEncoder;
+    private final DegreeRepository degreeRepository;
 
     /**
      * Datos demo solo con activación explícita (app.demo-seeds.enabled=true, o
@@ -44,8 +47,14 @@ public class DataLoader {
                                     FileRepository fileRepository,
                                     S3StorageService s3StorageService) {
         return args -> {
+            Degree informatica = degreeRepository.findByCode("G4012").orElse(null);
+            if (informatica == null) {
+                System.out.println("\u2139\ufe0f Grado G4012 no disponible (migraciones sin aplicar); se omite el seed demo.");
+                return;
+            }
+
             if (userRepository.count() < 3) { // Solo carga si non hai usuarios (deixo 3 de margen)
-                userRepository.save(User.builder()
+                userRepository.save(User.builder().degree(informatica)
                 .username("juan123")
                 .email("juan@example.com")
                 .passwordHash(passwordEncoder.encode("password"))
@@ -56,7 +65,7 @@ public class DataLoader {
                 .enabled(true)
                 .build());
 
-                userRepository.save(User.builder()
+                userRepository.save(User.builder().degree(informatica)
                 .username("maria456")
                 .email("maria@example.com")
                 .passwordHash(passwordEncoder.encode("password"))
@@ -67,7 +76,7 @@ public class DataLoader {
                 .enabled(true)
                 .build());
 
-                userRepository.save(User.builder()
+                userRepository.save(User.builder().degree(informatica)
                 .username("pedro789")
                 .email("pedro@example.com")
                 .passwordHash(passwordEncoder.encode("password"))
@@ -78,7 +87,7 @@ public class DataLoader {
                 .enabled(true)
                 .build());
 
-                userRepository.save(User.builder()
+                userRepository.save(User.builder().degree(informatica)
                 .username("laura321")
                 .email("laura@example.com")
                 .passwordHash(passwordEncoder.encode("password"))
@@ -89,7 +98,7 @@ public class DataLoader {
                 .enabled(true)
                 .build());
 
-                userRepository.save(User.builder()
+                userRepository.save(User.builder().degree(informatica)
                 .username("carlos654")
                 .email("carlos@example.com")
                 .passwordHash(passwordEncoder.encode("password"))
@@ -100,7 +109,7 @@ public class DataLoader {
                 .enabled(true)
                 .build());
 
-                userRepository.save(User.builder()
+                userRepository.save(User.builder().degree(informatica)
                 .username("sofia111")
                 .email("sofia@example.com")
                 .passwordHash(passwordEncoder.encode("password"))
@@ -111,7 +120,7 @@ public class DataLoader {
                 .enabled(true)
                 .build());
 
-                userRepository.save(User.builder()
+                userRepository.save(User.builder().degree(informatica)
                 .username("diego222")
                 .email("diego@example.com")
                 .passwordHash(passwordEncoder.encode("password"))
@@ -122,7 +131,7 @@ public class DataLoader {
                 .enabled(true)
                 .build());
 
-                userRepository.save(User.builder()
+                userRepository.save(User.builder().degree(informatica)
                 .username("camila333")
                 .email("camila@example.com")
                 .passwordHash(passwordEncoder.encode("password"))
@@ -133,7 +142,7 @@ public class DataLoader {
                 .enabled(true)
                 .build());
 
-                userRepository.save(User.builder()
+                userRepository.save(User.builder().degree(informatica)
                 .username("mateo444")
                 .email("mateo@example.com")
                 .passwordHash(passwordEncoder.encode("password"))
@@ -144,7 +153,7 @@ public class DataLoader {
                 .enabled(true)
                 .build());
 
-                userRepository.save(User.builder()
+                userRepository.save(User.builder().degree(informatica)
                 .username("valentina555")
                 .email("valentina@example.com")
                 .passwordHash(passwordEncoder.encode("password"))
@@ -155,7 +164,7 @@ public class DataLoader {
                 .enabled(true)
                 .build());
 
-                userRepository.save(User.builder()
+                userRepository.save(User.builder().degree(informatica)
                 .username("lucas666")
                 .email("lucas@example.com")
                 .passwordHash(passwordEncoder.encode("password"))
@@ -166,7 +175,7 @@ public class DataLoader {
                 .enabled(true)
                 .build());
 
-                userRepository.save(User.builder()
+                userRepository.save(User.builder().degree(informatica)
                 .username("martina777")
                 .email("martina@example.com")
                 .passwordHash(passwordEncoder.encode("password"))
@@ -177,7 +186,7 @@ public class DataLoader {
                 .enabled(true)
                 .build());
 
-                userRepository.save(User.builder()
+                userRepository.save(User.builder().degree(informatica)
                 .username("alejandro888")
                 .email("alejandro@example.com")
                 .passwordHash(passwordEncoder.encode("password"))
@@ -188,7 +197,7 @@ public class DataLoader {
                 .enabled(true)
                 .build());
 
-                userRepository.save(User.builder()
+                userRepository.save(User.builder().degree(informatica)
                 .username("isabella999")
                 .email("isabella@example.com")
                 .passwordHash(passwordEncoder.encode("password"))
@@ -199,7 +208,7 @@ public class DataLoader {
                 .enabled(true)
                 .build());
 
-                userRepository.save(User.builder()
+                userRepository.save(User.builder().degree(informatica)
                 .username("sebastian101")
                 .email("sebastian@example.com")
                 .passwordHash(passwordEncoder.encode("password"))
@@ -210,7 +219,7 @@ public class DataLoader {
                 .enabled(true)
                 .build());
 
-                userRepository.save(User.builder()
+                userRepository.save(User.builder().degree(informatica)
                 .username("paula202")
                 .email("paula@example.com")
                 .passwordHash(passwordEncoder.encode("password"))
@@ -221,7 +230,7 @@ public class DataLoader {
                 .enabled(true)
                 .build());
 
-                userRepository.save(User.builder()
+                userRepository.save(User.builder().degree(informatica)
                 .username("fernando303")
                 .email("fernando@example.com")
                 .passwordHash(passwordEncoder.encode("password"))
@@ -232,7 +241,7 @@ public class DataLoader {
                 .enabled(true)
                 .build());
 
-                userRepository.save(User.builder()
+                userRepository.save(User.builder().degree(informatica)
                 .username("natalia404")
                 .email("natalia@example.com")
                 .passwordHash(passwordEncoder.encode("password"))
@@ -243,7 +252,7 @@ public class DataLoader {
                 .enabled(true)
                 .build());
 
-                userRepository.save(User.builder()
+                userRepository.save(User.builder().degree(informatica)
                 .username("andres505")
                 .email("andres@example.com")
                 .passwordHash(passwordEncoder.encode("password"))
@@ -254,7 +263,7 @@ public class DataLoader {
                 .enabled(true)
                 .build());
 
-                userRepository.save(User.builder()
+                userRepository.save(User.builder().degree(informatica)
                 .username("carolina606")
                 .email("carolina@example.com")
                 .passwordHash(passwordEncoder.encode("password"))
@@ -265,7 +274,7 @@ public class DataLoader {
                 .enabled(true)
                 .build());
 
-                userRepository.save(User.builder()
+                userRepository.save(User.builder().degree(informatica)
                 .username("gonzalo707")
                 .email("gonzalo@example.com")
                 .passwordHash(passwordEncoder.encode("password"))
@@ -276,7 +285,7 @@ public class DataLoader {
                 .enabled(true)
                 .build());
 
-                userRepository.save(User.builder()
+                userRepository.save(User.builder().degree(informatica)
                 .username("florencia808")
                 .email("florencia@example.com")
                 .passwordHash(passwordEncoder.encode("password"))
@@ -287,7 +296,7 @@ public class DataLoader {
                 .enabled(true)
                 .build());
 
-                userRepository.save(User.builder()
+                userRepository.save(User.builder().degree(informatica)
                 .username("roberto909")
                 .email("roberto@example.com")
                 .passwordHash(passwordEncoder.encode("password"))
@@ -301,7 +310,7 @@ public class DataLoader {
                 System.out.println("✅ Usuarios de prueba insertados en la base de datos.");
 
 
-                userRepository.save(User.builder()
+                userRepository.save(User.builder().degree(informatica)
                 .username("mariana010")
                 .email("mariana@example.com")
                 .passwordHash(passwordEncoder.encode("password"))
@@ -312,9 +321,10 @@ public class DataLoader {
                 .enabled(true)
                 .build());
 
-                // El catálogo de cursos y asignaturas lo siembra la migración Flyway V8.
+                // El catálogo de cursos y asignaturas lo siembra la migración Flyway (V8 + V11).
                 User demoUploader = userRepository.findByUsername("juan123").orElseThrow();
-                Subject subject1 = subjectRepository.findByCode("FMAT1").orElse(null);
+                // Código oficial de la USC para «Fundamentos de Matemáticas» (antes FMAT1).
+                Subject subject1 = subjectRepository.findByCode("G4012101").orElse(null);
                 if (subject1 == null) {
                     System.out.println("ℹ️ Catálogo de asignaturas no disponible; se omite el seed de archivos demo.");
                 } else {

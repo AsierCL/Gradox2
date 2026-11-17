@@ -20,6 +20,8 @@ public interface IUserService {
     MyProfileResponse deleteProfilePicture();
     void banUser(Long id);
     void banUser(Long id, String reason);
+
+    void changeUserDegree(Long id, Long degreeId, String reason);
     void unbanUser(Long id);
     Page<BannedUserResponse> getBannedUsers(int page, int size);
 }

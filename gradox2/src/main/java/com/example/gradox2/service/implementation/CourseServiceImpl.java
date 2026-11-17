@@ -24,9 +24,9 @@ public class CourseServiceImpl implements ICourseService {
 
     @Override
     @Transactional(readOnly = true)
-    @Cacheable("courses")
-    public List<CourseResponse> listAll() {
-        return courseRepository.findAllWithSubjectsByOrderByCodeAsc()
+    @Cacheable(value = "courses", key = "'degree:' + #degreeId")
+    public List<CourseResponse> listByDegree(Long degreeId) {
+        return courseRepository.findAllWithSubjectsByDegreeId(degreeId)
                 .stream()
                 .map(CourseMapper::toCourseResponse)
                 .toList();

@@ -26,6 +26,9 @@ import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 
+import com.example.gradox2.persistence.entities.Degree;
+import com.example.gradox2.persistence.repository.DegreeRepository;
+import com.example.gradox2.support.TestDegrees;
 import com.example.gradox2.persistence.entities.Course;
 import com.example.gradox2.persistence.entities.Subject;
 import com.example.gradox2.persistence.entities.User;
@@ -794,7 +797,7 @@ class ApiIntegrationTest {
     }
 
     private void createEnabledUser(String username, String email, String password, UserRole role) {
-        User user = User.builder()
+        User user = User.builder().degree(degree())
                 .username(username)
                 .email(email)
                 .passwordHash(passwordEncoder.encode(password))
@@ -832,7 +835,7 @@ class ApiIntegrationTest {
     }
 
         private Long createSubject() {
-        Course course = courseRepository.save(Course.builder()
+        Course course = courseRepository.save(Course.builder().degree(degree())
             .code("C" + System.nanoTime())
             .name("Curso Test")
             .build());
@@ -876,4 +879,11 @@ class ApiIntegrationTest {
         JsonNode body = objectMapper.readTree(result.getResponse().getContentAsString());
         return body.get("id").asLong();
         }
+
+    @Autowired
+    private DegreeRepository degreeRepository;
+
+    private Degree degree() {
+        return TestDegrees.informatica(degreeRepository);
+    }
 }

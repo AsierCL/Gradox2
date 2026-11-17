@@ -37,6 +37,9 @@ import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 
+import com.example.gradox2.persistence.entities.Degree;
+import com.example.gradox2.persistence.repository.DegreeRepository;
+import com.example.gradox2.support.TestDegrees;
 import com.example.gradox2.persistence.entities.User;
 import com.example.gradox2.persistence.entities.enums.UserRole;
 import com.example.gradox2.persistence.repository.FileProposalRepository;
@@ -406,7 +409,7 @@ class ProfilePictureIntegrationTest {
     }
 
     private User createEnabledUser(String username, String email, String password) {
-        User user = User.builder()
+        User user = User.builder().degree(degree())
                 .username(username)
                 .email(email)
                 .passwordHash(passwordEncoder.encode(password))
@@ -441,5 +444,12 @@ class ProfilePictureIntegrationTest {
             JsonNode node = objectMapper.readTree(result.getResponse().getContentAsString());
             return node.get("profilePictureUrl").asText();
         }
+    }
+
+    @Autowired
+    private DegreeRepository degreeRepository;
+
+    private Degree degree() {
+        return TestDegrees.informatica(degreeRepository);
     }
 }

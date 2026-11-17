@@ -22,6 +22,9 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
+import com.example.gradox2.persistence.entities.Degree;
+import com.example.gradox2.persistence.repository.DegreeRepository;
+import com.example.gradox2.support.TestDegrees;
 import com.example.gradox2.persistence.entities.Course;
 import com.example.gradox2.persistence.entities.Proposal;
 import com.example.gradox2.persistence.entities.PromotionProposal;
@@ -284,7 +287,7 @@ class GovernanceRulesIntegrationTest {
         createEnabledUser("weightVoter", "weightVoter@rai.usc.es", "SecurePass1!", UserRole.USER);
 
         String proposerToken = loginAndGetToken("weightProposer", "SecurePass1!");
-        String masterToken = loginAndGetToken("weightMaster", "SecurePass1!");
+        String adminToken = loginAndGetToken("weightMaster", "SecurePass1!");
         String voterToken = loginAndGetToken("weightVoter", "SecurePass1!");
 
         long proposalId = uploadProposalAndGetId(proposerToken, subjectId, "temaW.pdf", "Tema W", "Desc W");
@@ -294,7 +297,7 @@ class GovernanceRulesIntegrationTest {
         org.junit.jupiter.api.Assertions.assertNull(beforeVoting.getUserVoteWeight());
 
         mockMvc.perform(post("/vote/{id}/{upvote}", proposalId, false)
-                        .header("Authorization", bearer(masterToken)))
+                        .header("Authorization", bearer(adminToken)))
                 .andExpect(status().isOk());
 
         Proposal afterFirstVote = proposalRepository.findById(proposalId).orElseThrow();
@@ -320,9 +323,9 @@ class GovernanceRulesIntegrationTest {
 
         Long subjectId = createSubject();
         createEnabledUser("auditProposer", "auditProposer@rai.usc.es", "SecurePass1!", UserRole.USER);
-        createEnabledUser("auditMaster", "auditMaster@rai.usc.es", "SecurePass1!", UserRole.MASTER);
+        createEnabledUser("auditAdmin", "auditAdmin@rai.usc.es", "SecurePass1!", UserRole.ADMIN);
         String token = loginAndGetTokenQuietly("auditProposer", "SecurePass1!");
-        String masterToken = loginAndGetToken("auditMaster", "SecurePass1!");
+        String adminToken = loginAndGetToken("auditAdmin", "SecurePass1!");
 
         long proposalId = uploadProposalAndGetIdQuietly(token, subjectId, "audit.pdf", "Audit", "Desc");
 
@@ -333,7 +336,7 @@ class GovernanceRulesIntegrationTest {
         voteService.closeExpiredProposals();
 
         MvcResult auditResult = mockMvc.perform(get("/admin/audit")
-                        .header("Authorization", bearer(masterToken)))
+                        .header("Authorization", bearer(adminToken)))
                 .andExpect(status().isOk())
                 .andReturn();
 
@@ -570,7 +573,7 @@ class GovernanceRulesIntegrationTest {
     }
 
     private User createEnabledUser(String username, String email, String password, UserRole role) {
-        User user = User.builder()
+        User user = User.builder().degree(degree())
                 .username(username)
                 .email(email)
                 .passwordHash(passwordEncoder.encode(password))
@@ -600,7 +603,7 @@ class GovernanceRulesIntegrationTest {
     }
 
     private Long createSubject() {
-        Course course = courseRepository.save(Course.builder()
+        Course course = courseRepository.save(Course.builder().degree(degree())
                 .code("C" + System.nanoTime())
                 .name("Curso Test")
                 .build());
@@ -661,5 +664,12 @@ class GovernanceRulesIntegrationTest {
 
     private String json(Object value) throws Exception {
         return objectMapper.writeValueAsString(value);
+    }
+
+    @Autowired
+    private DegreeRepository degreeRepository;
+
+    private Degree degree() {
+        return TestDegrees.informatica(degreeRepository);
     }
 }

@@ -16,6 +16,9 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
+import com.example.gradox2.persistence.entities.Degree;
+import com.example.gradox2.persistence.repository.DegreeRepository;
+import com.example.gradox2.support.TestDegrees;
 import com.example.gradox2.persistence.entities.User;
 import com.example.gradox2.persistence.entities.enums.UserRole;
 import com.example.gradox2.support.TestDatabaseCleaner;
@@ -65,7 +68,7 @@ class AuthRateLimitIntegrationTest {
         // Base compartida entre clases de test: ver TestDatabaseCleaner.
         databaseCleaner.clean();
 
-        User user = User.builder()
+        User user = User.builder().degree(degree())
                 .username("ratelimituser")
                 .email("ratelimit@rai.usc.es")
                 .passwordHash(passwordEncoder.encode("CorrectPass1!"))
@@ -147,5 +150,12 @@ class AuthRateLimitIntegrationTest {
 
     private String json(Object value) throws Exception {
         return objectMapper.writeValueAsString(value);
+    }
+
+    @Autowired
+    private DegreeRepository degreeRepository;
+
+    private Degree degree() {
+        return TestDegrees.informatica(degreeRepository);
     }
 }

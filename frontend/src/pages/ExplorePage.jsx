@@ -44,6 +44,7 @@ export function ExplorePage() {
   const [params, setParams] = useSearchParams()
   const query = params.get('q') || ''
   const type = params.get('tipo') || ''
+  const degreeParam = params.get('grado') || ''
   const course = params.get('curso') || ''
   const subjectParam = params.get('asignatura') || ''
   const sort = params.get('orden') || 'relevancia'
@@ -53,27 +54,39 @@ export function ExplorePage() {
     queryFn: ({ signal }) => api.files.list(signal),
     staleTime: 30_000,
   })
-  const subjectsQuery = useQuery({
-    queryKey: ['subjects'],
-    queryFn: () => api.subjects.list(),
-    staleTime: 5 * 60_000,
+  const degreesQuery = useQuery({
+    queryKey: ['degrees'],
+    queryFn: () => api.degrees.list(),
+    staleTime: 10 * 60_000,
   })
-  const coursesQuery = useQuery({
-    queryKey: ['courses'],
-    queryFn: () => api.courses.list(),
+  const degreeCoursesQuery = useQuery({
+    queryKey: ['degree-courses', degreeParam],
+    queryFn: () => api.degrees.courses(degreeParam),
+    enabled: Boolean(degreeParam),
     staleTime: 5 * 60_000,
   })
 
   const files = useMemo(() => filesQuery.data || [], [filesQuery.data])
-  const subjects = useMemo(() => subjectsQuery.data || [], [subjectsQuery.data])
-  const courses = [...(coursesQuery.data || [])].sort((a, b) => Number(a.code) - Number(b.code))
-
+  const degrees = useMemo(() => degreesQuery.data || [], [degreesQuery.data])
+  const degree = degrees.find((item) => String(item.id) === String(degreeParam))
+  const courses = useMemo(
+    () => degreeCoursesQuery.data || [],
+    [degreeCoursesQuery.data],
+  )
+  const subjects = useMemo(
+    () =>
+      courses.flatMap((item) =>
+        (item.subjects || []).map((subject) => ({
+          ...subject,
+          courseId: item.id,
+          courseName: item.name,
+          courseCode: item.code,
+        })),
+      ),
+    [courses],
+  )
   const subjectsById = useMemo(
     () => new Map(subjects.map((subject) => [String(subject.id), subject])),
-    [subjects],
-  )
-  const subjectsByName = useMemo(
-    () => new Map(subjects.map((subject) => [subject.name, subject])),
     [subjects],
   )
 
@@ -85,6 +98,10 @@ export function ExplorePage() {
     const next = new URLSearchParams(params)
     if (value) next.set(key, value)
     else next.delete(key)
+    if (key === 'grado') {
+      next.delete('curso')
+      next.delete('asignatura')
+    }
     if (key === 'curso') next.delete('asignatura')
     setParams(next, { replace: true })
   }
@@ -99,16 +116,21 @@ export function ExplorePage() {
     const normalized = normalizeSearch(query.trim())
     let list = files.filter((file) => {
       if (type && file.fileType !== type) return false
-      const subject = subjectsByName.get(file.subject)
+      if (degreeParam && String(file.degreeId) !== String(degreeParam)) return false
+      const subject = subjectsById.get(String(file.subjectId))
       if (course && String(subject?.courseId) !== String(course)) return false
-      if (subjectParam && String(subject?.id) !== String(subjectParam)) return false
+      if (subjectParam && String(file.subjectId) !== String(subjectParam)) return false
       if (!normalized) return true
       const haystack = normalizeSearch(
         [
           file.fileName,
           file.description,
           file.subject,
+          file.subjectCode,
+          file.degreeName,
+          file.degreeCode,
           file.uploaderUsername,
+          subject?.courseName,
           FILE_TYPES[file.fileType]?.label,
           searchAliases[file.fileType],
         ]
@@ -123,19 +145,33 @@ export function ExplorePage() {
     } else if (sort === 'nombre') {
       list = [...list].sort((a, b) => (a.fileName || '').localeCompare(b.fileName || '', 'es'))
     } else if (sort === 'asignatura') {
-      list = [...list].sort((a, b) => (a.subject || '').localeCompare(b.subject || '', 'es'))
+      list = [...list].sort((a, b) => {
+        const left = subjectsById.get(String(a.subjectId))?.name || a.subject || ''
+        const right = subjectsById.get(String(b.subjectId))?.name || b.subject || ''
+        return left.localeCompare(right, 'es')
+      })
     }
     return list
-  }, [files, type, course, subjectParam, query, sort, subjectsByName])
+  }, [
+    files,
+    type,
+    degreeParam,
+    course,
+    subjectParam,
+    query,
+    sort,
+    subjectsById,
+  ])
 
-  const activeFilters = [type, course, subjectParam].filter(Boolean).length
+  const activeFilters = [type, degreeParam, course, subjectParam].filter(Boolean).length
+  const selectedSubject = subjectParam ? subjectsById.get(String(subjectParam)) : null
 
   return (
     <div className="site-shell">
       <PageHeader
         eyebrow="Catálogo"
         title="Explorar materiales"
-        description="Apuntes, exámenes y ejercicios de Ingeniería Informática."
+        description="Apuntes, exámenes y ejercicios de todos los grados."
       />
 
       <Reveal>
@@ -148,7 +184,7 @@ export function ExplorePage() {
                 onChange={(event) => update('q', event.target.value)}
                 placeholder="Buscar material"
                 aria-label="Buscar material"
-                className="h-12 w-full min-w-0 bg-transparent text-sm text-ink outline-none placeholder:text-ink-faint"
+                className="h-12 w-full min-w-0 bg-transparent focus-ring text-sm text-ink outline-none placeholder:text-ink-faint"
               />
               {query && (
                 <button
@@ -169,7 +205,7 @@ export function ExplorePage() {
                 value={sort}
                 onChange={(event) => update('orden', event.target.value)}
                 aria-label="Ordenar resultados"
-                className="h-12 rounded-full border border-ink/10 bg-white/55 px-4 text-xs font-semibold text-ink-soft outline-none transition-colors hover:bg-white/80"
+                className="h-12 rounded-full border border-ink/10 bg-white/55 px-4 focus-ring text-xs font-semibold text-ink-soft outline-none transition-colors hover:bg-white/80"
               >
                 <option value="relevancia">Relevancia</option>
                 <option value="valoracion">Mejor valorados</option>
@@ -180,12 +216,17 @@ export function ExplorePage() {
           </div>
 
           <div className="mt-3 flex flex-col gap-3 border-t border-ink/8 pt-3 lg:flex-row lg:items-center lg:justify-between">
-            <div className="hide-scrollbar flex flex-wrap items-center gap-1.5 sm:flex-nowrap sm:overflow-x-auto">
+            <div
+              className="hide-scrollbar flex flex-wrap items-center gap-1.5 sm:flex-nowrap sm:overflow-x-auto"
+              role="group"
+              aria-label="Tipo de material"
+            >
               {types.map((item) => (
                 <button
                   key={item.value}
                   type="button"
                   onClick={() => update('tipo', item.value)}
+                  aria-pressed={type === item.value}
                   className={cn(
                     'shrink-0 rounded-full px-3.5 py-2 text-[0.72rem] font-semibold transition-all duration-300',
                     type === item.value
@@ -202,29 +243,46 @@ export function ExplorePage() {
               <div className="flex items-center gap-2">
                 <FunnelSimple size={15} className="text-ink-faint" aria-hidden="true" />
                 <select
-                  value={course}
-                  onChange={(event) => update('curso', event.target.value)}
-                  aria-label="Filtrar por curso"
-                  className="h-10 min-w-0 flex-1 rounded-full border border-ink/10 bg-white/45 px-3 text-[0.72rem] font-semibold text-ink-soft outline-none hover:bg-white/70 lg:min-w-36"
+                  value={degreeParam}
+                  onChange={(event) => update('grado', event.target.value)}
+                  aria-label="Filtrar por grado"
+                  className="h-10 min-w-0 flex-1 rounded-full border border-ink/10 bg-white/45 px-3 focus-ring text-[0.72rem] font-semibold text-ink-soft outline-none hover:bg-white/70 lg:min-w-44"
                 >
-                  <option value="">Todos los cursos</option>
-                  {courses.map((item) => (
+                  <option value="">
+                    {degreesQuery.isLoading ? 'Cargando grados…' : 'Todos los grados'}
+                  </option>
+                  {degrees.map((item) => (
                     <option key={item.id} value={item.id}>
-                      {item.name}
+                      {item.name} · {item.code}
                     </option>
                   ))}
                 </select>
               </div>
               <select
+                value={course}
+                onChange={(event) => update('curso', event.target.value)}
+                aria-label="Filtrar por curso"
+                disabled={!degreeParam}
+                className="h-10 min-w-0 rounded-full border border-ink/10 bg-white/45 px-3 focus-ring text-[0.72rem] font-semibold text-ink-soft outline-none hover:bg-white/70 disabled:cursor-not-allowed disabled:opacity-45 lg:min-w-36"
+              >
+                <option value="">{degreeParam ? 'Todos los cursos' : 'Elige un grado'}</option>
+                {courses.map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.name}
+                  </option>
+                ))}
+              </select>
+              <select
                 value={subjectParam}
                 onChange={(event) => update('asignatura', event.target.value)}
                 aria-label="Filtrar por asignatura"
-                className="h-10 min-w-0 rounded-full border border-ink/10 bg-white/45 px-3 text-[0.72rem] font-semibold text-ink-soft outline-none hover:bg-white/70 lg:min-w-44"
+                disabled={!degreeParam}
+                className="h-10 min-w-0 rounded-full border border-ink/10 bg-white/45 px-3 focus-ring text-[0.72rem] font-semibold text-ink-soft outline-none hover:bg-white/70 disabled:cursor-not-allowed disabled:opacity-45 lg:min-w-52"
               >
-                <option value="">Todas las asignaturas</option>
+                <option value="">{degreeParam ? 'Todas las asignaturas' : 'Elige un grado'}</option>
                 {availableSubjects.map((item) => (
                   <option key={item.id} value={item.id}>
-                    {item.name}
+                    {item.name} · {item.code}
                   </option>
                 ))}
               </select>
@@ -251,16 +309,22 @@ export function ExplorePage() {
               : `${formatNumber(filtered.length)} ${
                   filtered.length === 1 ? 'material encontrado' : 'materiales encontrados'
                 }`}
-            {subjectParam && subjectsById.get(subjectParam) && (
+            {degree && (
               <>
                 {' '}
-                en{' '}
-                <span className="font-semibold text-ink">
-                  {subjectsById.get(subjectParam).name}
-                </span>
+                en <span className="font-semibold text-ink">{degree.name}</span>
+              </>
+            )}
+            {selectedSubject && (
+              <>
+                {' '}
+                · <span className="font-semibold text-ink">{selectedSubject.name}</span>
               </>
             )}
           </p>
+          {degreeParam && courses.length === 0 && degreeCoursesQuery.isLoading && (
+            <p className="mt-1 text-[0.65rem] text-ink-faint">Cargando cursos y asignaturas…</p>
+          )}
         </div>
         {sort !== 'relevancia' && (
           <p className="hidden text-[0.68rem] text-ink-faint sm:block">
@@ -286,7 +350,7 @@ export function ExplorePage() {
       ) : filtered.length ? (
         <div className="glass divide-y divide-ink/8 overflow-hidden rounded-2xl">
           {filtered.map((file) => (
-            <FileRow key={file.id} file={file} />
+            <FileRow key={file.id} file={file} showDegree />
           ))}
         </div>
       ) : (
@@ -309,7 +373,9 @@ export function ExplorePage() {
       <div className="mt-16 flex flex-col items-start justify-between gap-5 rounded-3xl border border-ink/8 bg-white px-6 py-6 sm:flex-row sm:items-center">
         <div>
           <p className="text-sm font-semibold text-ink">Comparte material</p>
-          <p className="mt-1 text-sm text-ink-soft">Publica apuntes, exámenes o ejercicios.</p>
+          <p className="mt-1 text-sm text-ink-soft">
+            Publica apuntes, exámenes o ejercicios en tu grado.
+          </p>
         </div>
         <Button to="/subir">Compartir material</Button>
       </div>

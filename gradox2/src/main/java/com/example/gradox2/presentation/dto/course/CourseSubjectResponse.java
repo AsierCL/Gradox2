@@ -20,4 +20,13 @@ public class CourseSubjectResponse {
 
     @Schema(description = "Nombre de la asignatura", example = "Fundamentos de Matemáticas")
     private String name;
+
+    @Schema(description = "Créditos ECTS del plan oficial", example = "6")
+    private Double credits;
+
+    @Schema(description = "Semestre del plan oficial (nulo si es anual)", example = "Primer semestre")
+    private String semester;
+
+    @Schema(description = "Tipo de materia del plan oficial", example = "Formación básica")
+    private String subjectType;
 }

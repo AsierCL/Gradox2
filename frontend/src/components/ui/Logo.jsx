@@ -34,7 +34,7 @@ export function Logo({ light = false, compact = false }) {
   return (
     <Link
       to="/"
-      aria-label="Gradox, ir al inicio"
+      aria-label="Gradox2, ir al inicio"
       className="group inline-flex items-center gap-2.5 rounded-full"
     >
       <Logomark className="size-9 transition-transform duration-500 ease-silk group-hover:rotate-[-6deg]" />
@@ -46,7 +46,7 @@ export function Logo({ light = false, compact = false }) {
           )}
           style={{ fontVariationSettings: "'wght' 650" }}
         >
-          gradox
+          gradox2
           <span className={light ? 'text-aqua-300' : 'text-aqua-500'}>.</span>
         </span>
       )}

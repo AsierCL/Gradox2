@@ -16,6 +16,9 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.test.web.servlet.MockMvc;
 
+import com.example.gradox2.persistence.entities.Degree;
+import com.example.gradox2.persistence.repository.DegreeRepository;
+import com.example.gradox2.support.TestDegrees;
 import com.example.gradox2.persistence.entities.Course;
 import com.example.gradox2.persistence.entities.Subject;
 import com.example.gradox2.persistence.repository.CourseRepository;
@@ -47,15 +50,15 @@ class CourseIntegrationTest {
     }
 
     @Test
-    void getAllCoursesReturnsCoursesOrderedByCodeWithSubjects() throws Exception {
-        Course primero = courseRepository.save(Course.builder().code("1").name("Primer curso").build());
-        Course segundo = courseRepository.save(Course.builder().code("2").name("Segundo curso").build());
+    void degreeCoursesReturnCoursesOrderedByCodeWithSubjects() throws Exception {
+        Course primero = courseRepository.save(Course.builder().degree(degree()).code("1").name("Primer curso").build());
+        Course segundo = courseRepository.save(Course.builder().degree(degree()).code("2").name("Segundo curso").build());
 
         subjectRepository.save(Subject.builder().code("FMAT1").name("Fundamentos de Matemáticas").course(primero).build());
         subjectRepository.save(Subject.builder().code("ALG1").name("Álgebra").course(primero).build());
         subjectRepository.save(Subject.builder().code("BD1").name("Bases de Datos I").course(segundo).build());
 
-        mockMvc.perform(get("/courses"))
+        mockMvc.perform(get("/degrees/{degreeId}/courses", degree().getId()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(2))
                 .andExpect(jsonPath("$[0].code").value("1"))
@@ -69,7 +72,7 @@ class CourseIntegrationTest {
 
     @Test
     void getCourseReturnsDetailWithSubjects() throws Exception {
-        Course curso = courseRepository.save(Course.builder().code("3").name("Tercer curso").build());
+        Course curso = courseRepository.save(Course.builder().degree(degree()).code("3").name("Tercer curso").build());
         subjectRepository.save(Subject.builder().code("IA3").name("Inteligencia Artificial").course(curso).build());
 
         mockMvc.perform(get("/courses/{id}", curso.getId()))
@@ -88,37 +91,44 @@ class CourseIntegrationTest {
     }
 
     @Test
-    void getAllCoursesIsServedFromCacheOnSecondRequest() throws Exception {
-        courseRepository.save(Course.builder().code("1").name("Primer curso").build());
+    void degreeCoursesAreServedFromCacheOnSecondRequest() throws Exception {
+        courseRepository.save(Course.builder().degree(degree()).code("1").name("Primer curso").build());
 
-        mockMvc.perform(get("/courses")).andExpect(status().isOk());
-        mockMvc.perform(get("/courses")).andExpect(status().isOk());
-        mockMvc.perform(get("/courses")).andExpect(status().isOk());
+        mockMvc.perform(get("/degrees/{degreeId}/courses", degree().getId())).andExpect(status().isOk());
+        mockMvc.perform(get("/degrees/{degreeId}/courses", degree().getId())).andExpect(status().isOk());
+        mockMvc.perform(get("/degrees/{degreeId}/courses", degree().getId())).andExpect(status().isOk());
 
         verify(courseRepository, times(1))
-                .findAllWithSubjectsByOrderByCodeAsc();
+                .findAllWithSubjectsByDegreeId(degree().getId());
     }
 
     @Test
-    void getAllCoursesRehitsDatabaseAfterCacheEviction() throws Exception {
-        courseRepository.save(Course.builder().code("1").name("Primer curso").build());
+    void degreeCoursesRehitDatabaseAfterCacheEviction() throws Exception {
+        courseRepository.save(Course.builder().degree(degree()).code("1").name("Primer curso").build());
 
-        mockMvc.perform(get("/courses")).andExpect(status().isOk());
+        mockMvc.perform(get("/degrees/{degreeId}/courses", degree().getId())).andExpect(status().isOk());
         cacheManager.getCache("courses").clear();
 
-        mockMvc.perform(get("/courses")).andExpect(status().isOk());
+        mockMvc.perform(get("/degrees/{degreeId}/courses", degree().getId())).andExpect(status().isOk());
 
         verify(courseRepository, times(2))
-                .findAllWithSubjectsByOrderByCodeAsc();
+                .findAllWithSubjectsByDegreeId(degree().getId());
     }
 
     @Test
     void getCourseIsServedFromCacheOnSecondRequest() throws Exception {
-        Course curso = courseRepository.save(Course.builder().code("1").name("Primer curso").build());
+        Course curso = courseRepository.save(Course.builder().degree(degree()).code("1").name("Primer curso").build());
 
         mockMvc.perform(get("/courses/{id}", curso.getId())).andExpect(status().isOk());
         mockMvc.perform(get("/courses/{id}", curso.getId())).andExpect(status().isOk());
 
         verify(courseRepository, times(1)).findByIdWithSubjects(curso.getId());
+    }
+
+    @Autowired
+    private DegreeRepository degreeRepository;
+
+    private Degree degree() {
+        return TestDegrees.informatica(degreeRepository);
     }
 }

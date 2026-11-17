@@ -67,10 +67,11 @@ public class SecurityConfig {
                         .authenticationEntryPoint(authenticationEntryPoint)
                         .accessDeniedHandler(accessDeniedHandler))
                 .authorizeHttpRequests(authz -> authz
-                                .requestMatchers("/admin/**").hasRole("MASTER")
+                                .requestMatchers("/admin/**").hasRole("ADMIN")
                                 .requestMatchers(HttpMethod.GET, "/files/**").permitAll()
                                 .requestMatchers(HttpMethod.GET, "/subjects/**").permitAll()
                                 .requestMatchers(HttpMethod.GET, "/courses/**").permitAll()
+                                .requestMatchers(HttpMethod.GET, "/degrees/**").permitAll()
                                 .requestMatchers(HttpMethod.GET, "/badges/**").permitAll()
                                 .requestMatchers(HttpMethod.GET, "/stats/**").permitAll()
                                 .requestMatchers("/api/auth/**").permitAll()

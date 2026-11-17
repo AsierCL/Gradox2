@@ -29,6 +29,9 @@ public final class CourseMapper {
             .id(course.getId())
             .code(course.getCode())
             .name(course.getName())
+            .degreeId(course.getDegree() != null ? course.getDegree().getId() : null)
+            .degreeCode(course.getDegree() != null ? course.getDegree().getCode() : null)
+            .degreeName(course.getDegree() != null ? course.getDegree().getName() : null)
             .subjects(subjects)
             .build();
     }
@@ -38,6 +41,9 @@ public final class CourseMapper {
             .id(subject.getId())
             .code(subject.getCode())
             .name(subject.getName())
+            .credits(subject.getCredits())
+            .semester(subject.getSemester())
+            .subjectType(subject.getSubjectType())
             .build();
     }
 }

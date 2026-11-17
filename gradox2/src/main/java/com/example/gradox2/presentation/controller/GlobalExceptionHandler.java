@@ -10,9 +10,15 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.validation.BindException;
+import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 import com.example.gradox2.presentation.dto.auth.ErrorDTO;
+import com.example.gradox2.service.exceptions.DegreeImmutableException;
+import com.example.gradox2.service.exceptions.DegreeLastMasterException;
+import com.example.gradox2.service.exceptions.DegreeNotFoundException;
+import com.example.gradox2.service.exceptions.DegreeRequiredException;
+import com.example.gradox2.service.exceptions.DegreeScopeException;
 import com.example.gradox2.service.exceptions.UnauthenticatedAccessException;
 import com.example.gradox2.service.exceptions.AlreadyExistsException;
 import com.example.gradox2.service.exceptions.InternalServerErrorException;
@@ -21,6 +27,8 @@ import com.example.gradox2.service.exceptions.InvalidFileOperation;
 import com.example.gradox2.service.exceptions.NotFoundException;
 import com.example.gradox2.service.exceptions.ProposalClosedException;
 import com.example.gradox2.service.exceptions.RateLimitExceededException;
+
+import org.springframework.context.MessageSourceResolvable;
 
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
@@ -37,6 +45,51 @@ public class GlobalExceptionHandler {
                 .errorCode("ALREADY_EXIST_ERROR")
                 .build();
         return new ResponseEntity<>(error, HttpStatus.CONFLICT);
+    }
+
+    @ExceptionHandler(DegreeRequiredException.class)
+    public ResponseEntity<ErrorDTO> handleDegreeRequired(DegreeRequiredException ex) {
+        ErrorDTO error = ErrorDTO.builder()
+                .errorMessage(ex.getMessage())
+                .errorCode("DEGREE_REQUIRED")
+                .build();
+        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(DegreeImmutableException.class)
+    public ResponseEntity<ErrorDTO> handleDegreeImmutable(DegreeImmutableException ex) {
+        ErrorDTO error = ErrorDTO.builder()
+                .errorMessage(ex.getMessage())
+                .errorCode("DEGREE_IMMUTABLE")
+                .build();
+        return new ResponseEntity<>(error, HttpStatus.FORBIDDEN);
+    }
+
+    @ExceptionHandler(DegreeLastMasterException.class)
+    public ResponseEntity<ErrorDTO> handleDegreeLastMaster(DegreeLastMasterException ex) {
+        ErrorDTO error = ErrorDTO.builder()
+                .errorMessage(ex.getMessage())
+                .errorCode("DEGREE_LAST_MASTER")
+                .build();
+        return new ResponseEntity<>(error, HttpStatus.CONFLICT);
+    }
+
+    @ExceptionHandler(DegreeScopeException.class)
+    public ResponseEntity<ErrorDTO> handleDegreeScope(DegreeScopeException ex) {
+        ErrorDTO error = ErrorDTO.builder()
+                .errorMessage(ex.getMessage())
+                .errorCode("DEGREE_SCOPE_FORBIDDEN")
+                .build();
+        return new ResponseEntity<>(error, HttpStatus.FORBIDDEN);
+    }
+
+    @ExceptionHandler(DegreeNotFoundException.class)
+    public ResponseEntity<ErrorDTO> handleDegreeNotFound(DegreeNotFoundException ex) {
+        ErrorDTO error = ErrorDTO.builder()
+                .errorMessage(ex.getMessage())
+                .errorCode("DEGREE_NOT_FOUND")
+                .build();
+        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
     }
 
     @ExceptionHandler(UnauthenticatedAccessException.class)
@@ -131,7 +184,8 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler({MethodArgumentNotValidException.class, BindException.class,
             ConstraintViolationException.class, HttpMessageNotReadableException.class,
-            MissingServletRequestParameterException.class, MethodArgumentTypeMismatchException.class})
+            MissingServletRequestParameterException.class, MethodArgumentTypeMismatchException.class,
+            HandlerMethodValidationException.class})
     public ResponseEntity<ErrorDTO> handleValidationErrors(Exception ex) {
         ErrorDTO error = ErrorDTO.builder()
                 .errorMessage(validationMessage(ex))
@@ -164,6 +218,17 @@ public class GlobalExceptionHandler {
 
         if (ex instanceof MissingServletRequestParameterException missingParameterException) {
             return "Missing required parameter: " + missingParameterException.getParameterName();
+        }
+
+        if (ex instanceof HandlerMethodValidationException methodValidationException) {
+            // Spring 6.2 valida también los parámetros de la firma (por ejemplo @Positive en un
+            // @PathVariable). Sin este caso el cliente recibía un 400 con body vacío y sin código.
+            return methodValidationException.getAllValidationResults().stream()
+                    .flatMap(result -> result.getResolvableErrors().stream())
+                    .map(MessageSourceResolvable::getDefaultMessage)
+                    .filter(message -> message != null && !message.isBlank())
+                    .findFirst()
+                    .orElse("Invalid request data");
         }
 
         if (ex instanceof MethodArgumentTypeMismatchException typeMismatchException) {

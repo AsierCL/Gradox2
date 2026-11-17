@@ -29,4 +29,22 @@ public class SubjectResponse {
 
     @Schema(description = "Nombre del curso", example = "Primer curso")
     private String courseName;
+
+    @Schema(description = "ID del grado al que pertenece la asignatura", example = "1")
+    private Long degreeId;
+
+    @Schema(description = "Código oficial del grado", example = "G4012")
+    private String degreeCode;
+
+    @Schema(description = "Nombre del grado", example = "Ingeniería Informática")
+    private String degreeName;
+
+    @Schema(description = "Créditos ECTS del plan oficial", example = "4.5")
+    private Double credits;
+
+    @Schema(description = "Semestre del plan oficial (nulo si es anual)", example = "Segundo semestre")
+    private String semester;
+
+    @Schema(description = "Tipo de materia del plan oficial", example = "Obligatorio")
+    private String subjectType;
 }

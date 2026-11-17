@@ -2,7 +2,9 @@ package com.example.gradox2.support;
 
 import org.springframework.stereotype.Component;
 
+import com.example.gradox2.persistence.repository.AuditRecordRepository;
 import com.example.gradox2.persistence.repository.CourseRepository;
+import com.example.gradox2.persistence.repository.DegreeRepository;
 import com.example.gradox2.persistence.repository.FileProposalRepository;
 import com.example.gradox2.persistence.repository.FileRepository;
 import com.example.gradox2.persistence.repository.ForumThreadRepository;
@@ -32,6 +34,7 @@ import com.example.gradox2.persistence.repository.VoteRepository;
 @Component
 public class TestDatabaseCleaner {
 
+    private final AuditRecordRepository auditRecordRepository;
     private final ThreadCommentRepository threadCommentRepository;
     private final ForumThreadRepository forumThreadRepository;
     private final ScoreRepository scoreRepository;
@@ -47,9 +50,11 @@ public class TestDatabaseCleaner {
     private final VoteConfigRepository voteConfigRepository;
     private final SubjectRepository subjectRepository;
     private final CourseRepository courseRepository;
+    private final DegreeRepository degreeRepository;
     private final UserRepository userRepository;
 
-    public TestDatabaseCleaner(ThreadCommentRepository threadCommentRepository,
+    public TestDatabaseCleaner(AuditRecordRepository auditRecordRepository,
+            ThreadCommentRepository threadCommentRepository,
             ForumThreadRepository forumThreadRepository,
             ScoreRepository scoreRepository,
             VoteRepository voteRepository,
@@ -64,7 +69,9 @@ public class TestDatabaseCleaner {
             VoteConfigRepository voteConfigRepository,
             SubjectRepository subjectRepository,
             CourseRepository courseRepository,
+            DegreeRepository degreeRepository,
             UserRepository userRepository) {
+        this.auditRecordRepository = auditRecordRepository;
         this.threadCommentRepository = threadCommentRepository;
         this.forumThreadRepository = forumThreadRepository;
         this.scoreRepository = scoreRepository;
@@ -80,11 +87,13 @@ public class TestDatabaseCleaner {
         this.voteConfigRepository = voteConfigRepository;
         this.subjectRepository = subjectRepository;
         this.courseRepository = courseRepository;
+        this.degreeRepository = degreeRepository;
         this.userRepository = userRepository;
     }
 
     /** Borra de hijos a padres: primero lo que referencia, después lo referenciado. */
     public void clean() {
+        auditRecordRepository.deleteAll();
         threadCommentRepository.deleteAll();
         forumThreadRepository.deleteAll();
         scoreRepository.deleteAll();
@@ -101,5 +110,6 @@ public class TestDatabaseCleaner {
         subjectRepository.deleteAll();
         courseRepository.deleteAll();
         userRepository.deleteAll();
+        degreeRepository.deleteAll();
     }
 }

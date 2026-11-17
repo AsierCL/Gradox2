@@ -3,6 +3,7 @@ import { ArrowUpRight, FileArrowUp, User, CalendarBlank } from '@phosphor-icons/
 import { statusMeta, typeMeta } from '../../lib/constants'
 import { formatDate } from '../../lib/format'
 import { StatusBadge, TypeBadge } from '../ui/Badge'
+import { DegreeBadge } from '../degrees/DegreeBadge'
 
 export function ProposalCard({ proposal }) {
   const type = typeMeta(proposal.type)
@@ -26,8 +27,16 @@ export function ProposalCard({ proposal }) {
       <div className="mt-5 flex-1">
         <p className="text-[0.65rem] font-semibold uppercase tracking-[0.12em] text-aqua-700">
           {proposal.subjectName || 'Sin asignatura'}
-          {proposal.course && <span className="text-ink-faint"> · {proposal.course}</span>}
+          {proposal.courseName && (
+            <span className="text-ink-faint"> · {proposal.courseName}</span>
+          )}
         </p>
+        <div className="mt-2 flex flex-wrap items-center gap-1.5">
+          <DegreeBadge name={proposal.degreeName} code={proposal.degreeCode} />
+          {proposal.subjectCode && (
+            <span className="text-[0.6rem] text-ink-faint">{proposal.subjectCode}</span>
+          )}
+        </div>
         <h3 className="mt-2 text-balance text-[1.25rem] font-semibold leading-snug tracking-[-0.03em] text-ink">
           {proposal.title}
         </h3>

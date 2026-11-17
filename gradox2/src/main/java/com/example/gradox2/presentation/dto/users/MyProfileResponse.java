@@ -39,4 +39,16 @@ public class MyProfileResponse {
 
     @Schema(description = "Insignias obtenidas", example = "[\"PRIMER_ARCHIVO\", \"COLABORADOR\"]")
     public Set<String> badges;
+
+    @Schema(description = "ID del grado del usuario", example = "1")
+    public Long degreeId;
+
+    @Schema(description = "Código oficial del grado", example = "G4012")
+    public String degreeCode;
+
+    @Schema(description = "Nombre del grado", example = "Ingeniería Informática")
+    public String degreeName;
+
+    @Schema(description = "El usuario administra la plataforma (rol ADMIN)", example = "false")
+    public Boolean isPlatformAdmin;
 }

@@ -19,11 +19,23 @@ public class Course {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, unique = true)
+    /**
+     * Código de curso ({@code '1'..'4'}). Solo es único dentro de un grado: la unicidad real es
+     * {@code UNIQUE (degree_id, code)} en la base de datos, no una restricción global del código.
+     */
+    @Column(nullable = false)
     private String code;
 
     @Column(nullable = false)
     private String name;
+
+    /**
+     * Grado al que pertenece el curso. El código de curso ({@code '1'..'4'}) solo es único dentro de un
+     * grado: cada grado tiene su propio «Primer curso».
+     */
+    @ManyToOne
+    @JoinColumn(name = "degree_id", nullable = false)
+    private Degree degree;
 
     @OneToMany(mappedBy = "course")
     @Builder.Default

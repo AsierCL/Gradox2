@@ -19,4 +19,12 @@ public class UpdateMyProfileRequest {
     @Size(min = 8, max = 72, message = "Password must be between 8 and 72 characters")
     @Schema(description = "Nueva contraseña", example = "NewSecurePass1!")
     public String password;
+
+    /**
+     * No es modificable: existe solo para rechazar el intento con {@code 403 DEGREE_IMMUTABLE} en lugar de
+     * ignorarlo en silencio (D2). Solo un {@code ADMIN} puede cambiarlo, por la vía auditada.
+     */
+    @Schema(description = "No modificable: si se envía, la petición falla con DEGREE_IMMUTABLE",
+            example = "null", accessMode = Schema.AccessMode.READ_ONLY)
+    public Long degreeId;
 }

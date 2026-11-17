@@ -15,6 +15,8 @@ import {
   X,
 } from '@phosphor-icons/react'
 import { api } from '../lib/api'
+import { useAuth } from '../context/AuthContext'
+import { degreeErrorMessage } from '../lib/degree'
 import { formatBytes } from '../lib/format'
 import { FILE_TYPES, VISIBILITY } from '../lib/constants'
 import { PageHeader } from '../components/ui/PageHeader'
@@ -22,6 +24,7 @@ import { Reveal } from '../components/ui/Reveal'
 import { Button } from '../components/ui/Button'
 import { Input, Select, Textarea } from '../components/ui/Field'
 import { Skeleton } from '../components/ui/Spinner'
+import { ReadOnlyNotice } from '../components/common/ReadOnlyNotice'
 import { cn } from '../lib/cn'
 
 const MAX_SIZE = 10 * 1024 * 1024
@@ -49,6 +52,7 @@ const visibilityOptions = [
 
 export function UploadPage() {
   const navigate = useNavigate()
+  const { degreeId, degreeName, isPlatformAdmin, profileLoading } = useAuth()
   const fileInput = useRef(null)
   const [dragging, setDragging] = useState(false)
   const [file, setFile] = useState(null)
@@ -63,18 +67,14 @@ export function UploadPage() {
   const [serverError, setServerError] = useState('')
 
   const coursesQuery = useQuery({
-    queryKey: ['courses'],
-    queryFn: () => api.courses.list(),
-    staleTime: 5 * 60_000,
-  })
-  const subjectsQuery = useQuery({
-    queryKey: ['subjects'],
-    queryFn: () => api.subjects.list(),
+    queryKey: ['degree-courses', degreeId],
+    queryFn: () => api.degrees.courses(degreeId),
+    enabled: Boolean(degreeId),
     staleTime: 5 * 60_000,
   })
 
   const courses = [...(coursesQuery.data || [])].sort((a, b) => Number(a.code) - Number(b.code))
-  const subjects = subjectsQuery.data || []
+  const canUseForms = Boolean(degreeId) && !isPlatformAdmin
 
   const uploadMutation = useMutation({
     mutationFn: async () => {
@@ -93,7 +93,7 @@ export function UploadPage() {
       })
       navigate(`/propuestas/${proposal.id}`)
     },
-    onError: (error) => setServerError(error.message),
+    onError: (error) => setServerError(degreeErrorMessage(error)),
   })
 
   const update = (key, value) => {
@@ -133,8 +133,58 @@ export function UploadPage() {
   const submit = (event) => {
     event.preventDefault()
     setServerError('')
+    if (!canUseForms) return
     if (!validate()) return
     uploadMutation.mutate()
+  }
+
+  if (profileLoading) {
+    return (
+      <div className="site-shell pt-10">
+        <Skeleton className="h-10 w-64" />
+        <Skeleton className="mt-6 h-96 rounded-5xl" />
+      </div>
+    )
+  }
+
+  if (isPlatformAdmin) {
+    return (
+      <div className="site-shell">
+        <PageHeader
+          eyebrow="Compartir material"
+          title="Cuenta de administración"
+          description="La administración de plataforma no participa en las propuestas de la comunidad."
+        />
+        <ReadOnlyNotice
+          title="Esta cuenta no puede proponer material"
+          description="El rol ADMIN es operativo: gestiona el catálogo, los usuarios y la auditoría, pero no vota ni propone."
+          icon="lock"
+        />
+        <Button to="/administracion" className="mt-6" variant="ghost">
+          Ir al panel de administración
+        </Button>
+      </div>
+    )
+  }
+
+  if (!degreeId) {
+    return (
+      <div className="site-shell">
+        <PageHeader
+          eyebrow="Compartir material"
+          title="Falta tu grado"
+          description="Necesitas pertenecer a un grado para proponer material en su comunidad."
+        />
+        <ReadOnlyNotice
+          title="Tu cuenta no tiene grado asignado"
+          description="Puedes seguir leyendo el catálogo, pero no publicar. Contacta con administración para corregir tu grado."
+          icon="lock"
+        />
+        <Button to="/grados" className="mt-6" variant="ghost">
+          Ver los grados
+        </Button>
+      </div>
+    )
   }
 
   return (
@@ -142,7 +192,12 @@ export function UploadPage() {
       <PageHeader
         eyebrow="Compartir material"
         title="Nuevo material"
-        description="La propuesta se revisa antes de publicarse en el catálogo."
+        description={`La propuesta se revisa antes de publicarse en ${degreeName || 'tu grado'}.`}
+        actions={
+          <span className="chip chip-aqua max-w-full whitespace-normal text-left">
+            {degreeName || 'Tu grado'} · solo tu comunidad puede votarla
+          </span>
+        }
       />
 
       <form onSubmit={submit} className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_21rem] lg:items-start">
@@ -190,13 +245,15 @@ export function UploadPage() {
                   value={form.subjectId}
                   onChange={(event) => update('subjectId', event.target.value)}
                   error={errors.subjectId}
+                  hint={`Solo aparecen asignaturas de ${degreeName || 'tu grado'}.`}
+                  disabled={coursesQuery.isLoading || coursesQuery.isError || !courses.length}
                   required
                 >
-                  <option value="">Elige asignatura</option>
+                  <option value="">
+                    {coursesQuery.isLoading ? 'Cargando asignaturas…' : 'Elige asignatura'}
+                  </option>
                   {courses.map((course) => {
-                    const courseSubjects = subjects.filter(
-                      (subject) => String(subject.courseId) === String(course.id),
-                    )
+                    const courseSubjects = course.subjects || []
                     if (!courseSubjects.length) return null
                     return (
                       <optgroup key={course.id} label={course.name}>
@@ -382,8 +439,18 @@ export function UploadPage() {
             </div>
           </Reveal>
 
-          {subjectsQuery.isLoading && (
-            <Skeleton className="h-24 rounded-4xl" />
+          {coursesQuery.isLoading && <Skeleton className="h-24 rounded-4xl" />}
+          {coursesQuery.isError && (
+            <div className="rounded-3xl border border-[#e7c7c2] bg-[#fbefed] p-4 text-[0.65rem] leading-5 text-[#86483f]">
+              No se pudieron cargar las asignaturas de tu grado.
+              <button
+                type="button"
+                onClick={() => coursesQuery.refetch()}
+                className="ml-1 font-semibold underline"
+              >
+                Reintentar
+              </button>
+            </div>
           )}
         </aside>
       </form>

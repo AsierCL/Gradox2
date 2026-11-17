@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import {
@@ -6,6 +7,7 @@ import {
   Camera,
   Check,
   Crown,
+  GraduationCap,
   Medal,
   PencilSimple,
   ShieldCheck,
@@ -18,6 +20,7 @@ import {
 } from '@phosphor-icons/react'
 import { api } from '../lib/api'
 import { useAuth } from '../context/AuthContext'
+import { degreePath } from '../lib/degree'
 import { ROLES } from '../lib/constants'
 import { formatDate, formatNumber } from '../lib/format'
 import { Avatar } from '../components/ui/Avatar'
@@ -59,6 +62,9 @@ export function ProfilePage() {
     refreshProfile,
     updateProfile,
     isMaster,
+    isPlatformAdmin,
+    degreeName,
+    degreeCode,
   } = useAuth()
   const fileInputRef = useRef(null)
   const [editOpen, setEditOpen] = useState(false)
@@ -237,7 +243,9 @@ export function ProfilePage() {
               <div>
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="chip chip-aqua">
-                    {isMaster ? (
+                    {isPlatformAdmin ? (
+                      <ShieldCheck size={13} weight="fill" aria-hidden="true" />
+                    ) : isMaster ? (
                       <Crown size={13} weight="fill" aria-hidden="true" />
                     ) : (
                       <UserCircle size={13} weight="fill" aria-hidden="true" />
@@ -245,8 +253,17 @@ export function ProfilePage() {
                     {role}
                   </span>
                   <span className="chip border-transparent bg-white/40">
-                    <ShieldCheck size={12} aria-hidden="true" /> Cuenta USC
+                    <ShieldCheck size={12} aria-hidden="true" /> Cuenta verificada
                   </span>
+                  {(degreeName || degreeCode) && (
+                    <Link
+                      to={degreePath({ code: degreeCode })}
+                      className="chip transition-colors hover:bg-white/70"
+                    >
+                      <GraduationCap size={12} aria-hidden="true" />
+                      {degreeName || degreeCode}
+                    </Link>
+                  )}
                 </div>
                 <h2 className="display-tight mt-3 text-3xl text-ink sm:text-4xl">{profile.username}</h2>
                 <p className="mt-1 text-sm text-ink-soft">{profile.email}</p>
@@ -364,7 +381,7 @@ export function ProfilePage() {
                   description="Se ganan compartiendo material, participando en votaciones y aportando contexto útil en los hilos."
                   action={
                     <Button to="/subir" variant="ghost" className="mt-5">
-                      Compartir mi primer material
+                      Compartir material
                     </Button>
                   }
                 />
@@ -418,11 +435,29 @@ export function ProfilePage() {
                   </span>
                   <span className="chip chip-aqua py-1 text-[0.55rem]">Verificado</span>
                 </div>
+                <div className="flex items-center justify-between gap-4 rounded-2xl border border-ink/8 bg-white/38 p-4">
+                  <span className="min-w-0">
+                    <span className="block text-xs font-semibold text-ink">Grado</span>
+                    <span className="mt-0.5 block truncate text-[0.65rem] text-ink-faint">
+                      {degreeName || 'Sin grado asignado'}
+                      {degreeCode && ` · ${degreeCode}`}
+                    </span>
+                  </span>
+                  {degreeCode && (
+                    <Button to={degreePath({ code: degreeCode })} variant="ghost" className="min-h-8 shrink-0 px-3 py-1.5 text-[0.65rem]">
+                      Ver
+                    </Button>
+                  )}
+                </div>
+                <p className="px-1 text-[0.6rem] leading-5 text-ink-faint">
+                  El grado es permanente. Si es incorrecto, solo administración puede corregirlo
+                  de forma auditada.
+                </p>
               </div>
             </section>
           </Reveal>
 
-          {!isMaster ? (
+          {profile.role === 'USER' ? (
             <Reveal delay={0.12}>
               <section className="rounded-3xl border border-ink/8 bg-white p-6 sm:p-7">
                 <span className="grid size-10 place-items-center rounded-xl bg-paper-100 text-ink-soft">
@@ -432,8 +467,8 @@ export function ProfilePage() {
                   ¿Quieres ser master?
                 </p>
                 <p className="mt-2 text-xs leading-6 text-ink-soft">
-                  Los masters moderan y tienen más peso en las votaciones. La comunidad decide
-                  quién accede al rol.
+                  Los masters moderan su grado y tienen más peso en sus votaciones. La comunidad
+                  de tu grado decide quién accede al rol.
                 </p>
                 <button
                   type="button"
@@ -453,18 +488,39 @@ export function ProfilePage() {
                 </button>
               </section>
             </Reveal>
+          ) : isPlatformAdmin ? (
+            <Reveal delay={0.12}>
+              <section className="glass rounded-4xl p-6 sm:p-7">
+                <span className="grid size-10 place-items-center rounded-2xl bg-white/60 text-aqua-700">
+                  <ShieldCheck size={20} weight="duotone" aria-hidden="true" />
+                </span>
+                <p className="mt-5 text-lg font-semibold tracking-tight text-ink">
+                  Administración de plataforma
+                </p>
+                <p className="mt-2 text-xs leading-6 text-ink-soft">
+                  Catálogo, propuestas globales, usuarios baneados, auditoría y corrección de
+                  grados. No participa en votaciones.
+                </p>
+                <Button to="/administracion" className="mt-5" variant="ghost">
+                  Abrir administración
+                </Button>
+              </section>
+            </Reveal>
           ) : (
             <Reveal delay={0.12}>
               <section className="glass rounded-4xl p-6 sm:p-7">
                 <span className="grid size-10 place-items-center rounded-2xl bg-white/60 text-aqua-700">
                   <Crown size={20} weight="duotone" aria-hidden="true" />
                 </span>
-                <p className="mt-5 text-lg font-semibold tracking-tight text-ink">Administración</p>
-                <p className="mt-2 text-xs leading-6 text-ink-soft">
-                  Propuestas, auditoría y usuarios baneados.
+                <p className="mt-5 text-lg font-semibold tracking-tight text-ink">
+                  Gobernanza de tu grado
                 </p>
-                <Button to="/administracion" className="mt-5" variant="ghost">
-                  Abrir administración
+                <p className="mt-2 text-xs leading-6 text-ink-soft">
+                  Revisa promociones y expulsiones, y propone cambios en la configuración global
+                  de votaciones.
+                </p>
+                <Button to="/gobernanza" className="mt-5" variant="ghost">
+                  Abrir gobernanza
                 </Button>
               </section>
             </Reveal>

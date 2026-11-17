@@ -37,13 +37,19 @@ con hot-reload en un stack Docker:
 
 ```bash
 cd gradox2
-./run.sh dev        # levanta app + Postgres + MinIO
+./run.sh dev        # levanta web + app + Postgres + MinIO
 ./run.sh dev-down   # detiene el entorno de desarrollo
 ```
 
-Con esto la app queda disponible en `http://localhost:8080` y la consola de
-**MinIO** en `http://localhost:9001` (usuario `minioadmin` / `minioadmin`). El
-bucket usado en desarrollo es `gradox2-files` (se auto-crea al arrancar).
+Con esto la web queda disponible en `http://localhost:5173`, la API en
+`http://localhost:8080` y la consola de **MinIO** en `http://localhost:9001`
+(usuario `minioadmin` / `minioadmin`). El bucket usado en desarrollo es
+`gradox2-files` (se auto-crea al arrancar).
+
+Los servicios se publican en `0.0.0.0`, así que la web también responde en la
+IP de la máquina (`http://192.168.x.x:5173`). `run.sh` detecta esa IP y la usa
+para la API y las URLs firmadas de MinIO. Si necesitas forzar otra, define
+`GRADOX_PUBLIC_HOST`.
 
 ## 4. Ejecución local sin Docker
 
@@ -72,6 +78,7 @@ Esto levanta:
 - **PostgreSQL** en `localhost:5432` (usuario `gradox` / `gradox-local-password`, BD `gradoxdb`).
 - **MinIO** en `localhost:9000` (S3) y consola en `localhost:9001` (usuario `minioadmin`).
 - **La app** (Java 21, volúmenes del código fuente) en `http://localhost:8080`.
+- **La web** (Vite + React, volúmenes del código fuente) en `http://localhost:5173`.
 
 ### 5.2 Variables de entorno
 

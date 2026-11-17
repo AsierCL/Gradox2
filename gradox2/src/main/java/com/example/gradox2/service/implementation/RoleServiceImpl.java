@@ -18,11 +18,13 @@ import com.example.gradox2.persistence.entities.enums.UserRole;
 import com.example.gradox2.persistence.repository.PromotionProposalRepository;
 import com.example.gradox2.persistence.repository.UserRepository;
 import com.example.gradox2.presentation.dto.promotionProposal.PromotionProposalResponse;
+import com.example.gradox2.service.exceptions.DegreeLastMasterException;
 import com.example.gradox2.service.exceptions.InvalidRoleOperationException;
 import com.example.gradox2.service.exceptions.NotFoundException;
 import com.example.gradox2.service.interfaces.IAuditService;
 import com.example.gradox2.service.interfaces.IRoleService;
 import com.example.gradox2.service.interfaces.IGlobalConfigService;
+import com.example.gradox2.security.DegreeAccessGuard;
 import com.example.gradox2.utils.GetAuthUser;
 import com.example.gradox2.utils.SortUtils;
 import com.example.gradox2.utils.mapper.PromotionProposerMapper;
@@ -45,13 +47,16 @@ public class RoleServiceImpl implements IRoleService{
     private final PromotionProposalRepository promotionProposalRepository;
     private final IGlobalConfigService voteConfigService;
     private final IAuditService auditService;
+    private final DegreeAccessGuard degreeAccessGuard;
 
     public RoleServiceImpl(UserRepository userRepository, PromotionProposalRepository promotionProposalRepository,
-            IGlobalConfigService voteConfigService, IAuditService auditService) {
+            IGlobalConfigService voteConfigService, IAuditService auditService,
+            DegreeAccessGuard degreeAccessGuard) {
         this.userRepository = userRepository;
         this.promotionProposalRepository = promotionProposalRepository;
         this.voteConfigService = voteConfigService;
         this.auditService = auditService;
+        this.degreeAccessGuard = degreeAccessGuard;
     }
 
     @Override
@@ -60,6 +65,12 @@ public class RoleServiceImpl implements IRoleService{
 
         if(user.getRole().equals(UserRole.MASTER)) {
             throw new InvalidRoleOperationException("El usuario ya es Master.");
+        }
+
+        // El ADMIN es un rol operativo de plataforma, no una comunidad: no se promociona ni vota (D12).
+        if (user.getRole().equals(UserRole.ADMIN)) {
+            throw new InvalidRoleOperationException(
+                    "El administrador de plataforma no participa en las votaciones de un grado.");
         }
 
         GlobalConfig config = voteConfigService.getConfig();
@@ -104,14 +115,19 @@ public class RoleServiceImpl implements IRoleService{
             throw new InvalidRoleOperationException("El usuario no es Master.");
         }
 
+        // D3: un master solo gobierna su grado. Sin esto, un master de un grado podría dejar a otro grado
+        // sin representación, que es exactamente el agujero que el conteo global no veía.
+        degreeAccessGuard.requireSameDegree(candidate.getDegree());
+
         if (authUser.getId().equals(candidate.getId())) {
             throw new InvalidRoleOperationException("No puedes expulsarte a ti mismo.");
         }
 
-        long enabledMasters = userRepository.countByRoleAndEnabled(UserRole.MASTER, true);
+        long enabledMasters = userRepository.countByRoleAndEnabledAndDegree(
+                UserRole.MASTER, true, candidate.getDegree());
         if (enabledMasters <= 1) {
-            throw new InvalidRoleOperationException(
-                    "No puedes expulsar al último MASTER activo: la gobernanza quedaría sin representantes.");
+            throw new DegreeLastMasterException(
+                    "No puedes expulsar al último MASTER activo del grado: la gobernanza quedaría sin representantes.");
         }
 
         GlobalConfig config = voteConfigService.getConfig();

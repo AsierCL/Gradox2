@@ -1,11 +1,13 @@
 package com.example.gradox2.service.implementation;
 
 import com.example.gradox2.persistence.entities.User;
+import com.example.gradox2.persistence.entities.Degree;
 import com.example.gradox2.persistence.entities.RefreshToken;
 import com.example.gradox2.persistence.entities.PasswordResetToken;
 import com.example.gradox2.persistence.entities.VerificationToken;
 import com.example.gradox2.persistence.entities.enums.UserRole;
 import com.example.gradox2.persistence.repository.UserRepository;
+import com.example.gradox2.persistence.repository.DegreeRepository;
 import com.example.gradox2.persistence.repository.RefreshTokenRepository;
 import com.example.gradox2.persistence.repository.PasswordResetTokenRepository;
 import com.example.gradox2.persistence.repository.VerificationTokenRepository;
@@ -17,6 +19,8 @@ import com.example.gradox2.presentation.dto.auth.RegisterRequest;
 import com.example.gradox2.presentation.dto.auth.TokenRequest;
 import com.example.gradox2.security.JwtUtils;
 import com.example.gradox2.service.exceptions.AlreadyExistsException;
+import com.example.gradox2.service.exceptions.DegreeNotFoundException;
+import com.example.gradox2.service.exceptions.DegreeRequiredException;
 import com.example.gradox2.service.exceptions.NotFoundException;
 import com.example.gradox2.service.exceptions.UnauthenticatedAccessException;
 import com.example.gradox2.service.interfaces.IAuthService;
@@ -45,6 +49,7 @@ public class AuthServiceImpl implements IAuthService {
     private static final Logger logger = LoggerFactory.getLogger(AuthServiceImpl.class);
 
     private final UserRepository userRepository;
+    private final DegreeRepository degreeRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtils jwtUtils;
     private final EmailService emailService;
@@ -59,12 +64,14 @@ public class AuthServiceImpl implements IAuthService {
     @Value("${jwt.refresh-expiration:2592000000}")
     private long refreshExpirationMs;
 
-    public AuthServiceImpl(UserRepository userRepository, PasswordEncoder passwordEncoder, JwtUtils jwtUtils,
+    public AuthServiceImpl(UserRepository userRepository, DegreeRepository degreeRepository,
+            PasswordEncoder passwordEncoder, JwtUtils jwtUtils,
             EmailService emailService, VerificationTokenRepository verificationTokenRepository,
             RefreshTokenRepository refreshTokenRepository,
             PasswordResetTokenRepository passwordResetTokenRepository,
             Environment environment) {
         this.userRepository = userRepository;
+        this.degreeRepository = degreeRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtUtils = jwtUtils;
         this.emailService = emailService;
@@ -183,6 +190,7 @@ public class AuthServiceImpl implements IAuthService {
         user.setPasswordHash(passwordEncoder.encode(request.password));
         user.setEnabled(false); // Require email verification
         user.setRole(UserRole.USER); // Default role
+        user.setDegree(resolveDegree(request.degreeId));
         userRepository.save(user);
 
         String token = java.util.UUID.randomUUID().toString();
@@ -230,7 +238,27 @@ public class AuthServiceImpl implements IAuthService {
     private AuthResponse buildAuthResponse(User user) {
         String accessToken = jwtUtils.generateToken(user);
         String refreshTokenValue = createRefreshToken(user);
-        return new AuthResponse(accessToken, refreshTokenValue, user.getUsername(), user.getRole().name());
+        AuthResponse response = new AuthResponse(accessToken, refreshTokenValue, user.getUsername(),
+                user.getRole().name());
+        if (user.getDegree() != null) {
+            response.setDegreeId(user.getDegree().getId());
+            response.setDegreeCode(user.getDegree().getCode());
+            response.setDegreeName(user.getDegree().getName());
+        }
+        response.setIsPlatformAdmin(user.getRole() == UserRole.ADMIN);
+        return response;
+    }
+
+    /**
+     * Resuelve el grado del registro. El grado es obligatorio (D1) y no se puede cambiar después (D2):
+     * los errores llevan código estable para que el frontend no dependa del texto.
+     */
+    private Degree resolveDegree(Long degreeId) {
+        if (degreeId == null) {
+            throw new DegreeRequiredException("Debes seleccionar un grado");
+        }
+        return degreeRepository.findById(degreeId)
+                .orElseThrow(() -> new DegreeNotFoundException("El grado seleccionado no existe"));
     }
 
     private String createRefreshToken(User user) {

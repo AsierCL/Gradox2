@@ -22,7 +22,7 @@ public class AuditRecord {
     private Long id;
 
     @ManyToOne
-    @OnDelete(action = OnDeleteAction.CASCADE)
+    @OnDelete(action = OnDeleteAction.SET_NULL)
     @JoinColumn(name = "actor_id", nullable = true)
     private User actor;
 

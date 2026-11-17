@@ -1,6 +1,5 @@
 package com.example.gradox2.presentation.controller;
 
-import java.util.List;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -25,13 +24,6 @@ public class SubjectController {
 
     public SubjectController(ISubjectService subjectService) {
         this.subjectService = subjectService;
-    }
-
-    @GetMapping
-    @Operation(summary = "Listar asignaturas", description = "Devuelve todas las asignaturas ordenadas por curso y código")
-    @ApiResponse(responseCode = "200", description = "Lista de asignaturas devuelta")
-    public ResponseEntity<List<SubjectResponse>> getAllSubjects() {
-        return ResponseEntity.ok(subjectService.listAll());
     }
 
     @GetMapping("/{id}")

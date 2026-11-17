@@ -55,12 +55,22 @@ export const ACTION_TYPES = {
   VETO: 'Veto',
   BAN: 'Baneo',
   UNBAN: 'Rehabilitación',
+  DEGREE_CHANGE: 'Cambio de grado',
 }
 
 export const ROLES = {
   GUEST: 'Invitado',
   USER: 'Estudiante',
   MASTER: 'Master',
+  ADMIN: 'Administrador',
+}
+
+export const SUBJECT_TYPES = {
+  'Formación básica': 'bg-[#e8e8ed] text-[#2c2c2e]',
+  Obligatorio: 'bg-white text-ink-soft',
+  Optativo: 'bg-[#f2f2f2] text-ink-soft',
+  'Trabajos Fin de Grado y Máster': 'bg-[#1d1d1f] text-white',
+  'Prácticas en Empresas de Grao e Máster': 'bg-[#e8e8ed] text-[#2c2c2e]',
 }
 
 export const COURSE_LABELS = {

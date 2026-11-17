@@ -1,15 +1,17 @@
 import { useQuery } from '@tanstack/react-query'
-import { BookOpenText } from '@phosphor-icons/react'
+import { BookOpenText, GraduationCap } from '@phosphor-icons/react'
 import { api } from '../lib/api'
+import { useAuth } from '../context/AuthContext'
 import { Hero } from '../components/home/Hero'
-import { CourseBrowser } from '../components/home/CourseBrowser'
 import { FileRow } from '../components/file/FileRow'
+import { DegreeCard } from '../components/degrees/DegreeCard'
 import { Reveal } from '../components/ui/Reveal'
 import { Skeleton } from '../components/ui/Spinner'
 import { EmptyState, ErrorState } from '../components/ui/States'
 import { Button, TextLink } from '../components/ui/Button'
 
 export function HomePage() {
+  const { degreeId, isAuthenticated } = useAuth()
   const statsQuery = useQuery({
     queryKey: ['stats'],
     queryFn: ({ signal }) => api.stats.get(signal),
@@ -20,36 +22,33 @@ export function HomePage() {
     queryFn: ({ signal }) => api.files.list(signal),
     staleTime: 30_000,
   })
-  const coursesQuery = useQuery({
-    queryKey: ['courses'],
-    queryFn: () => api.courses.list(),
-    staleTime: 5 * 60_000,
-  })
-  const subjectsQuery = useQuery({
-    queryKey: ['subjects'],
-    queryFn: () => api.subjects.list(),
-    staleTime: 5 * 60_000,
+  const degreesQuery = useQuery({
+    queryKey: ['degrees'],
+    queryFn: () => api.degrees.list(),
+    staleTime: 10 * 60_000,
   })
 
   const files = filesQuery.data || []
-  const courses = [...(coursesQuery.data || [])].sort((a, b) => Number(a.code) - Number(b.code))
-  const subjects = subjectsQuery.data || []
+  const degrees = degreesQuery.data || []
   const latestFiles = files.slice(0, 8)
-
-  const fileCountBySubject = files.reduce((acc, file) => {
-    if (file.subject) acc[file.subject] = (acc[file.subject] || 0) + 1
+  const filesByDegree = files.reduce((acc, file) => {
+    if (file.degreeId === null || file.degreeId === undefined) return acc
+    const key = String(file.degreeId)
+    acc[key] = (acc[key] || 0) + 1
     return acc
   }, {})
 
   return (
     <>
-      <Hero stats={statsQuery.data} />
+      <Hero stats={statsQuery.data} degrees={degrees} />
 
       <section className="site-shell pb-14 sm:pb-20">
         <div className="flex items-end justify-between gap-4">
           <div>
             <h2 className="display-tight text-2xl text-ink sm:text-3xl">Últimos archivos</h2>
-            <p className="mt-1 text-sm text-ink-soft">Los materiales publicados más recientemente.</p>
+            <p className="mt-1 text-sm text-ink-soft">
+              Material reciente de todos los grados de la Escuela.
+            </p>
           </div>
           <TextLink to="/explorar" className="shrink-0">
             Ver todos
@@ -76,7 +75,7 @@ export function HomePage() {
           ) : latestFiles.length ? (
             <div className="divide-y divide-ink/8">
               {latestFiles.map((file) => (
-                <FileRow key={file.id} file={file} />
+                <FileRow key={file.id} file={file} showDegree />
               ))}
             </div>
           ) : (
@@ -84,10 +83,10 @@ export function HomePage() {
               <EmptyState
                 icon={<BookOpenText size={22} weight="duotone" />}
                 title="No hay archivos publicados"
-                description="Puedes compartir el primero."
+                description="Puedes compartir el primero desde tu grado."
                 action={
-                  <Button to="/subir" className="mt-5">
-                    Compartir material
+                  <Button to="/grados" className="mt-5">
+                    Elegir mi grado
                   </Button>
                 }
               />
@@ -98,33 +97,56 @@ export function HomePage() {
 
       <section className="site-shell pb-20 sm:pb-24">
         <Reveal>
-          <div>
-            <h2 className="display-tight text-2xl text-ink sm:text-3xl">Cursos y asignaturas</h2>
-            <p className="mt-1 text-sm text-ink-soft">
-              Selecciona un curso para ver sus asignaturas.
-            </p>
+          <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
+            <div>
+              <p className="eyebrow text-aqua-700">Catálogo</p>
+              <h2 className="display-tight mt-2 text-2xl text-ink sm:text-3xl">
+                Elige tu grado
+              </h2>
+              <p className="mt-1 max-w-2xl text-sm text-ink-soft">
+                El grado define dónde puedes participar; el material de cualquier grado se puede
+                leer.
+              </p>
+            </div>
+            <TextLink to="/grados" className="shrink-0">
+              Ver todos
+            </TextLink>
           </div>
 
           <div className="mt-6">
-            {coursesQuery.isLoading || subjectsQuery.isLoading ? (
-              <div className="space-y-3">
-                <Skeleton className="h-9 w-72 rounded-full" />
-                <Skeleton className="h-48 rounded-2xl" />
+            {degreesQuery.isLoading ? (
+              <div className="grid gap-4 md:grid-cols-3">
+                {Array.from({ length: 3 }).map((_, index) => (
+                  <Skeleton key={index} className="h-64 rounded-4xl" />
+                ))}
               </div>
-            ) : coursesQuery.isError || subjectsQuery.isError ? (
+            ) : degreesQuery.isError ? (
               <ErrorState
                 compact
-                title="No se pudo cargar el catálogo"
-                onRetry={() => {
-                  coursesQuery.refetch()
-                  subjectsQuery.refetch()
-                }}
+                title="No se pudo cargar el catálogo de grados"
+                onRetry={() => degreesQuery.refetch()}
               />
+            ) : degrees.length ? (
+              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                {degrees.map((degree, index) => (
+                  <Reveal key={degree.id} delay={Math.min(index * 0.04, 0.12)}>
+                    <DegreeCard
+                      degree={degree}
+                      own={
+                        isAuthenticated &&
+                        degreeId !== null &&
+                        String(degree.id) === String(degreeId)
+                      }
+                      fileCount={filesByDegree[String(degree.id)] || 0}
+                    />
+                  </Reveal>
+                ))}
+              </div>
             ) : (
-              <CourseBrowser
-                courses={courses}
-                subjects={subjects}
-                fileCountBySubject={fileCountBySubject}
+              <EmptyState
+                icon={<GraduationCap size={22} weight="duotone" />}
+                title="No hay grados disponibles"
+                description="El catálogo no ha devuelto resultados."
               />
             )}
           </div>

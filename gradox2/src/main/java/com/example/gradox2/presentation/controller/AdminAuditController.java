@@ -33,7 +33,7 @@ public class AdminAuditController {
     }
 
     @GetMapping
-    @PreAuthorize("hasRole('MASTER')")
+    @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Ver registro de auditoría", description = "Lista acciones registradas filtrables por actor, tipo, fechas y paginación (solo MASTER)")
     @ApiResponses({
         @ApiResponse(responseCode = "200", description = "Registro de auditoría"),

@@ -8,6 +8,8 @@ const lazyPage = (loader, name) =>
   lazy(() => loader().then((module) => ({ default: module[name] })))
 
 const ExplorePage = lazyPage(() => import('./pages/ExplorePage'), 'ExplorePage')
+const DegreesPage = lazyPage(() => import('./pages/DegreesPage'), 'DegreesPage')
+const DegreePage = lazyPage(() => import('./pages/DegreePage'), 'DegreePage')
 const FileDetailPage = lazyPage(() => import('./pages/FileDetailPage'), 'FileDetailPage')
 const CommunityPage = lazyPage(() => import('./pages/CommunityPage'), 'CommunityPage')
 const LoginPage = lazyPage(() => import('./pages/LoginPage'), 'LoginPage')
@@ -28,6 +30,7 @@ const PromotionDetailPage = lazyPage(
   'PromotionDetailPage',
 )
 const UploadPage = lazyPage(() => import('./pages/UploadPage'), 'UploadPage')
+const GovernancePage = lazyPage(() => import('./pages/GovernancePage'), 'GovernancePage')
 const AdminPage = lazyPage(() => import('./pages/AdminPage'), 'AdminPage')
 const NotFoundPage = lazyPage(() => import('./pages/NotFoundPage'), 'NotFoundPage')
 
@@ -36,6 +39,8 @@ export default function App() {
     <Routes>
       <Route element={<AppShell />}>
         <Route index element={<HomePage />} />
+        <Route path="grados" element={<DegreesPage />} />
+        <Route path="grados/:degreeCode" element={<DegreePage />} />
         <Route path="explorar" element={<ExplorePage />} />
         <Route path="material/:id" element={<FileDetailPage />} />
         <Route path="comunidad" element={<CommunityPage />} />
@@ -86,9 +91,17 @@ export default function App() {
           }
         />
         <Route
-          path="administracion"
+          path="gobernanza"
           element={
             <ProtectedRoute masterOnly>
+              <GovernancePage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="administracion"
+          element={
+            <ProtectedRoute adminOnly>
               <AdminPage />
             </ProtectedRoute>
           }

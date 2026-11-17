@@ -89,7 +89,7 @@ Gradox2/
 │   ├── .env.example         # Plantilla versionada con placeholders
 │   ├── Dockerfile           # Build multi-stage de la app
 │   ├── docker-compose.yml   # Stack de producción (solo app; BD = Supabase, archivos = R2)
-│   └── docker-compose.dev.yml # Entorno de desarrollo (Postgres + MinIO + app hot-reload)
+│   └── docker-compose.dev.yml # Entorno de desarrollo (Postgres + MinIO + API + web hot-reload)
 ├── gradox2/                 # Proyecto Maven (Spring Boot)
 │   ├── pom.xml
 │   ├── run.sh               # Scripts: dev | dev-down | run | test | docker-up | docker-down

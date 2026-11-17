@@ -22,6 +22,9 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
+import com.example.gradox2.persistence.entities.Degree;
+import com.example.gradox2.persistence.repository.DegreeRepository;
+import com.example.gradox2.support.TestDegrees;
 import com.example.gradox2.persistence.entities.Course;
 import com.example.gradox2.persistence.entities.File;
 import com.example.gradox2.persistence.entities.FileProposal;
@@ -123,14 +126,14 @@ class AdminAndFileDeletionIntegrationTest {
     }
 
     @Test
-    void masterShouldBeAbleToBanAndUnbanAUser() throws Exception {
-        createEnabledUser("masteradmin", "masteradmin@rai.usc.es", "SecurePass1!", UserRole.MASTER);
+    void adminShouldBeAbleToBanAndUnbanAUser() throws Exception {
+        createEnabledUser("platformadmin", "platformadmin@rai.usc.es", "SecurePass1!", UserRole.ADMIN);
         createEnabledUser("candidate", "candidate@rai.usc.es", "SecurePass1!", UserRole.USER);
 
-        String masterToken = loginAndGetToken("masteradmin", "SecurePass1!");
+        String adminToken = loginAndGetToken("platformadmin", "SecurePass1!");
 
         mockMvc.perform(put("/admin/users/{id}/ban", candidateId())
-                        .header("Authorization", bearer(masterToken)))
+                        .header("Authorization", bearer(adminToken)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$").value("Usuario baneado correctamente"));
 
@@ -143,7 +146,7 @@ class AdminAndFileDeletionIntegrationTest {
                 .andExpect(jsonPath("$.errorCode").value("UNAUTHENTICATED_ACCESS"));
 
         mockMvc.perform(put("/admin/users/{id}/unban", candidateId())
-                        .header("Authorization", bearer(masterToken)))
+                        .header("Authorization", bearer(adminToken)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$").value("Usuario rehabilitado correctamente"));
 
@@ -157,7 +160,7 @@ class AdminAndFileDeletionIntegrationTest {
     }
 
     @Test
-    void nonMasterShouldNotBeAbleToBanUsers() throws Exception {
+    void nonAdminShouldNotBeAbleToBanUsers() throws Exception {
         createEnabledUser("regular", "regular@rai.usc.es", "SecurePass1!", UserRole.USER);
         createEnabledUser("target", "target@rai.usc.es", "SecurePass1!", UserRole.USER);
 
@@ -170,33 +173,33 @@ class AdminAndFileDeletionIntegrationTest {
 
     @Test
     void banningAnAlreadyBannedUserShouldReturnConflict() throws Exception {
-        createEnabledUser("masterban", "masterban@rai.usc.es", "SecurePass1!", UserRole.MASTER);
+        createEnabledUser("platformban", "platformban@rai.usc.es", "SecurePass1!", UserRole.ADMIN);
         createEnabledUser("doubleban", "doubleban@rai.usc.es", "SecurePass1!", UserRole.USER);
 
-        String masterToken = loginAndGetToken("masterban", "SecurePass1!");
+        String adminToken = loginAndGetToken("platformban", "SecurePass1!");
         long userId = userRepository.findByUsername("doubleban").orElseThrow().getId();
 
         mockMvc.perform(put("/admin/users/{id}/ban", userId)
-                        .header("Authorization", bearer(masterToken)))
+                        .header("Authorization", bearer(adminToken)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$").value("Usuario baneado correctamente"));
 
         mockMvc.perform(put("/admin/users/{id}/ban", userId)
-                        .header("Authorization", bearer(masterToken)))
+                        .header("Authorization", bearer(adminToken)))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.errorCode").value("ALREADY_EXIST_ERROR"));
     }
 
     @Test
     void unbanningANonBannedUserShouldReturnConflict() throws Exception {
-        createEnabledUser("masterunban", "masterunban@rai.usc.es", "SecurePass1!", UserRole.MASTER);
+        createEnabledUser("platformunban", "platformunban@rai.usc.es", "SecurePass1!", UserRole.ADMIN);
         createEnabledUser("notbanned", "notbanned@rai.usc.es", "SecurePass1!", UserRole.USER);
 
-        String masterToken = loginAndGetToken("masterunban", "SecurePass1!");
+        String adminToken = loginAndGetToken("platformunban", "SecurePass1!");
         long userId = userRepository.findByUsername("notbanned").orElseThrow().getId();
 
         mockMvc.perform(put("/admin/users/{id}/unban", userId)
-                        .header("Authorization", bearer(masterToken)))
+                        .header("Authorization", bearer(adminToken)))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.errorCode").value("ALREADY_EXIST_ERROR"));
     }
@@ -216,7 +219,11 @@ class AdminAndFileDeletionIntegrationTest {
                 .andExpect(jsonPath("$.description").value("Descripcion publicada"))
                 .andExpect(jsonPath("$.proposer").value("deletionProposer"))
                 .andExpect(jsonPath("$.subjectName").value("Asignatura Test"))
-                .andExpect(jsonPath("$.course").value("Curso Test"))
+                .andExpect(jsonPath("$.subjectId").isNumber())
+                .andExpect(jsonPath("$.subjectCode").isNotEmpty())
+                .andExpect(jsonPath("$.courseName").value("Curso Test"))
+                .andExpect(jsonPath("$.courseId").isNumber())
+                .andExpect(jsonPath("$.degreeCode").value(TestDegrees.INFORMATICA))
                 .andExpect(jsonPath("$.type").value(FileType.APUNTES.name()))
                 .andExpect(jsonPath("$.status").value(ProposalStatus.PENDING.name()))
                 .andReturn();
@@ -300,7 +307,7 @@ class AdminAndFileDeletionIntegrationTest {
     }
 
     private User createEnabledUser(String username, String email, String password, UserRole role) {
-        User user = User.builder()
+        User user = User.builder().degree(degree())
                 .username(username)
                 .email(email)
                 .passwordHash(passwordEncoder.encode(password))
@@ -334,7 +341,7 @@ class AdminAndFileDeletionIntegrationTest {
     }
 
     private Long createSubject() {
-        Course course = courseRepository.save(Course.builder()
+        Course course = courseRepository.save(Course.builder().degree(degree())
                 .code("C" + System.nanoTime())
                 .name("Curso Test")
                 .build());
@@ -368,8 +375,8 @@ class AdminAndFileDeletionIntegrationTest {
                 .andExpect(status().isOk())
                 .andReturn();
 
-        String body = result.getResponse().getContentAsString();
-        return Long.parseLong(body.replaceAll("[^0-9]", ""));
+        // El cuerpo trae más números (subjectId, degreeId, códigos): hay que leer el campo `id`.
+        return objectMapper.readTree(result.getResponse().getContentAsString()).get("id").asLong();
     }
 
     private String json(Object value) throws Exception {
@@ -382,5 +389,12 @@ class AdminAndFileDeletionIntegrationTest {
 
     private String nextTestIp() {
         return "203.0.113." + IP_COUNTER.incrementAndGet();
+    }
+
+    @Autowired
+    private DegreeRepository degreeRepository;
+
+    private Degree degree() {
+        return TestDegrees.informatica(degreeRepository);
     }
 }

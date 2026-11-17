@@ -23,9 +23,10 @@ export function LoginPage() {
     setError('')
     setLoading(true)
     try {
-      await login({ username: form.username.trim(), password: form.password })
+      const auth = await login({ username: form.username.trim(), password: form.password })
       toast.success('Sesión iniciada')
-      navigate(location.state?.from || '/', { replace: true })
+      const degreeHome = auth.degreeCode ? `/grados/${auth.degreeCode}` : '/grados'
+      navigate(location.state?.from || degreeHome, { replace: true })
     } catch (requestError) {
       setError(requestError.message)
     } finally {
@@ -37,7 +38,7 @@ export function LoginPage() {
     <AuthLayout
       eyebrow="Cuenta"
       title="Inicia sesión"
-      description="Accede con tu cuenta de la USC para votar, comentar y compartir material."
+      description="Accede con tu cuenta para votar, comentar y compartir material."
       footer={
         <p className="text-sm text-ink-soft">
           ¿No tienes cuenta?{' '}
