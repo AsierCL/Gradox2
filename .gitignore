@@ -1,4 +1,6 @@
 Docker/.env
+# The frontend now lives in its own repository; ignore old local build/dependency leftovers.
+/frontend/
 .vscode
 .vscode/**
 .VSCodeCounter

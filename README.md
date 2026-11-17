@@ -4,6 +4,8 @@
 
 El objetivo es crear una red **colaborativa, segura y democrática**, con un sistema de **votaciones, reputación y gobernanza distribuida** que garantice la calidad del contenido y la transparencia en la gestión, y que permita su mantenimiento en el tiempo.
 
+El frontend se mantiene en el repositorio [`gradox2.github.io`](https://github.com/Gradox2/gradox2.github.io) y se publica en [gradox2.github.io](https://gradox2.github.io/). Este repositorio contiene la API y el backend.
+
 Backend **Spring Boot (Java 21)** con **PostgreSQL gestionado (Supabase)** y almacenamiento de archivos en **S3 compatible (Cloudflare R2 en producción, MinIO en desarrollo)**.
 
 ---
@@ -46,17 +48,18 @@ Siguiente paso: desarrollo de un **MVP** con hilos de discusión, herramientas a
 
 El script `run.sh` vive en `gradox2/`. Ejecuta desde esa carpeta:
 
-1. **Entorno de desarrollo completo** (PostgreSQL + MinIO + API + web con hot-reload): `./run.sh dev`
-2. Detener el entorno de desarrollo: `./run.sh dev-down`
-3. **Probar**: `./run.sh test`
-4. **Ejecutar solo la app** contra una BD local ya levantada y con MinIO accesible: `./run.sh run`
-5. **Producción/VPS**: copia la plantilla de entorno y levanta el stack
+1. **Backend local** (PostgreSQL + MinIO + API): `./run.sh dev`
+2. **Frontend local**, en otra terminal: `./run.sh web` (requiere clonar `gradox2.github.io` como repo hermano; alternativamente, ejecuta `npm run dev` desde ese repo).
+3. Detener el backend local: `./run.sh dev-down`
+4. **Probar**: `./run.sh test`
+5. **Ejecutar solo la API** contra una BD local ya levantada y con MinIO accesible: `./run.sh run`
+6. **Producción/VPS**: copia la plantilla de entorno y levanta el stack
    ```bash
    cp Docker/.env.example Docker/.env   # rellena Supabase + R2 + mail + JWT + MASTER
    cd gradox2 && ./run.sh docker-up
    ```
-   > El entorno de desarrollo necesita **MinIO** (se levanta con `./run.sh dev`).
-   > Sin él, la subida/descarga de archivos fallará.
+    > El entorno de desarrollo del backend necesita **MinIO** (se levanta con `./run.sh dev`).
+    > Sin él, la subida/descarga de archivos fallará.
 
 Nota: `JWT_SECRET` debe tener al menos 32 bytes, y `S3_BUCKET_NAME` en producción
 debe existir previamente en R2 (en MinIO se auto crea al arrancar).

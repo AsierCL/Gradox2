@@ -6,16 +6,18 @@ versiones, estructura del repositorio, configuración de entornos y secretos,
 build, puesta en marcha, verificación, operación (logs, backups, actualizaciones)
 y problemas conocidos.
 
-> Estado del despliegue: **pre-producción**. La infraestructura está lista para
-> prod (usuario no-root, límites de recursos, rotación de logs, bootstrap de
-> admin, Swagger oculto), pero **todavía sin HTTPS** (decisión del equipo, ver §7).
+> Despliegue actual: API en Render, con HTTPS terminado por la plataforma.
+> Las instrucciones de Docker Compose/VPS de este documento describen un
+> despliegue alternativo; si se expone fuera de Render, hay que poner TLS delante
+> del puerto 8080.
 
 ---
 
 ## 1. Resumen de arquitectura
 
-Aplicación web monolítica **Spring Boot** (backend + API REST) que usa servicios
-externos gestionados para la persistencia y el almacenamiento de archivos:
+Backend **Spring Boot** (API REST), consumido por el frontend independiente
+publicado en `https://gradox2.github.io/`, y que usa servicios externos gestionados
+para la persistencia y el almacenamiento de archivos:
 
 - **Base de datos**: **PostgreSQL gestionado en Supabase** (ya no se despliega un
   contenedor de BD en el stack de producción).
@@ -23,18 +25,14 @@ externos gestionados para la persistencia y el almacenamiento de archivos:
   producción, **MinIO** en desarrollo) vía AWS SDK v2.
 
 ```
-                       ┌──────────────────────────────────────┐
-   Cliente / navegador │  app  (gradox2_app)                   │
-   (frontend, futuro)  │  - Spring Boot / Java 21              │
-        │              │  - JWT + BCrypt                        │
-        │  HTTP :8080  │  - Flyway (migraciones)                │
-        └────────────▶ │  - S3StorageService (AWS SDK v2)       │
-                       │  - Logs rotados /app/logs              │
-                       └──────┬──────────────┬──────────────────┘
-                              │              │
-                    JDBC :5432 │              │ S3 (put/get/delete)
-                    (SSL)      │              │ path-style
-                              ▼              ▼
+   ┌────────────────────────┐     HTTPS      ┌──────────────────────────────┐
+   │ GitHub Pages           │ ─────────────▶ │ API en Render                │
+   │ gradox2.github.io      │    HTTP/API    │ Spring Boot / Java 21        │
+   └────────────────────────┘                │ JWT + Flyway + S3 client     │
+                                             └──────────┬───────────┬───────┘
+                                                        │           │
+                                             JDBC/SSL   │           │ S3 API
+                                                        ▼           ▼
             ┌────────────────────────┐   ┌────────────────────────┐
             │  Supabase PostgreSQL   │   │  Cloudflare R2 (prod)  │
             │  (gestionado)          │   │  / MinIO (dev)         │
@@ -49,7 +47,7 @@ externos gestionados para la persistencia y el almacenamiento de archivos:
   datos no almacena binarios ni large objects (`oid`).
 - **Correo**: la app envía emails (verificación de cuenta, reseteo de contraseña)
   vía **Gmail SMTP** configurado por variables de entorno.
-- **Sin frontend separado**: hoy solo existe la API REST (endpoints en §10).
+- El frontend y el backend se construyen y despliegan desde repositorios distintos.
   Swagger/OpenAPI está desactivado en producción.
 
 ---
@@ -89,10 +87,10 @@ Gradox2/
 │   ├── .env.example         # Plantilla versionada con placeholders
 │   ├── Dockerfile           # Build multi-stage de la app
 │   ├── docker-compose.yml   # Stack de producción (solo app; BD = Supabase, archivos = R2)
-│   └── docker-compose.dev.yml # Entorno de desarrollo (Postgres + MinIO + API + web hot-reload)
+│   └── docker-compose.dev.yml # Entorno de desarrollo del backend (Postgres + MinIO + API)
 ├── gradox2/                 # Proyecto Maven (Spring Boot)
 │   ├── pom.xml
-│   ├── run.sh               # Scripts: dev | dev-down | run | test | docker-up | docker-down
+│   ├── run.sh               # Scripts: dev | dev-down | run | web | web-install | test | docker-up | docker-down
 │   ├── mvnw, .mvn/          # Maven Wrapper
 │   └── src/
 │       ├── main/
@@ -110,13 +108,18 @@ Gradox2/
 │       │       ├── application-prod.properties
 │       │       ├── application-test.properties
 │       │       ├── logback-spring.xml        # rotación de logs
-│       │       └── db/migration/    # Flyway: V1..V9 (schema init, foro, S3, /stats, token_version, gobernanza, pesos, seed de cursos/asignaturas, nombre original)
+│       │       └── db/migration/    # Flyway: V1..V14 (schema, foro, S3, stats, gobernanza, multi-grado, auditoría…)
 │       └── test/            # tests de integración + TestS3Config (fake S3 in-memory)
 ├── Documentation/           # documentación (OVERVIEW, ARCHITECTURE, ENDPOINTS, DEVOPS…)
 ├── .dockerignore
 ├── .gitignore
 └── README.md
 ```
+
+El frontend vive en el repositorio hermano `Gradox2/gradox2.github.io`. Para el
+desarrollo local, `./run.sh dev` levanta solo API + PostgreSQL + MinIO y
+`./run.sh web` arranca Vite por separado. El historial de migraciones actual es
+`V1`…`V14`.
 
 > No existe `application.properties` base: cada perfil define su configuración
 > completa en `application-<perfil>.properties`. El perfil activo se elige con
@@ -348,11 +351,12 @@ Spring interprete los headers de proxy (`X-Forwarded-For`, `X-Forwarded-Proto`,
 > `X-Forwarded-For`, ignorando el valor que traiga el cliente.
 
 ### Pendientes / riesgos conocidos (por orden de prioridad)
-1. **Sin TLS/HTTPS** — decisión del equipo para esta fase. El tráfico (incluido
-   login) va en claro. **Antes de exponer credenciales reales o datos reales,
-   poner un proxy TLS** (Caddy, nginx, Traefik) delante del puerto 8080.
-2. **CORS totalmente permisivo** (`*`, con credentials). Pensado para un frontend
-   aún inexistente; restringir `AllowedOriginPatterns` cuando exista frontend fijo.
+1. **TLS en despliegues propios** — Render termina HTTPS en producción. Si se
+   publica el contenedor directamente en un VPS, el tráfico al puerto 8080 va en
+   claro; poner un proxy TLS (Caddy, nginx, Traefik) delante antes de exponerlo.
+2. **CORS permisivo** (`*`, con credentials). Ya existe un origen público fijo;
+   restringir `AllowedOriginPatterns` a `https://gradox2.github.io` y a los
+   orígenes locales requeridos para desarrollo.
 3. **Revocación de JWT** — el access token vale hasta `JWT_EXPIRATION` (24 h),
    pero `token_version` (migración V5) permite invalidar los tokens emitidos de
    un usuario (se comprueba en cada request). Los refresh tokens se revocan en BD.
@@ -565,7 +569,8 @@ Base URL: `http://<host>:8080` (sin HTTPS por ahora). Lista detallada en
 3. Definir **backup del bucket R2** (lifecycle/versionado) y revisar los backups
    automáticos de Supabase.
 4. Montar `/app/logs` como volumen persistente (hoy efímero).
-5. Restringir CORS al frontend real cuando exista.
+5. Restringir CORS al origen de Pages (`https://gradox2.github.io`) y a los
+   orígenes locales necesarios para desarrollo.
 6. CI/CD: GitHub Actions corre la suite y (job `migrations`) aplica Flyway
    sobre `postgres:16` validando el mapeo JPA. Lo que falta es el tramo de
    entrega: build de imagen + push a registry + deploy.
