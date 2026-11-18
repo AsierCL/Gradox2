@@ -31,6 +31,7 @@ import com.example.gradox2.service.interfaces.IAuditService;
 import com.example.gradox2.service.interfaces.IGlobalConfigService;
 import com.example.gradox2.service.interfaces.IVoteService;
 import com.example.gradox2.security.DegreeAccessGuard;
+import com.example.gradox2.utils.AfterCommit;
 import com.example.gradox2.utils.GetAuthUser;
 import com.example.gradox2.utils.mapper.VoteMapper;
 
@@ -343,7 +344,10 @@ public class VoteServiceImpl implements IVoteService {
         if (fileProposal.getActionType() == ActionType.DELETE) {
             if (fileProposal.getFile() != null) {
                 File target = fileProposal.getFile();
-                s3StorageService.delete(target.getObjectKey());
+                // WAVE1 S8: el borrado en S3 se registra para después del commit. Si la transacción revierte,
+                // la fila vuelve y el archivo tiene que seguir existiendo.
+                String objectKey = target.getObjectKey();
+                AfterCommit.run(() -> s3StorageService.delete(objectKey));
                 forumThreadRepository.deleteByFileId(target.getId());
                 fileProposal.setFile(null);
                 fileRepository.delete(target);

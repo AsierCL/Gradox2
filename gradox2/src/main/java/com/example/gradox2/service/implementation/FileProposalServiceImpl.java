@@ -37,6 +37,7 @@ import com.example.gradox2.service.interfaces.FileUrlSigner;
 import com.example.gradox2.service.interfaces.IAuditService;
 import com.example.gradox2.service.interfaces.IFileProposalService;
 import com.example.gradox2.service.interfaces.IGlobalConfigService;
+import com.example.gradox2.utils.AfterCommit;
 import com.example.gradox2.utils.ContentDisposition;
 import com.example.gradox2.utils.FileNames;
 import com.example.gradox2.security.DegreeAccessGuard;
@@ -137,6 +138,7 @@ public class FileProposalServiceImpl implements IFileProposalService {
         }
     }
 
+    @Transactional
     public String deleteFileProposal(Long id) {
         User authUser = GetAuthUser.getAuthUser();
 
@@ -153,7 +155,10 @@ public class FileProposalServiceImpl implements IFileProposalService {
 
         TempFile tempFile = proposal.getTempFile();
         if (tempFile != null) {
-            s3StorageService.delete(tempFile.getObjectKey());
+            // WAVE1 S8: el objeto S3 no vuelve con el rollback de la base. Se borra solo si la transacción
+            // confirma; si no, quedaría una fila apuntando a un archivo que ya no existe.
+            String objectKey = tempFile.getObjectKey();
+            AfterCommit.run(() -> s3StorageService.delete(objectKey));
         }
 
         // Let JPA cascading/orphan removal handle TempFile cleanup safely.
