@@ -25,6 +25,7 @@ import com.example.gradox2.persistence.entities.enums.ProposalStatus;
 import com.example.gradox2.persistence.entities.enums.UserRole;
 import com.example.gradox2.persistence.repository.SubjectRepository;
 import com.example.gradox2.persistence.repository.TempFileRepository;
+import com.example.gradox2.persistence.repository.UserRepository;
 import com.example.gradox2.presentation.dto.fileProposal.FileProposalResponse;
 import com.example.gradox2.presentation.dto.fileProposal.UploadFileProposalRequest;
 import com.example.gradox2.persistence.repository.FileProposalRepository;
@@ -66,12 +67,13 @@ public class FileProposalServiceImpl implements IFileProposalService {
     private final FileUrlSigner fileUrlSigner;
     private final IAuditService auditService;
     private final DegreeAccessGuard degreeAccessGuard;
+    private final UserRepository userRepository;
 
     public FileProposalServiceImpl(TempFileRepository tempFileRepository,
             FileProposalRepository fileProposalRepository, SubjectRepository subjectRepository,
             IGlobalConfigService voteConfigService, S3StorageService s3StorageService,
             FileUrlSigner fileUrlSigner, IAuditService auditService,
-            DegreeAccessGuard degreeAccessGuard) {
+            DegreeAccessGuard degreeAccessGuard, UserRepository userRepository) {
         this.tempFileRepository = tempFileRepository;
         this.fileProposalRepository = fileProposalRepository;
         this.subjectRepository = subjectRepository;
@@ -80,6 +82,7 @@ public class FileProposalServiceImpl implements IFileProposalService {
         this.fileUrlSigner = fileUrlSigner;
         this.auditService = auditService;
         this.degreeAccessGuard = degreeAccessGuard;
+        this.userRepository = userRepository;
     }
 
     @Transactional
@@ -89,6 +92,10 @@ public class FileProposalServiceImpl implements IFileProposalService {
 
         // Antes de tocar S3 o consumir cuota: si la asignatura es de otro grado, no hay propuesta.
         User uploader = degreeAccessGuard.requireSameDegree(subject.getDegree());
+        // La cuota es un "contar y después insertar": se serializa por usuario bloqueando su fila, para que
+        // dos subidas simultáneas no pasen ambas el conteo (WAVE1 S6).
+        uploader = userRepository.findByIdForUpdate(uploader.getId())
+                .orElseThrow(() -> new NotFoundException("Usuario no encontrado"));
         GlobalConfig config = voteConfigService.getConfig();
         ensurePendingUploadLimit(uploader, config.getMaxPendingUploads());
 

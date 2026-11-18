@@ -283,7 +283,13 @@ class GlobalJourneyIntegrationTest {
                 .andExpect(status().isOk());
 
         // 16. Refresh con rotación; el refresh antiguo queda invalidado al reutilizarse.
-        String oldRefresh = login1.get("refreshToken").asText();
+        // El refresh de la sesión previa al cambio de contraseña ya no sirve (WAVE1 S2).
+        mockMvc.perform(post("/api/auth/token/refresh")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json(Map.of("refreshToken", login1.get("refreshToken").asText()))))
+                .andExpect(status().isUnauthorized());
+
+        String oldRefresh = loginRenamed.get("refreshToken").asText();
 
         MvcResult refreshed = mockMvc.perform(post("/api/auth/token/refresh")
                         .contentType(MediaType.APPLICATION_JSON)

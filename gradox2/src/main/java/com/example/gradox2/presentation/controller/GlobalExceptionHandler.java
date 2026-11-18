@@ -173,6 +173,12 @@ public class GlobalExceptionHandler {
                     .errorMessage("Already voted on this proposal.")
                     .errorCode("ALREADY_EXIST_ERROR")
                     .build();
+        } else if (message != null && message.contains("uk_scores_file_voter")) {
+            // Carrera entre dos puntuaciones del mismo usuario sobre el mismo archivo (WAVE1 S6).
+            error = ErrorDTO.builder()
+                    .errorMessage("Already scored this file.")
+                    .errorCode("ALREADY_EXIST_ERROR")
+                    .build();
         } else {
             error = ErrorDTO.builder()
                     .errorMessage("Data integrity violation. Please check your request.")
