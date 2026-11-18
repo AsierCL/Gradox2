@@ -133,8 +133,11 @@ class AuthRateLimitIntegrationTest {
     }
 
     @Test
-    void distinctForwardedForIpsDoNotShareRateLimitBucket() throws Exception {
-        for (int i = 0; i < 6; i++) {
+    void forwardedForIsIgnoredWhenNoTrustedProxyIsConfigured() throws Exception {
+        // Antes este caso afirmaba lo contrario: rotar X-Forwarded-For daba buckets nuevos. Eso era el
+        // bypass (el cliente elegía su propia IP). Sin proxy de confianza declarado la cabecera no cuenta,
+        // así que el sexto intento desde el mismo socket sigue bloqueado (WAVE1 S3).
+        for (int i = 0; i < 5; i++) {
             mockMvc.perform(post("/api/auth/login")
                             .with(request -> {
                                 request.setRemoteAddr("10.0.0.12");
@@ -146,6 +149,17 @@ class AuthRateLimitIntegrationTest {
                     .andExpect(status().isUnauthorized())
                     .andExpect(jsonPath("$.errorCode").value("UNAUTHENTICATED_ACCESS"));
         }
+
+        mockMvc.perform(post("/api/auth/login")
+                        .with(request -> {
+                            request.setRemoteAddr("10.0.0.12");
+                            return request;
+                        })
+                        .header("X-Forwarded-For", "198.51.100.99")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json(Map.of("username", "ratelimituser", "password", "WrongPass123!"))))
+                .andExpect(status().isTooManyRequests())
+                .andExpect(jsonPath("$.errorCode").value("RATE_LIMIT_EXCEEDED"));
     }
 
     private String json(Object value) throws Exception {

@@ -21,11 +21,14 @@ public class RateLimitFilter extends OncePerRequestFilter {
 
     private final InMemoryRateLimiter rateLimiter;
     private final HandlerExceptionResolver exceptionResolver;
+    private final ClientIpResolver clientIpResolver;
 
     public RateLimitFilter(InMemoryRateLimiter rateLimiter,
-                           @Qualifier("handlerExceptionResolver") HandlerExceptionResolver exceptionResolver) {
+                           @Qualifier("handlerExceptionResolver") HandlerExceptionResolver exceptionResolver,
+                           ClientIpResolver clientIpResolver) {
         this.rateLimiter = rateLimiter;
         this.exceptionResolver = exceptionResolver;
+        this.clientIpResolver = clientIpResolver;
     }
 
     @Override
@@ -64,7 +67,12 @@ public class RateLimitFilter extends OncePerRequestFilter {
         }
 
         if (isVoteMutation(method, path)) {
-            String principal = authenticatedIdentity();
+            String principal = authenticatedUsername();
+            if (principal == null) {
+                // Sin sesión no hay a quién limitar: un bucket "anonymous" compartido dejaría que
+                // cualquiera agote el cupo de todos los demás. La petición termina en 401 más adelante.
+                return;
+            }
             check("vote:" + principal, 20, 60 * 1000L,
                     "Too many vote operations. Slow down and retry.");
         }
@@ -92,25 +100,17 @@ public class RateLimitFilter extends OncePerRequestFilter {
         return "DELETE".equals(method) && path.matches("/files/\\d+/vote");
     }
 
-    private String authenticatedIdentity() {
+    private String authenticatedUsername() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth != null && auth.getName() != null && !auth.getName().isBlank()) {
-            return auth.getName();
+        if (auth != null && auth.getPrincipal() instanceof com.example.gradox2.persistence.entities.User user) {
+            return user.getUsername();
         }
-        return "anonymous";
+        return null;
     }
 
     private String clientIp(HttpServletRequest request) {
-        // Confiar en la primera IP de X-Forwarded-For: solo es seguro si un proxy
-        // de confianza la sobrescribe (server.forward-headers-strategy=framework).
-        // Si el cliente conecta directo al puerto de la app, puede falsificarla.
-        String forwardedFor = request.getHeader("X-Forwarded-For");
-        if (forwardedFor != null && !forwardedFor.isBlank()) {
-            String firstIp = forwardedFor.split(",")[0].trim();
-            if (!firstIp.isEmpty()) {
-                return firstIp;
-            }
-        }
-        return request.getRemoteAddr();
+        // La política de proxies de confianza vive en ClientIpResolver: acá no se interpreta
+        // X-Forwarded-For a mano (WAVE1 S3).
+        return clientIpResolver.resolve(request);
     }
 }
