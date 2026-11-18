@@ -11,14 +11,21 @@ public final class IdentityVisibility {
     }
 
     public static boolean canViewContent(File file, User viewer) {
-        FileVisibility visibility = file.getVisibilityLevel();
+        return canViewContent(file.getVisibilityLevel(), file.getUploader(), viewer);
+    }
+
+    /**
+     * Misma regla que {@link #canViewContent(File, User)} para contenido que todavía no es un {@link File}
+     * publicado, como el {@code TempFile} de una propuesta pendiente (WAVE1 S1).
+     */
+    public static boolean canViewContent(FileVisibility visibility, User owner, User viewer) {
         if (visibility == null) {
             return false;
         }
         return switch (visibility) {
             case PUBLIC -> true;
             case RESTRICTED -> viewer != null;
-            case PRIVATE -> isSameUser(file.getUploader(), viewer) || isMaster(viewer);
+            case PRIVATE -> isSameUser(owner, viewer) || isMaster(viewer);
         };
     }
 

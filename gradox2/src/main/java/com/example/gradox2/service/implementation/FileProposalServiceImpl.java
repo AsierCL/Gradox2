@@ -22,6 +22,7 @@ import com.example.gradox2.persistence.entities.GlobalConfig;
 import com.example.gradox2.persistence.entities.enums.ActionType;
 import com.example.gradox2.persistence.entities.enums.FileVisibility;
 import com.example.gradox2.persistence.entities.enums.ProposalStatus;
+import com.example.gradox2.persistence.entities.enums.UserRole;
 import com.example.gradox2.persistence.repository.SubjectRepository;
 import com.example.gradox2.persistence.repository.TempFileRepository;
 import com.example.gradox2.presentation.dto.fileProposal.FileProposalResponse;
@@ -39,6 +40,7 @@ import com.example.gradox2.utils.ContentDisposition;
 import com.example.gradox2.utils.FileNames;
 import com.example.gradox2.security.DegreeAccessGuard;
 import com.example.gradox2.utils.GetAuthUser;
+import com.example.gradox2.utils.IdentityVisibility;
 import com.example.gradox2.utils.SortUtils;
 import com.example.gradox2.utils.mapper.FileProposalMapper;
 import com.example.gradox2.presentation.dto.files.FileDownloadResponse;
@@ -185,7 +187,27 @@ public class FileProposalServiceImpl implements IFileProposalService {
             throw new NotFoundException("No TempFile associated with this proposal");
         }
 
+        assertDownloadableByCurrentUser(tempFile);
         return tempFile;
+    }
+
+    /**
+     * El estado {@code PENDING} no autoriza la descarga por sí solo (WAVE1 S1): el archivo sigue en
+     * revisión, así que se exige el grado del recurso y la visibilidad declarada por el uploader.
+     * El {@code ADMIN} de plataforma conserva la supervisión de todas las propuestas.
+     */
+    private void assertDownloadableByCurrentUser(TempFile tempFile) {
+        User viewer = GetAuthUser.getAuthUser();
+        if (viewer.getRole() == UserRole.ADMIN) {
+            return;
+        }
+
+        degreeAccessGuard.requireSameDegree(viewer, tempFile.getSubject().getDegree());
+
+        if (!IdentityVisibility.canViewContent(tempFile.getVisibilityLevel(), tempFile.getUploader(), viewer)) {
+            // Igual que con un archivo publicado: no revelar la existencia de contenido que no se puede ver.
+            throw new NotFoundException("Proposal not found");
+        }
     }
 
     public FileDownloadResponse getFileDownloadLink(Long id) {
