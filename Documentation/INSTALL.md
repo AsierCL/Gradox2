@@ -140,7 +140,7 @@ No existe un perfil `docker`: el entorno dev usa el perfil `local`.
 
 ```bash
 cd gradox2
-./mvnw test   # 129 tests
+./mvnw test   # 213 tests
 ```
 
 Más detalle en [TESTING.md](./TESTING.md).

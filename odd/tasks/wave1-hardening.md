@@ -40,8 +40,8 @@ Deploy objetivo: backend en **Render** (proxy propio, una instancia, memoria aco
 | --- | --- | --- | --- |
 | T1 | S1 | inline | `fix(security): require degree scope to download pending proposals` |
 | T2 | S2 | inline | `fix(auth): invalidate sessions on password change` |
-| T3 | S3 | inline | `fix(security): resolve rate-limit client ip from trusted proxy hops` |
-| T4 | S4 | inline | `fix(security): bound in-memory rate limiter and skip anonymous vote bucket` |
+| T3 | S3 | inline | `fix(security): bind rate limiting to the trusted client ip` (con T4) |
+| T4 | S4 | inline | `fix(security): bind rate limiting to the trusted client ip` (con T3) |
 | T5 | S5 | inline | `fix(security): restrict cors to configured origins` |
 | T6 | S6 | inline | `fix(data): enforce score uniqueness and serialize pending upload quota` |
 | T7 | S7 | inline | `perf(db): add indexes for existing query paths` |
@@ -63,3 +63,31 @@ Deploy objetivo: backend en **Render** (proxy propio, una instancia, memoria aco
   perfiles y la resolución de IP del cliente queda en `ClientIpResolver`, para que la política de proxies
   de confianza tenga un solo dueño explícito y testeable.
 - **E1** — Evidencia: `mvn test` antes de empezar → 182 tests, 0 fallos (2026-11-18).
+- **E2** — T3 y T4 comparten `RateLimitFilter` e `InMemoryRateLimiter` y no compilan por separado, así que
+  se cierran en un solo commit; el documento registra el agrupamiento en vez de inventar dos unidades.
+- **E3** — Hallazgo colateral (fuera de alcance, candidato a Ola 2): `POST /api/auth/login` responde `404`
+  con usuario inexistente y `401` con contraseña incorrecta, lo que permite enumerar usuarios.
+- **E4** — Hallazgo colateral (fuera de alcance, candidato a Ola 2): renombrar el usuario invalida la sesión
+  porque el `sub` del JWT es el username; el fix sería emitir el `sub` con el id.
+- **E5** — `./mvnw test` completo: **213 tests, 0 fallos** (1m49s), incluye los 182 previos.
+- **E6** — `PostgresMigrationIT` contra `postgres:16` local (docker, puerto 55432): 4/4 OK, valida
+  los índices de la V16 y que la V15 deduplica filas existentes antes de crear el índice único.
+- **D1** — Decisión de implementación: `allowCredentials=false` en CORS porque la sesión viaja en el
+  header `Authorization` y no en cookies; no hay nada que acreditar.
+
+## Cierre
+
+| Tarea | Commit |
+| --- | --- |
+| T1 | `5515f4f` fix(security): require degree scope to download pending proposals |
+| T2 | `cc02984` fix(auth): invalidate sessions on password change |
+| T3+T4 | `992f235` fix(security): bind rate limiting to the trusted client ip |
+| T5 | `e5d4796` fix(security): restrict cors to configured origins |
+| T6 | `f9b7eb9` fix(data): enforce score uniqueness and serialize pending upload quota |
+| T7 | `d9fb210` perf(db): add indexes for existing query paths |
+| T8 | `42b2dc8` fix(files): delete s3 objects after commit |
+| T9 | este commit (docs, .env.example, compose) |
+
+Follow-ups detectados durante la implementación (fuera de la Ola 1): login responde `404` con usuario
+inexistente (enumeración de usuarios), renombrar el usuario invalida la sesión porque el `sub` del JWT es
+el username, y `PUT /users/me` no pide la contraseña actual antes de cambiarla.

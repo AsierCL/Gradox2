@@ -16,7 +16,7 @@ Notas:
 - El acceso a **S3 se simula con un fake en memoria** (`TestS3Config`): no se toca
   red ni se necesita MinIO/R2 para pasar los tests. Incluye un **signer fake**
   (`FileUrlSigner`) que devuelve URLs firmadas sin tocar red.
-- Ejecución más reciente: **138 tests, 0 fallos, 0 errores**.
+- Ejecución más reciente: **213 tests, 0 fallos, 0 errores** (`./mvnw test`).
 - Las migraciones Flyway no pueden correr sobre H2: se validan con
   `PostgresMigrationIT` contra PostgreSQL real (job `migrations` de CI).
 
@@ -34,9 +34,12 @@ Archivo: [gradox2/src/test/java/com/example/gradox2/AuthRateLimitIntegrationTest
 - `loginShouldReturnTooManyRequestsAfterFiveFailuresFromSameIp`
   - 5 intentos de login fallidos desde la misma IP → `429 TOO_MANY_REQUESTS` (`RATE_LIMIT_EXCEEDED`).
 - `loginRateLimitUsesFirstIpFromForwardedForHeader`
-  - El rate limiter usa la **primera** IP de `X-Forwarded-For` (no `getRemoteAddr`).
-- `distinctForwardedForIpsDoNotShareRateLimitBucket`
-  - IPs distintas no comparten bucket de rate limit.
+  - Con `trusted-proxy-hops=1`, el rate limiter usa el **último** salto de `X-Forwarded-For` (el que agrega el proxy), no el que manda el cliente.
+- `forwardedForIsIgnoredWhenNoTrustedProxyIsConfigured`
+  - Sin proxy de confianza declarado la cabecera no cuenta: rotar `X-Forwarded-For` no da buckets nuevos.
+
+La política completa se cubre además en `ClientIpResolverTest`, `InMemoryRateLimiterTest`,
+`RateLimitIdentityIntegrationTest` (voto anónimo sin bucket compartido) y `CorsPolicyIntegrationTest`.
 
 ### 3) AuthRegistrationIntegrationTest — 6 casos
 Archivo: [gradox2/src/test/java/com/example/gradox2/AuthRegistrationIntegrationTest.java](../gradox2/src/test/java/com/example/gradox2/AuthRegistrationIntegrationTest.java)
@@ -232,7 +235,7 @@ Archivo: [gradox2/src/test/java/com/example/gradox2/PostgresMigrationIT.java](..
 
 - `migrationsApplyAndMatchEntityMapping`
   - Solo corre si `POSTGRES_TEST_URL` está definido (job `migrations` de CI, con
-    un service `postgres:16`). Aplica V1..V9 sobre PostgreSQL real y arranca el
+    un service `postgres:16`). Aplica la cadena completa de migraciones (V1..V16) sobre PostgreSQL real y arranca el
     contexto con `ddl-auto=validate`, así un desajuste entre migraciones y
     entidades falla en CI y no en el arranque de producción.
   - Caso negativo comprobado a mano (no automatizado): una migración que elimina
