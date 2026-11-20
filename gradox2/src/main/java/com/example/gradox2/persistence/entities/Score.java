@@ -9,6 +9,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -21,7 +22,10 @@ import lombok.Setter;
 @AllArgsConstructor
 @NoArgsConstructor
 @Entity
-@Table(name = "scores")
+// WAVE1 S6: el índice único de la migración V15 también tiene que existir en el schema que Hibernate
+// genera para los tests; si no, la garantía solo estaría probada en producción.
+@Table(name = "scores", uniqueConstraints = @UniqueConstraint(
+        name = "uk_scores_file_voter", columnNames = {"file_id", "voter_id"}))
 public class Score {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

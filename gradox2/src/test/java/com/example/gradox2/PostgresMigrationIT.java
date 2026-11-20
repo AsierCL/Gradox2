@@ -7,6 +7,7 @@ import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.List;
 
 import org.flywaydb.core.Flyway;
 import org.flywaydb.core.api.MigrationVersion;
@@ -61,6 +62,120 @@ class PostgresMigrationIT {
                 .isEmpty();
         assertThat(flyway.info().current()).isNotNull();
         assertThat(flyway.info().current().getVersion()).isNotNull();
+    }
+
+    /**
+     * Los índices de la V16 existen en el schema que consume la aplicación (WAVE1 S7). El nombre del índice
+     * es el contrato: si alguien lo renombra o lo borra, la consulta que lo justifica vuelve a recorrer la
+     * tabla entera y nada más lo detecta.
+     */
+    @Test
+    void migrationsCreateIndexesForExistingQueries() throws SQLException {
+        String url = requireEnv("POSTGRES_TEST_URL");
+        String user = envOrDefault("POSTGRES_TEST_USER", "postgres");
+        String pass = envOrDefault("POSTGRES_TEST_PASSWORD", "postgres");
+
+        for (String index : List.of(
+                "idx_votes_proposal",
+                "idx_proposals_status_ends_at",
+                "idx_proposals_proposer_status",
+                "idx_files_subject",
+                "idx_files_uploader",
+                "idx_temp_files_subject",
+                "idx_temp_files_uploader",
+                "idx_refresh_tokens_user",
+                "idx_audit_records_timestamp",
+                "idx_thread_comments_thread",
+                "idx_thread_comments_author",
+                "uk_scores_file_voter")) {
+            assertThat(queryLong(url, user, pass, "public",
+                    "select count(*) from pg_indexes where schemaname = 'public' and indexname = '" + index + "'"))
+                    .as("falta el índice %s", index)
+                    .isEqualTo(1);
+        }
+    }
+
+    /**
+     * La V15 no puede crear el índice único sobre una base con duplicados: primero deduplica conservando la
+     * fila más reciente de cada par (WAVE1 S6). Se ensaya sobre un schema propio en V14 con dos puntuaciones
+     * del mismo usuario sobre el mismo archivo.
+     */
+    @Test
+    void scoreUniquenessMigrationDeduplicatesExistingRows() throws SQLException {
+        String url = requireEnv("POSTGRES_TEST_URL");
+        String user = envOrDefault("POSTGRES_TEST_USER", "postgres");
+        String pass = envOrDefault("POSTGRES_TEST_PASSWORD", "postgres");
+        String schema = "score_uniqueness";
+
+        dropSchema(url, user, pass, schema);
+
+        Flyway.configure()
+                .dataSource(url, user, pass)
+                .schemas(schema)
+                .defaultSchema(schema)
+                .target(MigrationVersion.fromVersion("14"))
+                .load()
+                .migrate();
+
+        try (Connection connection = DriverManager.getConnection(url, user, pass);
+                Statement statement = connection.createStatement()) {
+            statement.execute("set search_path to " + schema);
+            statement.executeUpdate("""
+                    insert into users (enabled, reputation, created_at, email, password_hash, role, username, token_version, degree_id)
+                    values (true, 10.0, now(), 'dup@rai.usc.es', 'hash', 'USER', 'dupuser', 1,
+                            (select id from degrees where code = 'G4012'))
+                    """);
+            statement.executeUpdate("""
+                    insert into files (subject_id, uploader_id, object_key, title, type, visibility_level)
+                    select (select min(id) from subjects), id, 'dup/file.pdf', 'Archivo', 'APUNTES', 'PUBLIC'
+                      from users where username = 'dupuser'
+                    """);
+            statement.executeUpdate("""
+                    insert into scores (file_id, voter_id, score, scored_at)
+                    select f.id, u.id, 1.0, now() - interval '1 hour' from files f, users u
+                     where u.username = 'dupuser'
+                    """);
+            statement.executeUpdate("""
+                    insert into scores (file_id, voter_id, score, scored_at)
+                    select f.id, u.id, -1.0, now() from files f, users u
+                     where u.username = 'dupuser'
+                    """);
+        }
+
+        assertThat(queryLong(url, user, pass, schema, "select count(*) from scores"))
+                .as("la base en V14 tiene el duplicado")
+                .isEqualTo(2);
+
+        Flyway.configure()
+                .dataSource(url, user, pass)
+                .schemas(schema)
+                .defaultSchema(schema)
+                .load()
+                .migrate();
+
+        assertThat(queryLong(url, user, pass, schema, "select count(*) from scores"))
+                .as("la deduplicación deja una sola fila por par")
+                .isEqualTo(1);
+        assertThat(queryString(url, user, pass, schema, "select score from scores"))
+                .as("se conserva la puntuación más reciente")
+                .isEqualTo("-1");
+
+        boolean duplicateRejected = false;
+        try (Connection connection = DriverManager.getConnection(url, user, pass);
+                Statement statement = connection.createStatement()) {
+            statement.execute("set search_path to " + schema);
+            statement.executeUpdate("""
+                    insert into scores (file_id, voter_id, score, scored_at)
+                    select file_id, voter_id, 1.0, now() from scores limit 1
+                    """);
+        } catch (SQLException expected) {
+            duplicateRejected = true;
+        }
+        assertThat(duplicateRejected)
+                .as("el índice único rechaza un segundo score del mismo votante")
+                .isTrue();
+
+        dropSchema(url, user, pass, schema);
     }
 
     /**

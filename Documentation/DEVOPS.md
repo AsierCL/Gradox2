@@ -69,7 +69,7 @@ para la persistencia y el almacenamiento de archivos:
 | Object storage | Cloudflare R2 / MinIO | — | endpoint S3 compatible, path-style |
 | Build | Maven (wrapper) | 3.x vía `./mvnw` | imagen base `eclipse-temurin:21` |
 | Contenedores | Docker + Docker Compose | Compose v2 | perfil `full` |
-| Test | JUnit 5 + MockMvc | Boot test | H2 en memoria, 129 tests (+ migraciones contra PostgreSQL real en CI) |
+| Test | JUnit 5 + MockMvc | Boot test | H2 en memoria, 213 tests (+ migraciones contra PostgreSQL real en CI) |
 
 ### Versiones clave del stack Docker
 - `eclipse-temurin:21-jdk` — stage de build del Dockerfile
@@ -108,7 +108,7 @@ Gradox2/
 │       │       ├── application-prod.properties
 │       │       ├── application-test.properties
 │       │       ├── logback-spring.xml        # rotación de logs
-│       │       └── db/migration/    # Flyway: V1..V14 (schema, foro, S3, stats, gobernanza, multi-grado, auditoría…)
+│       │       └── db/migration/    # Flyway: V1..V16 (schema, foro, S3, stats, gobernanza, multi-grado, auditoría, índices)
 │       └── test/            # tests de integración + TestS3Config (fake S3 in-memory)
 ├── Documentation/           # documentación (OVERVIEW, ARCHITECTURE, ENDPOINTS, DEVOPS…)
 ├── .dockerignore
@@ -167,6 +167,10 @@ Los entornos se seleccionan con `SPRING_PROFILES_ACTIVE`.
 | `SPRING_PROFILES_ACTIVE` | Perfil activo | sí | **`prod`** |
 | `JWT_SECRET` | Firma HS256 de JWT | sí | ≥ 32 bytes, aleatorio (`openssl rand -base64 32`) |
 | `JWT_EXPIRATION` | Validez del token (ms) | no | `86400000` (24 h) |
+| `APP_CORS_ALLOWED_ORIGINS` | Orígenes de navegador autorizados (coma) | no | `https://gradox2.github.io` (default) |
+| `RATE_LIMIT_TRUSTED_PROXY_HOPS` | Proxies de confianza delante de la app | no | `1` en Render (default de `prod`), `0` sin proxy |
+| `RATE_LIMIT_MAX_BUCKETS` | Claves de rate limit simultáneas | no | `10000` |
+| `RATE_LIMIT_BUCKET_TTL_MS` | Vida de un bucket sin actividad (ms) | no | `1800000` |
 | `APP_BASE_URL` | URL pública para enlaces de email | **sí (pendiente)** | ver §6 |
 | `BOOTSTRAP_MASTER_USERNAME` | Primer MASTER (solo primer arranque) | **sí (pendiente)** | ver §6 |
 | `BOOTSTRAP_MASTER_PASSWORD` | Password del primer MASTER | **sí (pendiente)** | ver §6 |
@@ -215,7 +219,7 @@ docker build --network=host -t gradox2-app:latest -f Docker/Dockerfile .
 ### Build manual (sin Docker), para validar tests
 ```bash
 cd Gradox2/gradox2
-./mvnw test          # 129 tests (H2 + fake S3)
+./mvnw test          # 213 tests (H2 + fake S3)
 # Migraciones + mapeo JPA contra PostgreSQL real (lo corre el job `migrations` de CI):
 POSTGRES_TEST_URL=jdbc:postgresql://localhost:5432/gradoxdb ./mvnw test -Dtest=PostgresMigrationIT
 ./mvnw package -DskipTests
@@ -323,7 +327,7 @@ de verificación serán inutilizables para el usuario final.
 | **Credenciales S3 por entorno** (`S3_ACCESS_KEY`/`S3_SECRET_KEY`) | ✅ |
 | **Bootstrap del primer MASTER** vía env (`BOOTSTRAP_MASTER_*`), sin logs de credenciales | ✅ |
 | **Swagger/OpenAPI desactivado en prod** | ✅ |
-| Rate limiting en login/register (in-memory por IP del cliente vía `X-Forwarded-For`) | ✅ |
+| Rate limiting de login/register/voto con IP resuelta por saltos de proxy de confianza (`RATE_LIMIT_TRUSTED_PROXY_HOPS`) y buckets acotados | ✅ |
 | Rotación de logs (tamaño/fecha) | ✅ |
 | Límites de memoria/CPU por contenedor | ✅ |
 | Actuator expuesto solo `health` e `info` | ✅ |
@@ -333,31 +337,45 @@ de verificación serán inutilizables para el usuario final.
 
 ### Rate limiting y proxys (IP real del cliente)
 
-El `RateLimitFilter` identifica al cliente usando `X-Forwarded-For`: toma la
-**primera** IP de la cabecera (la más cercana al cliente) y, si la cabecera no
-viene o viene vacía, cae a `request.getRemoteAddr()`.
+`RateLimitFilter` no interpreta `X-Forwarded-For` por su cuenta: delega en
+`ClientIpResolver`, que resuelve la IP con un número **explícito** de proxies de
+confianza (`app.rate-limit.trusted-proxy-hops`):
 
-Esto se combina con `server.forward-headers-strategy=framework`
-(`application-local.properties` y `application-prod.properties`), que hace que
-Spring interprete los headers de proxy (`X-Forwarded-For`, `X-Forwarded-Proto`,
-`Forwarded`) y genere esquemas/URLs correctos detrás de un terminador TLS.
+- `0` (por defecto en local y con acceso directo al contenedor): la cabecera se
+  ignora y se usa `request.getRemoteAddr()`.
+- `1` (**Render**, un único proxy de borde): se toma el **último** salto de la
+  cadena, que es el que agrega el proxy. Un cliente que falsifique el prefijo de
+  la cabecera no consigue buckets nuevos.
 
-> ⚠️ **Frontera de confianza:** `X-Forwarded-For` **solo es fiable** cuando la
-> app está **detrás de un proxy/reverse-proxy que sobrescribe la cabecera**
-> (Caddy, nginx, Traefik, Render…). Si el puerto 8080 se expone **directamente**,
-> un cliente puede falsificar la cabecera y saturar el bucket de otra IP o
-> esquivar el límite usando IPs inventadas. Por eso, al introducir TLS,
-> hay que colocar el proxy delante y dejar que sea él quien fije
-> `X-Forwarded-For`, ignorando el valor que traiga el cliente.
+Solo se aceptan direcciones IP literales como clave de bucket; cualquier otro
+texto cae a la dirección del socket. `server.forward-headers-strategy=none` en
+todos los perfiles: la política de proxies tiene un único dueño y es testeable.
+
+El contador está acotado en memoria (`app.rate-limit.max-buckets`,
+`app.rate-limit.bucket-ttl-ms`) porque Render corre **una sola instancia** con
+memoria limitada. Si el despliegue pasa a varias instancias, el conteo deja de
+ser global y el bucket tiene que mudarse a un almacén compartido (Redis).
+
+> ⚠️ **Frontera de confianza:** `X-Forwarded-For` solo es fiable detrás de un
+> proxy que **agrega** su propio salto (Render lo hace). Con el puerto 8080
+> expuesto directamente hay que dejar `RATE_LIMIT_TRUSTED_PROXY_HOPS=0`;
+> cualquier otro valor confía en una cabecera que el cliente controla.
+
+### CORS
+
+Los orígenes de navegador autorizados se declaran en `APP_CORS_ALLOWED_ORIGINS`
+(separados por coma). El valor por defecto de producción es
+`https://gradox2.github.io`, el origen de GitHub Pages; en local se agregan los
+puertos del dev server. Un origen no listado no recibe
+`Access-Control-Allow-Origin` y no puede emitir peticiones autenticadas.
+`allowCredentials` está desactivado a propósito: la sesión viaja en el header
+`Authorization`, no en cookies.
 
 ### Pendientes / riesgos conocidos (por orden de prioridad)
 1. **TLS en despliegues propios** — Render termina HTTPS en producción. Si se
    publica el contenedor directamente en un VPS, el tráfico al puerto 8080 va en
    claro; poner un proxy TLS (Caddy, nginx, Traefik) delante antes de exponerlo.
-2. **CORS permisivo** (`*`, con credentials). Ya existe un origen público fijo;
-   restringir `AllowedOriginPatterns` a `https://gradox2.github.io` y a los
-   orígenes locales requeridos para desarrollo.
-3. **Revocación de JWT** — el access token vale hasta `JWT_EXPIRATION` (24 h),
+2. **Revocación de JWT** — el access token vale hasta `JWT_EXPIRATION` (24 h),
    pero `token_version` (migración V5) permite invalidar los tokens emitidos de
    un usuario (se comprueba en cada request). Los refresh tokens se revocan en BD.
 4. **Backups** — en Supabase la BD se respalda por el proveedor (ver 8); el
@@ -528,9 +546,9 @@ Base URL: `http://<host>:8080` (sin HTTPS por ahora). Lista detallada en
 - [ ] `BOOTSTRAP_MASTER_USERNAME/PASSWORD/EMAIL` rellenos (si no, no habrá admin).
 - [ ] Credenciales SMTP de Gmail correctas y con permiso para enviar.
 - [ ] Build: `docker build --network=host -f Docker/Dockerfile .` OK.
-- [ ] Tests: `./mvnw test` → 129/129 OK (en el directorio `gradox2/`).
+- [ ] Tests: `./mvnw test` → 213/213 OK (en el directorio `gradox2/`).
 - [ ] Migraciones: `POSTGRES_TEST_URL=... ./mvnw test -Dtest=PostgresMigrationIT` → OK
-      (aplica V1..V9 sobre PostgreSQL 16 y valida el mapeo JPA; también corre en CI).
+      (aplica V1..V16 sobre PostgreSQL 16, valida el mapeo JPA y los índices; también corre en CI).
 - [ ] `docker compose --env-file Docker/.env -f Docker/docker-compose.yml config --quiet` no da errores.
 - [ ] Primer arranque verificado: health UP, login del MASTER funciona, bootstrap idempotente.
 - [ ] Verificar subida+descarga de un archivo (S3 end-to-end).
@@ -551,7 +569,7 @@ Base URL: `http://<host>:8080` (sin HTTPS por ahora). Lista detallada en
 | Subida/descarga de archivos falla con `S3Exception` | credenciales R2 incorrectas, bucket inexistente o endpoint mal configurado | revisar `S3_*` del `.env`, que el bucket exista en R2 y el API token tenga permisos |
 | `The authorization header is malformed` / 403 en R2 | región distinta de `auto` o secret incorrecto | `S3_REGION=auto` + regenerar el token |
 | Descargas con error pero la app levanta | `S3StorageService` no pudo crear el bucket (best-effort) | en MinIO dev el bucket se auto-crea; en R2 debe existir antes |
-| Login 429 / rate limited a pesar de IPs distintas | clientes reales tras el mismo proxy comparten IP, o `X-Forwarded-For` vacío | asegurarse de que el proxy sobrescribe la cabecera; si no, ver §7.3 (frontera de confianza) |
+| Login 429 / rate limited a pesar de IPs distintas | clientes reales tras el mismo proxy comparten IP, o `RATE_LIMIT_TRUSTED_PROXY_HOPS` mal configurado | en Render debe ser `1`; sin proxy, `0` (ver §7.3) |
 | Enlaces de verificación apuntan a `localhost` | `APP_BASE_URL` sin cambiar | fijar URL pública en `Docker/.env` |
 | No hay forma de crear el primer admin | `BOOTSTRAP_MASTER_*` vacíos | rellenar y reiniciar la app (es idempotente) |
 | Swagger/OpenAPI no responde en prod | desactivado a propósito | esperado; no re-activar en prod |
@@ -563,14 +581,15 @@ Base URL: `http://<host>:8080` (sin HTTPS por ahora). Lista detallada en
 ## 14. Pendientes del equipo DevOps (hoja de ruta)
 
 1. **TLS/HTTPS** (Caddy/nginx + ajustar `APP_BASE_URL` a `https://...`). Al
-   añadirlo, el proxy debe sobrescribir `X-Forwarded-For` para que el rate
-   limiter (§7.3) use la IP del cliente real.
+   añadirlo, el proxy debe **agregar** su salto a `X-Forwarded-For` y hay que
+   fijar `RATE_LIMIT_TRUSTED_PROXY_HOPS` al número de proxies delante de la app.
 2. Revisar **IPv6/IPv4** y el uso del **connection pooler** de Supabase según el host.
 3. Definir **backup del bucket R2** (lifecycle/versionado) y revisar los backups
    automáticos de Supabase.
 4. Montar `/app/logs` como volumen persistente (hoy efímero).
-5. Restringir CORS al origen de Pages (`https://gradox2.github.io`) y a los
-   orígenes locales necesarios para desarrollo.
+5. Verificar en producción que `APP_CORS_ALLOWED_ORIGINS` coincide con el
+   dominio publicado (agregarlo si se configura un dominio propio distinto de
+   `gradox2.github.io`).
 6. CI/CD: GitHub Actions corre la suite y (job `migrations`) aplica Flyway
    sobre `postgres:16` validando el mapeo JPA. Lo que falta es el tramo de
    entrega: build de imagen + push a registry + deploy.

@@ -22,8 +22,10 @@ import com.example.gradox2.persistence.entities.GlobalConfig;
 import com.example.gradox2.persistence.entities.enums.ActionType;
 import com.example.gradox2.persistence.entities.enums.FileVisibility;
 import com.example.gradox2.persistence.entities.enums.ProposalStatus;
+import com.example.gradox2.persistence.entities.enums.UserRole;
 import com.example.gradox2.persistence.repository.SubjectRepository;
 import com.example.gradox2.persistence.repository.TempFileRepository;
+import com.example.gradox2.persistence.repository.UserRepository;
 import com.example.gradox2.presentation.dto.fileProposal.FileProposalResponse;
 import com.example.gradox2.presentation.dto.fileProposal.UploadFileProposalRequest;
 import com.example.gradox2.persistence.repository.FileProposalRepository;
@@ -35,10 +37,12 @@ import com.example.gradox2.service.interfaces.FileUrlSigner;
 import com.example.gradox2.service.interfaces.IAuditService;
 import com.example.gradox2.service.interfaces.IFileProposalService;
 import com.example.gradox2.service.interfaces.IGlobalConfigService;
+import com.example.gradox2.utils.AfterCommit;
 import com.example.gradox2.utils.ContentDisposition;
 import com.example.gradox2.utils.FileNames;
 import com.example.gradox2.security.DegreeAccessGuard;
 import com.example.gradox2.utils.GetAuthUser;
+import com.example.gradox2.utils.IdentityVisibility;
 import com.example.gradox2.utils.SortUtils;
 import com.example.gradox2.utils.mapper.FileProposalMapper;
 import com.example.gradox2.presentation.dto.files.FileDownloadResponse;
@@ -64,12 +68,13 @@ public class FileProposalServiceImpl implements IFileProposalService {
     private final FileUrlSigner fileUrlSigner;
     private final IAuditService auditService;
     private final DegreeAccessGuard degreeAccessGuard;
+    private final UserRepository userRepository;
 
     public FileProposalServiceImpl(TempFileRepository tempFileRepository,
             FileProposalRepository fileProposalRepository, SubjectRepository subjectRepository,
             IGlobalConfigService voteConfigService, S3StorageService s3StorageService,
             FileUrlSigner fileUrlSigner, IAuditService auditService,
-            DegreeAccessGuard degreeAccessGuard) {
+            DegreeAccessGuard degreeAccessGuard, UserRepository userRepository) {
         this.tempFileRepository = tempFileRepository;
         this.fileProposalRepository = fileProposalRepository;
         this.subjectRepository = subjectRepository;
@@ -78,6 +83,7 @@ public class FileProposalServiceImpl implements IFileProposalService {
         this.fileUrlSigner = fileUrlSigner;
         this.auditService = auditService;
         this.degreeAccessGuard = degreeAccessGuard;
+        this.userRepository = userRepository;
     }
 
     @Transactional
@@ -87,6 +93,10 @@ public class FileProposalServiceImpl implements IFileProposalService {
 
         // Antes de tocar S3 o consumir cuota: si la asignatura es de otro grado, no hay propuesta.
         User uploader = degreeAccessGuard.requireSameDegree(subject.getDegree());
+        // La cuota es un "contar y después insertar": se serializa por usuario bloqueando su fila, para que
+        // dos subidas simultáneas no pasen ambas el conteo (WAVE1 S6).
+        uploader = userRepository.findByIdForUpdate(uploader.getId())
+                .orElseThrow(() -> new NotFoundException("Usuario no encontrado"));
         GlobalConfig config = voteConfigService.getConfig();
         ensurePendingUploadLimit(uploader, config.getMaxPendingUploads());
 
@@ -128,6 +138,7 @@ public class FileProposalServiceImpl implements IFileProposalService {
         }
     }
 
+    @Transactional
     public String deleteFileProposal(Long id) {
         User authUser = GetAuthUser.getAuthUser();
 
@@ -144,7 +155,10 @@ public class FileProposalServiceImpl implements IFileProposalService {
 
         TempFile tempFile = proposal.getTempFile();
         if (tempFile != null) {
-            s3StorageService.delete(tempFile.getObjectKey());
+            // WAVE1 S8: el objeto S3 no vuelve con el rollback de la base. Se borra solo si la transacción
+            // confirma; si no, quedaría una fila apuntando a un archivo que ya no existe.
+            String objectKey = tempFile.getObjectKey();
+            AfterCommit.run(() -> s3StorageService.delete(objectKey));
         }
 
         // Let JPA cascading/orphan removal handle TempFile cleanup safely.
@@ -185,7 +199,27 @@ public class FileProposalServiceImpl implements IFileProposalService {
             throw new NotFoundException("No TempFile associated with this proposal");
         }
 
+        assertDownloadableByCurrentUser(tempFile);
         return tempFile;
+    }
+
+    /**
+     * El estado {@code PENDING} no autoriza la descarga por sí solo (WAVE1 S1): el archivo sigue en
+     * revisión, así que se exige el grado del recurso y la visibilidad declarada por el uploader.
+     * El {@code ADMIN} de plataforma conserva la supervisión de todas las propuestas.
+     */
+    private void assertDownloadableByCurrentUser(TempFile tempFile) {
+        User viewer = GetAuthUser.getAuthUser();
+        if (viewer.getRole() == UserRole.ADMIN) {
+            return;
+        }
+
+        degreeAccessGuard.requireSameDegree(viewer, tempFile.getSubject().getDegree());
+
+        if (!IdentityVisibility.canViewContent(tempFile.getVisibilityLevel(), tempFile.getUploader(), viewer)) {
+            // Igual que con un archivo publicado: no revelar la existencia de contenido que no se puede ver.
+            throw new NotFoundException("Proposal not found");
+        }
     }
 
     public FileDownloadResponse getFileDownloadLink(Long id) {

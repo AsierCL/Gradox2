@@ -112,8 +112,11 @@ public class UserServiceImpl implements IUserService {
 
     @Transactional
     public MyProfileResponse updateCurrentUser(UpdateMyProfileRequest userProfile) {
-        // 1. Obtener el usuario actual
-        User user = GetAuthUser.getAuthUser();
+        // 1. Obtener el usuario actual. Se recarga dentro de la transacción porque el principal del
+        // SecurityContext viene de JwtAuthFilter y está detached: tocar su colección de refresh tokens
+        // lanzaría LazyInitializationException.
+        User user = userRepository.findByUsername(GetAuthUser.getAuthUser().getUsername())
+                .orElseThrow(() -> new NotFoundException("Usuario no encontrado"));
 
         // D2: el grado es permanente. Se rechaza explícitamente en vez de ignorar el campo, para que el
         // cliente no crea que el cambio se aplicó.
@@ -132,6 +135,11 @@ public class UserServiceImpl implements IUserService {
 
         if (userProfile.getPassword() != null && !userProfile.getPassword().isBlank()) {
             user.setPasswordHash(passwordEncoder.encode(userProfile.getPassword()));
+            // WAVE1 S2: cambiar la contraseña cierra todas las sesiones abiertas. Se incrementa la versión
+            // de token (invalida los access tokens ya emitidos, igual que resetPassword) y se revocan los
+            // refresh tokens, para que un token robado no sobreviva al cambio.
+            user.setTokenVersion(user.getTokenVersion() + 1);
+            user.getRefreshTokens().clear();
         }
 
         user = userRepository.save(user);
